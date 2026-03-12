@@ -124,6 +124,10 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
     manager.connect(lobby_id, player_id, websocket)
     await manager.broadcast(lobby_id, _lobby_update(engine))
 
+    # If a round is in progress, restore enough context for the reconnecting player to act
+    if engine.state.phase == GamePhase.HINT:
+        await _send_hint_phase_rejoin(lobby_id, player_id, engine)
+
     try:
         while True:
             data = await websocket.receive_json()
@@ -157,6 +161,41 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
             await _broadcast_voting_open(lobby_id, engine)
         elif phase_before == GamePhase.VOTING and phase_after == GamePhase.ACCUSATION:
             await _handle_accusation(lobby_id, engine)
+
+
+# ── Hint-phase rejoin ─────────────────────────────────────────────────────────
+
+async def _send_hint_phase_rejoin(lobby_id: str, player_id: str, engine: GameEngine):
+    """Re-send round context to a player who reconnected during the hint phase."""
+    rs = engine.state.round_state
+    player = engine.lobby.players[player_id]
+    if rs is None or player.role is None:
+        return  # not a participant this round — nothing to restore
+
+    seed = engine._round_seed
+    role_msg: dict = {"type": "role_assigned", "role": player.role.value}
+    if player.role == Role.MORP:
+        role_msg["half_board"] = engine.get_half_board_for_morp(seed=seed)
+    await manager.send(lobby_id, player_id, role_msg)
+
+    round_msg: dict = {
+        "type": "round_start",
+        "round_number": rs.round_number,
+        "board_hint": rs.board.board_hint,
+        "words": rs.board.words,
+        "turn_order": rs.turn_order,
+    }
+    if player.role == Role.SAFE:
+        round_msg["target_word"] = rs.target_word
+    await manager.send(lobby_id, player_id, round_msg)
+
+    # Replay hints already submitted so speech bubbles are up to date
+    for h in rs.hints:
+        await manager.send(lobby_id, player_id, {
+            "type": "hint_received",
+            "player_id": h.player_id,
+            "text": h.text,
+        })
 
 
 # ── Message handler ───────────────────────────────────────────────────────────
@@ -446,6 +485,7 @@ def _schedule_morp_guess_timeout(
                 })
             except ValueError:
                 pass
+        await manager.broadcast(lobby_id, _lobby_update(engine))
         await _check_round_end(lobby_id, engine)
 
     _cancel_timer(lobby_id)
