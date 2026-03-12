@@ -165,6 +165,8 @@ Both remaining players are assigned as morps — neither can see the target word
 ### Host
 - As a host, I can configure the number of morps before starting.
 - As a host, I can start the game once 3+ players have joined.
+- As a host, I can toggle the guess timer on or off before starting.
+- As a host, I can reset the game after it ends to start a new one with the same players.
 - As a host, I can kick a disconnected player.
 
 ---
@@ -172,49 +174,60 @@ Both remaining players are assigned as morps — neither can see the target word
 ## 9. Key Test Cases
 
 ### Game Setup
-- [ ] Lobby rejects start with fewer than 3 players
-- [ ] Correct number of morps assigned per configuration
-- [ ] Morp does not receive target word highlight
-- [ ] Morp going first receives exactly half the board words (random selection)
-- [ ] Morp not going first receives no accommodation
+- [x] Lobby rejects start with fewer than 3 players
+- [x] Correct number of morps assigned per configuration
+- [x] Morp does not receive target word highlight
+- [x] Morp going first receives exactly half the board words (random selection, target always included)
+- [x] Morp not going first receives no accommodation
 
 ### Hint Phase
-- [ ] Turn order enforced (players cannot submit out of turn)
-- [ ] Hint submitted by each player is visible to all after submission
-- [ ] Voting phase does not start until all players have submitted
+- [x] Turn order enforced (players cannot submit out of turn)
+- [x] Hint submitted by each player is visible to all after submission
+- [x] Voting phase does not start until all players have submitted
 
 ### Voting
-- [ ] Player cannot vote for themselves
-- [ ] Player casts exactly n votes for n morps
-- [ ] Tie in votes broken randomly and deterministically (seeded)
-- [ ] Correct n players are accused
+- [x] Player cannot vote for themselves
+- [x] Player casts exactly n votes for n morps
+- [x] Tie in votes broken randomly and deterministically (seeded)
+- [x] Correct n players are accused
 
 ### Accusation Resolution
-- [ ] If no morp accused: each morp deals 1 damage to chosen target
-- [ ] If morp accused and guesses correctly: morp takes no damage
-- [ ] If morp accused and guesses wrong: morp takes 1 damage
-- [ ] Player HP reaches 0 → player becomes a ghost
+- [x] If no morp accused: each morp deals 1 damage to chosen target
+- [x] If morp accused and guesses correctly: morp takes no damage
+- [x] If morp accused and guesses wrong: morp takes 1 damage
+- [x] Non-accused players cannot submit a morp guess
+- [x] Player HP reaches 0 → player becomes a ghost
 
 ### Two-Player Endgame
-- [ ] Neither final player can see the target word
-- [ ] All ghost hints revealed simultaneously after timer
-- [ ] First correct guess wins the round; other takes damage
-- [ ] Wrong guess does not block the opponent from still answering
-- [ ] Both timeout → both take 1 damage
-- [ ] Draw condition (both reach 0 HP) triggers Sudden Death Replay
-- [ ] Morp given 30-second countdown to guess target word after accusation (hints remain visible)
-- [ ] Morp guess timer expiry counts as a wrong guess (takes 1 damage)
+- [x] Neither final player can see the target word
+- [x] Both finalists are assigned the morp role and notified via role_assigned message
+- [x] Ghost players can see the target word to give useful hints
+- [x] All ghost hints revealed simultaneously after timer
+- [x] First correct guess wins the round; other takes damage
+- [x] Wrong guess does not block the opponent from still answering
+- [x] Both timeout → both take 1 damage
+- [x] Draw condition (both reach 0 HP) triggers Sudden Death Replay
+- [x] Morp given 30-second countdown to guess target word after accusation (hints remain visible)
+- [x] Morp guess timer expiry counts as a wrong guess (takes 1 damage)
+
+### Game Reset
+- [x] Host can reset the game after it ends; all players' HP/roles/ghost status restored
+- [x] All clients receive game_reset broadcast and return to lobby
+- [x] A new game can be started immediately after reset
+- [x] Non-host cannot trigger a reset
 
 ### Disconnect
-- [ ] Disconnected player's turn is skipped
-- [ ] Game continues without disconnected player
-- [ ] Reconnect before vote end allows player to vote
+- [x] Disconnected player's turn is skipped
+- [x] Disconnected player's vote is skipped (voting resolves without them)
+- [x] Host reassigned if host disconnects
+- [x] Lobby cleaned up when all players disconnect
+- [ ] Reconnect before vote end allows player to vote (not yet implemented)
 
 ### Board
-- [ ] Default 3 boards load correctly
-- [ ] Custom board JSON accepted and validated
-- [ ] New board + target selected each round
-- [ ] Board grid renders correctly for any valid n×k dimensions
+- [x] Default 3 boards load correctly
+- [x] Custom board JSON accepted and validated (1–100 words)
+- [x] New board + target selected each round
+- [ ] Board grid renders correctly for any valid n×k dimensions (frontend renders square grids; non-square not tested)
 
 ---
 
@@ -247,3 +260,5 @@ The following are noted to avoid architectural decisions that would block them, 
 - **Draw condition:** Both final players hitting 0 HP in the same endgame round triggers **Sudden Death Replay** — a new board/target is selected and the endgame round repeats until one player wins.
 - **Morp guess timer:** After being accused, the morp has **30 seconds** to guess the target word. All player hints from the round remain visible during this window.
 - **Custom board validation:** Boards must have between **1 and 100 words** (capped at 10×10 grid). Minimum 1 word; layout is derived from word count (up to the configured grid size).
+- **Host timer toggle:** The host can disable timers (morp guess + endgame guess) before starting, useful for testing and casual play. Toggle defaults to enabled.
+- **Game reset:** After a game ends, the host can reset the lobby. Player list is preserved but all HP, roles, and ghost status are restored. A new game can be started immediately.
