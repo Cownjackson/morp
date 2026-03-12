@@ -2,641 +2,442 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Morp — Test Client</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: monospace; background: #111; color: #eee; padding: 20px; max-width: 900px; margin: 0 auto; }
-    h1 { color: #7cf; margin-bottom: 16px; }
-    h2 { color: #adf; margin-bottom: 10px; font-size: 1em; text-transform: uppercase; letter-spacing: 1px; }
 
-    .panel { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 16px; margin-bottom: 14px; }
-    .panel.hidden { display: none; }
-
-    input, button, select { font-family: monospace; font-size: 0.95em; }
-    input[type="text"], input:not([type]) { background: #222; color: #eee; border: 1px solid #444; border-radius: 4px; padding: 6px 10px; }
-    button { background: #2a5; color: #fff; border: none; border-radius: 4px; padding: 7px 14px; cursor: pointer; margin: 3px; }
-    button:hover { background: #3b6; }
-    button:disabled { background: #444; color: #888; cursor: not-allowed; }
-    button.danger { background: #922; }
-    button.danger:hover { background: #b33; }
-    button.next-round { background: #226; color: #aaf; font-weight: bold; }
-    button.next-round:hover { background: #338; }
-
-    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-
-    /* Board */
-    #board-grid, #endgame-board-grid { display: grid; gap: 6px; margin: 10px 0; }
-    .word-cell {
-      background: #252525; border: 1px solid #444; border-radius: 4px;
-      padding: 8px 4px; text-align: center; font-size: 0.85em; cursor: default;
+    body {
+      font-family: monospace;
+      background: #111;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 14px 14px;
     }
-    .word-cell.target    { background: #1a4a1a; border-color: #3c3; color: #7f7; font-weight: bold; }
-    .word-cell.half      { background: #2a2a1a; border-color: #884; }
-    .word-cell.hidden-word { background: #181818; border-color: #2a2a2a; color: #444; }
 
-    /* Players list */
-    .player-entry { display: flex; gap: 8px; align-items: center; margin: 4px 0; }
-    .hp-bar span { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #e44; margin-right: 2px; }
-    .hp-bar span.dead { background: #333; }
-    .tag { font-size: 0.75em; padding: 1px 5px; border-radius: 3px; background: #333; }
-    .tag.morp  { background: #622; color: #faa; }
-    .tag.safe  { background: #162; color: #7f7; }
-    .tag.host  { background: #226; color: #aaf; }
-    .tag.ghost { background: #333; color: #888; }
-    .tag.you   { background: #444; color: #ff9; }
-    .disconnected { opacity: 0.45; }
+    .hidden { display: none !important; }
 
-    /* Hints */
-    .hint-entry { margin: 4px 0; padding: 6px 10px; background: #222; border-left: 3px solid #556; border-radius: 0 4px 4px 0; }
-    .hint-entry .who { color: #adf; font-size: 0.8em; }
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0 10px;
+      border-bottom: 1px solid #222;
+      flex-shrink: 0;
+    }
+    header h1 { color: #7cf; font-size: 1.4em; letter-spacing: 2px; }
+    #lobby-code-display {
+      color: #7cf; font-weight: bold; font-size: 1.1em;
+      background: #1a2a3a; padding: 2px 10px; border-radius: 4px;
+    }
+    #phase-label {
+      margin-left: auto; color: #fa7;
+      font-size: 0.8em; letter-spacing: 1px; text-align: right;
+    }
 
-    /* Log */
-    #log { height: 120px; overflow-y: auto; background: #0d0d0d; border: 1px solid #2a2a2a; border-radius: 4px; padding: 8px; font-size: 0.8em; color: #888; }
-    #log div { margin-bottom: 2px; }
-    #log div.info  { color: #7af; }
-    #log div.ok    { color: #7f7; }
-    #log div.warn  { color: #fa7; }
-    #log div.error { color: #f77; }
-
-    /* Timers */
-    .big-timer { font-size: 2em; font-weight: bold; color: #fa7; }
-
-    /* Vote buttons */
-    .vote-btn { background: #333; color: #eee; }
-    .vote-btn.selected { background: #522; color: #faa; }
-
-    #phase-label { color: #fa7; font-weight: bold; font-size: 0.9em; letter-spacing: 1px; }
-
-    /* Role banner */
+    /* ── Role banner ── */
     #role-banner {
       display: none;
-      padding: 10px 16px;
-      border-radius: 6px;
-      font-size: 1.1em;
-      font-weight: bold;
-      margin-bottom: 14px;
+      padding: 8px 16px; border-radius: 6px;
+      font-size: 1em; font-weight: bold; letter-spacing: 1px;
+      margin: 10px 0 4px; flex-shrink: 0;
+      text-align: center;
+    }
+    #role-banner.safe  { background: #0d2e0d; border: 1px solid #2a7a2a; color: #7f7; }
+    #role-banner.morp  { background: #2a0a0a; border: 1px solid #8a2a2a; color: #faa; }
+    #role-banner.ghost { background: #1a1a1a; border: 1px solid #444;    color: #777; }
+
+    /* ── Connect screen ── */
+    #panel-connect {
+      background: #181818; border: 1px solid #2a2a2a;
+      border-radius: 8px; padding: 28px; margin: 24px auto;
+      max-width: 420px; width: 100%;
+    }
+    #panel-connect h2 {
+      color: #7cf; font-size: 1.1em; margin-bottom: 18px;
       letter-spacing: 1px;
     }
-    #role-banner.safe  { background: #162; border: 1px solid #3c3; color: #7f7; }
-    #role-banner.morp  { background: #2a0a0a; border: 1px solid #933; color: #faa; }
-    #role-banner.ghost { background: #1a1a1a; border: 1px solid #555; color: #888; }
 
-    /* Toggle */
+    /* ── Game layout ── */
+    #game-layout {
+      display: flex; flex-direction: column;
+      flex: 1; gap: 10px; padding-top: 10px;
+    }
+
+    /* ── Board ── */
+    #board-area {
+      background: #161616; border: 1px solid #252525;
+      border-radius: 8px; padding: 12px;
+    }
+    #board-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+    }
+    #board-theme-tag {
+      background: #1e2a1e; border: 1px solid #2a4a2a;
+      color: #8c8; font-size: 0.78em; padding: 2px 8px;
+      border-radius: 12px; letter-spacing: 0.5px;
+    }
+    #half-board-note {
+      color: #776; font-size: 0.76em; margin-top: 6px; display: none;
+    }
+    #board-grid { display: grid; gap: 5px; }
+    .word-cell {
+      background: #1e1e1e; border: 1px solid #333;
+      border-radius: 4px; padding: 7px 4px;
+      text-align: center; font-size: 0.82em; cursor: default;
+      transition: background 0.15s;
+    }
+    .word-cell.target     { background: #0d2e0d; border-color: #2a7a2a; color: #7f7; font-weight: bold; }
+    .word-cell.half       { background: #252510; border-color: #665; }
+    .word-cell.hidden-word { background: #141414; border-color: #1e1e1e; color: #2a2a2a; }
+
+    /* ── Action area ── */
+    #action-area {
+      background: #161616; border: 1px solid #252525;
+      border-radius: 8px; padding: 14px 16px;
+      min-height: 72px;
+    }
+    .action-section h3 {
+      color: #adf; font-size: 0.8em; text-transform: uppercase;
+      letter-spacing: 1px; margin-bottom: 10px;
+    }
+
+    /* ── Shared form elements ── */
+    input[type="text"], input:not([type]) {
+      background: #1e1e1e; color: #eee;
+      border: 1px solid #3a3a3a; border-radius: 4px;
+      padding: 7px 10px; font-family: monospace; font-size: 0.9em;
+    }
+    input:focus { outline: 1px solid #555; }
+    button {
+      background: #1e4d2e; color: #8ef; border: 1px solid #2a6a3e;
+      border-radius: 4px; padding: 7px 14px; cursor: pointer;
+      margin: 3px; font-family: monospace; font-size: 0.88em;
+      transition: background 0.12s;
+    }
+    button:hover:not(:disabled) { background: #266040; }
+    button:disabled { background: #1e1e1e; color: #444; border-color: #2a2a2a; cursor: not-allowed; }
+    button.primary { background: #1a2a50; color: #aaf; border-color: #2a4080; }
+    button.primary:hover:not(:disabled) { background: #223060; }
+    button.danger  { background: #4a1010; color: #faa; border-color: #7a2020; }
+    button.danger:hover:not(:disabled) { background: #601818; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
     .toggle-row { display: flex; gap: 8px; align-items: center; }
-    .toggle-row label { cursor: pointer; }
+    .toggle-row label { cursor: pointer; color: #888; font-size: 0.88em; }
+
+    /* vote buttons */
+    .vote-btn {
+      background: #1e1e1e; color: #ccc;
+      border: 1px solid #3a3a3a;
+    }
+    .vote-btn.selected { background: #3a1010; color: #faa; border-color: #7a2020; }
+    .vote-btn:hover:not(.selected):not(:disabled) { background: #2a2a2a; }
+
+    /* timers */
+    .big-timer { font-size: 1.6em; font-weight: bold; color: #fa7; }
+
+    /* tags */
+    .tag { font-size: 0.72em; padding: 1px 5px; border-radius: 3px; }
+    .tag.morp  { background: #3a1010; color: #faa; border: 1px solid #6a2020; }
+    .tag.safe  { background: #0d2e0d; color: #7f7; border: 1px solid #2a6a2a; }
+    .tag.ghost { background: #1e1e1e; color: #666; border: 1px solid #333; }
+
+    /* ── Player row ── */
+    #player-row {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding: 8px 0 2px;
+    }
+
+    .avatar-wrap {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 4px;
+      position: relative; min-width: 62px;
+    }
+
+    /* speech bubble */
+    .speech-bubble {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%; transform: translateX(-50%);
+      background: #222; border: 1px solid #4a4a4a;
+      border-radius: 8px; padding: 5px 9px;
+      font-size: 0.74em; max-width: 150px;
+      text-align: center; word-break: break-word;
+      white-space: normal; pointer-events: none;
+      z-index: 10; color: #ddd; line-height: 1.3;
+    }
+    .speech-bubble::after {
+      content: '';
+      position: absolute; top: 100%; left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent; border-top-color: #4a4a4a;
+    }
+    .speech-bubble.skipped { color: #444; font-style: italic; }
+
+    .avatar-circle {
+      width: 54px; height: 54px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.15em; font-weight: bold; color: #fff;
+      border: 3px solid transparent;
+      position: relative; flex-shrink: 0;
+      transition: opacity 0.3s, filter 0.3s, box-shadow 0.2s;
+      user-select: none; cursor: default;
+    }
+    .avatar-circle.is-ghost     { opacity: 0.3; filter: grayscale(1); }
+    .avatar-circle.is-you       { border-color: #ffd700 !important; box-shadow: 0 0 8px rgba(255,215,0,0.25); }
+    .avatar-circle.is-active    { box-shadow: 0 0 14px rgba(80,220,80,0.55); border-color: #4c4 !important; }
+    .avatar-circle.disconnected { opacity: 0.2; }
+
+    .host-crown {
+      position: absolute; top: -17px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.8em; line-height: 1;
+    }
+
+    .avatar-name {
+      font-size: 0.7em; color: #aaa; text-align: center;
+      max-width: 70px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+    .avatar-name.is-you { color: #ffd700; }
+
+    .hp-pips { display: flex; gap: 3px; justify-content: center; }
+    .hp-pip { width: 7px; height: 7px; border-radius: 50%; background: #c44; }
+    .hp-pip.empty { background: #202020; border: 1px solid #2e2e2e; }
+
+    /* ── Log ── */
+    #log-wrap { border-top: 1px solid #1e1e1e; margin-top: 6px; flex-shrink: 0; }
+    #log-toggle {
+      background: none; border: none; color: #444;
+      font-family: monospace; font-size: 0.74em;
+      cursor: pointer; padding: 5px 0; width: 100%; text-align: left;
+    }
+    #log-toggle:hover { color: #777; }
+    #log {
+      height: 88px; overflow-y: auto;
+      background: #0c0c0c; border: 1px solid #1a1a1a;
+      border-radius: 4px; padding: 6px 8px;
+      font-size: 0.74em; color: #555;
+    }
+    #log div { margin-bottom: 1px; }
+    #log div.info  { color: #5a9fdf; }
+    #log div.ok    { color: #5ab85a; }
+    #log div.warn  { color: #d49020; }
+    #log div.error { color: #d05050; }
   </style>
 </head>
 <body>
-<h1>Morp — Test Client</h1>
+
+<header>
+  <h1>MORP</h1>
+  <span id="lobby-code-display" class="hidden"></span>
+  <span id="phase-label"></span>
+</header>
+
 <div id="role-banner"></div>
 
-<!-- Connection -->
-<div id="panel-connect" class="panel">
-  <h2>Connect</h2>
+<!-- Connect screen -->
+<div id="panel-connect">
+  <h2>Join a Game</h2>
   <div class="row">
-    <span>Server:</span>
+    <span style="color:#666;width:54px">Server</span>
     <input type="text" id="server-url" value="ws://localhost:8000" style="width:220px">
   </div>
   <div class="row">
+    <span style="color:#666;width:54px">Name</span>
+    <input type="text" id="player-name" placeholder="Your name" value="Player" style="width:160px">
+  </div>
+  <div class="row" style="margin-top:14px; border-top:1px solid #222; padding-top:14px">
     <button onclick="createLobby()">Create Lobby</button>
-    <span style="color:#666">— or —</span>
-    <input type="text" id="join-code" placeholder="Lobby code" style="width:100px">
+    <span style="color:#333;font-size:0.85em">— or —</span>
+    <input type="text" id="join-code" placeholder="LOBBY CODE" style="width:110px;text-transform:uppercase;letter-spacing:2px">
     <button onclick="joinLobby()">Join</button>
   </div>
-  <div class="row">
-    <span>Name:</span>
-    <input type="text" id="player-name" placeholder="Your name" value="Player" style="width:120px">
-  </div>
 </div>
 
-<!-- Lobby -->
-<div id="panel-lobby" class="panel hidden">
-  <h2>Lobby</h2>
-  <div class="row">
-    <span>Code: <strong id="lobby-code-display" style="color:#7cf"></strong></span>
-    <span id="phase-label"></span>
-  </div>
-  <div id="player-list" style="margin:10px 0"></div>
-  <div id="host-controls" class="hidden">
-    <div class="toggle-row" style="margin-bottom:8px">
-      <input type="checkbox" id="timers-toggle" checked>
-      <label for="timers-toggle">Timers enabled (30s morp guess, endgame guess)</label>
+<!-- Main game layout (shown after connecting) -->
+<div id="game-layout" class="hidden">
+
+  <!-- Board (hidden until a round starts) -->
+  <div id="board-area" class="hidden">
+    <div id="board-header">
+      <span id="board-theme-tag"></span>
     </div>
-    <button id="btn-start" onclick="startGame()" disabled>Start Game</button>
-    <button id="btn-next-round" class="next-round hidden" onclick="nextRound()">Next Round</button>
+    <div id="board-grid"></div>
+    <div id="half-board-note">You are morp and went first — highlighted words are your partial view.</div>
   </div>
-</div>
 
-<!-- Board -->
-<div id="panel-board" class="panel hidden">
-  <h2>Board — <span id="board-hint-label" style="color:#fa7"></span></h2>
-  <div id="board-grid"></div>
-  <div id="half-board-note" style="color:#884;font-size:0.8em;margin-top:6px;display:none">
-    You are morp and went first. Highlighted words are visible to you; greyed words are hidden.
-  </div>
-</div>
+  <!-- Action area — one section visible at a time -->
+  <div id="action-area">
 
-<!-- Hint phase -->
-<div id="panel-hint" class="panel hidden">
-  <h2>Hint Phase — <span id="turn-indicator" style="color:#ff9"></span></h2>
-  <div id="hints-list" style="margin-bottom:10px"></div>
-  <div id="your-turn-block" class="hidden">
-    <div class="row">
-      <input type="text" id="hint-input" placeholder="Your hint..." style="width:260px" maxlength="120">
-      <button onclick="submitHint()">Submit Hint</button>
+    <!-- LOBBY -->
+    <div id="act-lobby" class="action-section">
+      <div id="host-controls" class="hidden">
+        <div class="toggle-row" style="margin-bottom:10px">
+          <input type="checkbox" id="timers-toggle" checked>
+          <label for="timers-toggle">Timers enabled (30 s morp guess / endgame guess)</label>
+        </div>
+        <button id="btn-start" onclick="startGame()" disabled>Start Game</button>
+      </div>
+      <p id="lobby-waiting" style="color:#444;font-size:0.88em">Waiting for players…</p>
     </div>
-  </div>
-  <div id="waiting-turn" style="color:#666;display:none">Waiting for other players...</div>
-</div>
 
-<!-- Voting -->
-<div id="panel-vote" class="panel hidden">
-  <h2>Voting — pick <span id="vote-count-label"></span> player(s) you suspect</h2>
-  <div id="vote-buttons" style="margin:10px 0"></div>
-  <button id="btn-submit-votes" onclick="submitVotes()" disabled>Submit Votes</button>
-  <div id="vote-waiting" style="color:#666;margin-top:8px;display:none">Votes submitted. Waiting...</div>
-</div>
-
-<!-- Accusation result -->
-<div id="panel-accusation" class="panel hidden">
-  <h2>Accusation Result</h2>
-  <div id="accusation-content"></div>
-</div>
-
-<!-- Morp guess -->
-<div id="panel-morp-guess" class="panel hidden">
-  <h2>Morp Must Guess!</h2>
-  <div id="guess-timer" class="big-timer">30</div>
-  <div style="margin:10px 0;color:#888">Hints are still visible above. What is the target word?</div>
-  <div id="morp-guess-input-block">
-    <div class="row">
-      <input type="text" id="guess-input" placeholder="Guess the target word..." style="width:260px">
-      <button id="btn-morp-guess" onclick="submitMorpGuess()">Submit Guess</button>
-    </div>
-  </div>
-  <div id="guess-result" style="margin-top:10px;font-size:1.2em"></div>
-</div>
-
-<!-- Damage phase -->
-<div id="panel-damage" class="panel hidden">
-  <h2>Morp Deals Damage</h2>
-  <div id="damage-morp-action" class="hidden">
-    <p style="margin-bottom:8px;color:#faa">You are the morp. Choose a player to damage:</p>
-    <div id="damage-buttons"></div>
-  </div>
-  <div id="damage-waiting" style="color:#666;display:none">Waiting for morp to deal damage...</div>
-</div>
-
-<!-- 2-Player Endgame -->
-<div id="panel-endgame-2p" class="panel hidden">
-  <h2>2-Player Endgame — <span id="endgame-phase-label" style="color:#fa7"></span></h2>
-
-  <div id="endgame-board-wrap" class="hidden">
-    <div style="color:#888;font-size:0.85em;margin-bottom:4px">Board — <span id="endgame-board-hint" style="color:#fa7"></span></div>
-    <div id="endgame-board-grid"></div>
-  </div>
-
-  <div id="endgame-ghost-hints-section" class="hidden" style="margin:10px 0">
-    <div id="endgame-ghost-hints-list"></div>
-    <div id="endgame-ghost-input-block" class="hidden" style="margin-top:8px">
-      <p style="color:#888;margin-bottom:6px">You are a ghost. Submit your hint:</p>
-      <div class="row">
-        <input type="text" id="endgame-ghost-hint-input" placeholder="Your hint..." style="width:260px" maxlength="120">
-        <button onclick="submitEndgameGhostHint()">Submit Hint</button>
+    <!-- HINT PHASE -->
+    <div id="act-hint" class="action-section hidden">
+      <div id="turn-indicator" style="margin-bottom:8px;font-size:0.88em"></div>
+      <div id="your-turn-block" class="hidden">
+        <div class="row">
+          <input type="text" id="hint-input" placeholder="Your hint…" style="width:260px" maxlength="120">
+          <button onclick="submitHint()">Submit</button>
+        </div>
       </div>
     </div>
-    <div id="endgame-ghost-waiting" style="color:#666;display:none">Hint submitted. Waiting for others...</div>
-  </div>
 
-  <div id="endgame-guessing-section" class="hidden" style="margin:10px 0">
-    <div id="endgame-guess-timer" class="big-timer" style="display:none">30</div>
-    <div id="endgame-revealed-hints" style="margin-bottom:10px"></div>
-    <div id="endgame-guess-input-block" class="hidden">
-      <div class="row">
-        <input type="text" id="endgame-guess-input" placeholder="Guess the target word..." style="width:260px">
-        <button id="btn-endgame-guess" onclick="submitEndgameGuess()">Submit Guess</button>
-      </div>
+    <!-- VOTING -->
+    <div id="act-vote" class="action-section hidden">
+      <h3>Vote — pick <span id="vote-count-label"></span> suspect(s)</h3>
+      <div id="vote-buttons" style="margin-bottom:8px"></div>
+      <button id="btn-submit-votes" onclick="submitVotes()" disabled>Submit Votes</button>
+      <span id="vote-waiting" style="display:none;margin-left:12px;color:#555;font-size:0.88em">Votes submitted — waiting…</span>
     </div>
-    <div id="endgame-guess-result"></div>
-  </div>
-</div>
 
-<!-- Game over / round end -->
-<div id="panel-endgame" class="panel hidden">
-  <h2 id="endgame-title"></h2>
-  <div id="endgame-content"></div>
-  <button onclick="resetToLobby()" style="margin-top:12px">Back to Lobby</button>
-</div>
+    <!-- ACCUSATION RESULT -->
+    <div id="act-accusation" class="action-section hidden">
+      <h3>Accusation Result</h3>
+      <div id="accusation-content"></div>
+    </div>
 
-<!-- Event log -->
-<div class="panel" style="margin-top:20px">
-  <h2>Event Log</h2>
-  <div id="log"></div>
+    <!-- MORP GUESS -->
+    <div id="act-morp-guess" class="action-section hidden">
+      <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:10px">
+        <h3 style="margin:0">Morp Must Guess!</h3>
+        <span id="guess-timer" class="big-timer">30</span>
+      </div>
+      <div id="morp-guess-input-block">
+        <div class="row">
+          <input type="text" id="guess-input" placeholder="Guess the target word…" style="width:260px">
+          <button id="btn-morp-guess" onclick="submitMorpGuess()">Submit</button>
+        </div>
+      </div>
+      <div id="guess-result" style="margin-top:8px;font-size:1.05em"></div>
+    </div>
+
+    <!-- DAMAGE PHASE -->
+    <div id="act-damage" class="action-section hidden">
+      <h3>Damage Phase</h3>
+      <div id="damage-morp-action" class="hidden">
+        <p style="color:#faa;font-size:0.88em;margin-bottom:8px">You are the morp — choose a player to damage:</p>
+        <div id="damage-buttons"></div>
+      </div>
+      <p id="damage-waiting" style="display:none;color:#555;font-size:0.88em">Waiting for morp to deal damage…</p>
+    </div>
+
+    <!-- ENDGAME — GHOST HINTS -->
+    <div id="act-endgame-ghost" class="action-section hidden">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <h3 style="margin:0">2-Player Endgame</h3>
+        <span id="endgame-phase-label" style="color:#fa7;font-size:0.8em"></span>
+      </div>
+      <div id="endgame-ghost-input-block" class="hidden">
+        <p style="color:#777;font-size:0.85em;margin-bottom:6px">You are a ghost — submit a hint for the finalists:</p>
+        <div class="row">
+          <input type="text" id="endgame-ghost-hint-input" placeholder="Your hint…" style="width:260px" maxlength="120">
+          <button onclick="submitEndgameGhostHint()">Submit</button>
+        </div>
+      </div>
+      <p id="endgame-ghost-waiting"  style="display:none;color:#555;font-size:0.88em">Hint submitted — waiting for others…</p>
+      <p id="endgame-finalist-waiting" style="display:none;color:#555;font-size:0.88em">Waiting for ghost hints…</p>
+    </div>
+
+    <!-- ENDGAME — GUESSING -->
+    <div id="act-endgame-guess" class="action-section hidden">
+      <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:10px">
+        <h3 style="margin:0">Guess the Word!</h3>
+        <span id="endgame-guess-timer" class="big-timer" style="display:none">30</span>
+      </div>
+      <div id="endgame-guess-input-block" class="hidden">
+        <div class="row">
+          <input type="text" id="endgame-guess-input" placeholder="Guess the target word…" style="width:260px">
+          <button id="btn-endgame-guess" onclick="submitEndgameGuess()">Submit</button>
+        </div>
+      </div>
+      <div id="endgame-guess-result" style="margin-top:6px"></div>
+    </div>
+
+    <!-- ROUND END / ENDGAME ROUND END -->
+    <div id="act-round-end" class="action-section hidden">
+      <div id="round-end-content"></div>
+    </div>
+
+    <!-- GAME OVER -->
+    <div id="act-game-over" class="action-section hidden">
+      <h3 id="game-over-title">Game Over!</h3>
+      <div id="game-over-content" style="margin:10px 0;font-size:1.05em"></div>
+      <button onclick="resetToLobby()" style="margin-top:6px">Back to Lobby</button>
+    </div>
+
+  </div><!-- /action-area -->
+
+  <!-- Player avatar row -->
+  <div id="player-row"></div>
+
+</div><!-- /game-layout -->
+
+<!-- Collapsible event log -->
+<div id="log-wrap">
+  <button id="log-toggle" onclick="toggleLog()">▸ Event Log</button>
+  <div id="log" class="hidden"></div>
 </div>
 
 <script>
+// ─── Constants ────────────────────────────────────────────────────────────────
+const AVATAR_COLORS = [
+  '#c0392b','#2980b9','#27ae60','#d4ac0d',
+  '#8e44ad','#16a085','#ca6f1e','#b03a7a',
+  '#17a589','#5d6d7e',
+];
+
+const ACTIONS = [
+  'lobby','hint','vote','accusation','morp-guess',
+  'damage','endgame-ghost','endgame-guess','round-end','game-over',
+];
+
 // ─── State ────────────────────────────────────────────────────────────────────
 const state = {
   ws: null,
-  lobbyId: null,
-  playerId: null,
-  playerName: null,
-  isHost: false,
-  role: null,
-  halfBoard: null,
-  targetWord: null,
-  board: null,
-  turnOrder: [],
-  players: {},
-  hints: [],
-  selectedVotes: [],
-  numVotes: 1,
-  guessTimerInterval: null,
-  endgameGuessTimerInterval: null,
+  lobbyId: null, playerId: null, playerName: null,
+  isHost: false, hostId: null,
+  role: null, halfBoard: null,
+  targetWord: null, board: null,
+  turnOrder: [], hints: [],
+  players: {},          // pid -> player object
+  speechBubbles: {},    // pid -> { text, skipped }
+  selectedVotes: [], numVotes: 1,
   _accusedMorpIds: [],
-  isGhost: false,
-  endgameTargetWord: null,
+  isGhost: false, endgameTargetWord: null,
 };
 
-// ─── Panels ───────────────────────────────────────────────────────────────────
-const PANELS = [
-  'connect','lobby','board','hint','vote','accusation',
-  'morp-guess','damage','endgame-2p','endgame',
-];
+const _colorMap = {};
+let _colorNext = 0;
 
-function showPanels(...names) {
-  PANELS.forEach(p => {
-    const el = document.getElementById(`panel-${p}`);
-    if (el) el.classList.toggle('hidden', !names.includes(p));
-  });
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function avatarColor(pid) {
+  if (!(pid in _colorMap)) _colorMap[pid] = _colorNext++ % AVATAR_COLORS.length;
+  return AVATAR_COLORS[_colorMap[pid]];
 }
 
-// ─── Logging ──────────────────────────────────────────────────────────────────
-function log(msg, cls = '') {
-  const el = document.getElementById('log');
-  const d = document.createElement('div');
-  d.className = cls;
-  d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-  el.appendChild(d);
-  el.scrollTop = el.scrollHeight;
+function initials(name) {
+  return (name || '?').split(/\s+/).map(w => w[0] || '').join('').toUpperCase().slice(0, 2) || '?';
 }
 
-// ─── REST helpers ──────────────────────────────────────────────────────────────
-function httpBase() {
-  return document.getElementById('server-url').value.replace(/^ws/, 'http');
-}
-
-async function createLobby() {
-  const name = document.getElementById('player-name').value.trim() || 'Player';
-  const base = httpBase();
-  try {
-    const r1 = await fetch(`${base}/lobby/create`, { method: 'POST' });
-    const { lobby_id } = await r1.json();
-    const r2 = await fetch(`${base}/lobby/${lobby_id}/join`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    const { player_id } = await r2.json();
-    connectWS(lobby_id, player_id, name);
-  } catch (e) { log(`Create lobby failed: ${e}`, 'error'); }
-}
-
-async function joinLobby() {
-  const code = document.getElementById('join-code').value.trim().toUpperCase();
-  const name = document.getElementById('player-name').value.trim() || 'Player';
-  const base = httpBase();
-  if (!code) { log('Enter a lobby code.', 'warn'); return; }
-  try {
-    const r = await fetch(`${base}/lobby/${code}/join`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    if (!r.ok) { log('Join failed: lobby not found.', 'error'); return; }
-    const { player_id } = await r.json();
-    connectWS(code, player_id, name);
-  } catch (e) { log(`Join failed: ${e}`, 'error'); }
-}
-
-// ─── WebSocket ────────────────────────────────────────────────────────────────
-function connectWS(lobbyId, playerId, name) {
-  const wsBase = document.getElementById('server-url').value;
-  state.lobbyId = lobbyId;
-  state.playerId = playerId;
-  state.playerName = name;
-
-  state.ws = new WebSocket(`${wsBase}/ws/${lobbyId}/${playerId}`);
-  state.ws.onopen = () => {
-    log(`Connected to lobby ${lobbyId} as ${name}`, 'ok');
-    document.getElementById('lobby-code-display').textContent = lobbyId;
-    showPanels('lobby');
-  };
-  state.ws.onmessage = e => handleMessage(JSON.parse(e.data));
-  state.ws.onclose = () => log('WebSocket closed.', 'warn');
-  state.ws.onerror = () => log('WebSocket error.', 'error');
-}
-
-function send(msg) { state.ws.send(JSON.stringify(msg)); }
-
-// ─── Message handler ───────────────────────────────────────────────────────────
-function handleMessage(msg) {
-  log(`← ${msg.type}`, 'info');
-
-  switch (msg.type) {
-
-    case 'lobby_update':
-      state.players = Object.fromEntries(msg.players.map(p => [p.id, p]));
-      state.isHost = (msg.host_id === state.playerId);
-      state.isGhost = state.players[state.playerId]?.is_ghost ?? false;
-      renderPlayers();
-      document.getElementById('host-controls').classList.toggle('hidden', !state.isHost);
-      document.getElementById('btn-start').disabled =
-        !state.isHost || msg.started || msg.players.length < 3;
-      setPhaseLabel(msg.started ? 'IN GAME' : 'WAITING');
-      // Re-render role banner in case ghost status changed
-      if (state.isGhost && state.role !== 'ghost') {
-        state.role = 'ghost';
-        renderRoleBanner();
-      }
-      break;
-
-    case 'role_assigned':
-      state.role = msg.role;
-      state.halfBoard = msg.half_board || null;
-      renderRoleBanner();
-      log(`Your role: ${msg.role}${state.halfBoard ? ' (going first — half board revealed)' : ''}`,
-        msg.role === 'morp' ? 'warn' : 'ok');
-      break;
-
-    case 'round_start':
-      state.board = { board_hint: msg.board_hint, words: msg.words };
-      state.turnOrder = msg.turn_order;
-      state.targetWord = msg.target_word || null;
-      state.hints = [];
-      document.getElementById('btn-next-round').classList.add('hidden');
-      renderBoard();
-      renderHints();
-      checkYourTurn();
-      showPanels('lobby', 'board', 'hint');
-      setPhaseLabel(`ROUND ${msg.round_number} — HINT PHASE`);
-      log(`Round ${msg.round_number} started. Board: "${msg.board_hint}"`, 'ok');
-      break;
-
-    case 'hint_received':
-      state.hints.push({ player_id: msg.player_id, text: msg.text });
-      renderHints();
-      checkYourTurn();
-      log(`Hint from ${playerName(msg.player_id)}: "${msg.text || '(skipped)'}"`);
-      break;
-
-    case 'voting_open':
-      state.hints = msg.hints;
-      state.numVotes = msg.num_votes;
-      state.selectedVotes = [];
-      renderHints();
-      if (!state.isGhost) {
-        renderVoteButtons();
-        showPanels('lobby', 'board', 'hint', 'vote');
-      } else {
-        showPanels('lobby', 'board', 'hint');
-      }
-      setPhaseLabel('VOTING');
-      log('Voting is open!', 'ok');
-      break;
-
-    case 'accusation_result':
-      renderAccusation(msg);
-      showPanels('lobby', 'board', 'hint', 'accusation');
-      setPhaseLabel('ACCUSATION');
-      break;
-
-    case 'morp_guess_phase': {
-      state._accusedMorpIds = msg.accused_morp_ids;
-      const isMorpBeingAsked = msg.accused_morp_ids.includes(state.playerId);
-      document.getElementById('morp-guess-input-block').classList.toggle('hidden', !isMorpBeingAsked);
-      document.getElementById('guess-input').disabled = false;
-      document.getElementById('btn-morp-guess').disabled = false;
-      document.getElementById('guess-result').textContent =
-        isMorpBeingAsked ? '' : `Waiting for ${msg.accused_morp_ids.map(playerName).join(', ')} to guess...`;
-      document.getElementById('guess-result').style.color = '#888';
-      const timerEl = document.getElementById('guess-timer');
-      if (msg.timers_enabled) {
-        startTimer('guess-timer', msg.deadline, () => {
-          if (isMorpBeingAsked && !document.getElementById('guess-input').disabled) {
-            send({ type: 'submit_morp_guess', guess: '' });
-            document.getElementById('guess-input').disabled = true;
-            document.getElementById('btn-morp-guess').disabled = true;
-          }
-        });
-      } else {
-        timerEl.textContent = '∞';
-      }
-      showPanels('lobby', 'board', 'hint', 'accusation', 'morp-guess');
-      setPhaseLabel('MORP GUESS');
-      log('Morp is guessing!', 'warn');
-      break;
-    }
-
-    case 'morp_guess_result':
-      clearTimer('guess-timer');
-      const resultText = msg.correct
-        ? `✅ ${playerName(msg.morp_id)} guessed correctly! Target: "${msg.target_word}"`
-        : `❌ ${playerName(msg.morp_id)} guessed wrong! Target: "${msg.target_word}"${msg.timed_out ? ' (timed out)' : ''}`;
-      document.getElementById('guess-result').textContent = resultText;
-      document.getElementById('guess-result').style.color = msg.correct ? '#7f7' : '#f77';
-      log(resultText, msg.correct ? 'ok' : 'warn');
-      state.targetWord = msg.target_word;
-      renderBoard();
-      break;
-
-    case 'damage_phase': {
-      const isMorp = msg.morp_ids.includes(state.playerId);
-      document.getElementById('damage-morp-action').classList.toggle('hidden', !isMorp);
-      document.getElementById('damage-waiting').style.display = isMorp ? 'none' : 'block';
-      if (isMorp) renderDamageButtons(msg.morp_ids);
-      showPanels('lobby', 'board', 'hint', 'accusation', 'damage');
-      setPhaseLabel('DAMAGE PHASE');
-      break;
-    }
-
-    case 'damage_dealt':
-      log(`💥 ${playerName(msg.from_id)} dealt damage to ${playerName(msg.to_id)} (${msg.hp_remaining} HP${msg.eliminated ? ', ELIMINATED' : ''})`, 'warn');
-      break;
-
-    case 'round_end':
-      setPhaseLabel('ROUND OVER');
-      if (state.isHost) {
-        document.getElementById('btn-next-round').classList.remove('hidden');
-      } else {
-        setPhaseLabel('ROUND OVER — Waiting for host...');
-      }
-      log('Round over. Waiting for host to start next round.', 'ok');
-      break;
-
-    // ── 2-Player Endgame ─────────────────────────────────────────────────────
-    case 'endgame_round_start': {
-      state.endgameTargetWord = msg.target_word || null;  // only set for ghosts
-      renderEndgameBoard(msg);
-      const ghosts = msg.ghost_ids || [];
-      const isGhost = ghosts.includes(state.playerId);
-      const isFinalist = msg.finalist_ids.includes(state.playerId);
-
-      document.getElementById('endgame-ghost-hints-section').classList.remove('hidden');
-      document.getElementById('endgame-ghost-hints-list').innerHTML = '';
-      document.getElementById('endgame-ghost-input-block').classList.toggle('hidden', !isGhost);
-      document.getElementById('endgame-ghost-waiting').style.display = 'none';
-      document.getElementById('endgame-ghost-hint-input').disabled = false;
-      document.getElementById('endgame-guessing-section').classList.add('hidden');
-      document.getElementById('endgame-guess-result').textContent = '';
-
-      setEndgamePhaseLabel('Ghost Hints');
-      showPanels('lobby', 'endgame-2p');
-      log(`Endgame round! Finalists: ${msg.finalist_ids.map(playerName).join(' vs ')}`, 'warn');
-      break;
-    }
-
-    case 'endgame_hint_received': {
-      const ghintEl = document.getElementById('endgame-ghost-hints-list');
-      if (msg.text) {
-        const div = document.createElement('div');
-        div.className = 'hint-entry';
-        div.innerHTML = `<span class="who">${playerName(msg.player_id)} (ghost):</span> ${msg.text}`;
-        ghintEl.appendChild(div);
-      }
-      if (msg.player_id === state.playerId) {
-        document.getElementById('endgame-ghost-input-block').classList.add('hidden');
-        document.getElementById('endgame-ghost-waiting').style.display = 'block';
-      }
-      break;
-    }
-
-    case 'endgame_hints_revealed': {
-      // Show all ghost hints and open guessing for finalists
-      const revealEl = document.getElementById('endgame-revealed-hints');
-      revealEl.innerHTML = '<strong style="color:#adf">Ghost hints:</strong>';
-      for (const h of msg.hints) {
-        const div = document.createElement('div');
-        div.className = 'hint-entry';
-        div.innerHTML = `<span class="who">${playerName(h.player_id)} (ghost):</span> ${h.text}`;
-        revealEl.appendChild(div);
-      }
-
-      document.getElementById('endgame-ghost-hints-section').classList.add('hidden');
-      document.getElementById('endgame-guessing-section').classList.remove('hidden');
-
-      const isFinalist = !state.isGhost;
-      document.getElementById('endgame-guess-input-block').classList.toggle('hidden', !isFinalist);
-      document.getElementById('endgame-guess-input').disabled = false;
-      document.getElementById('btn-endgame-guess').disabled = false;
-
-      const timerEl = document.getElementById('endgame-guess-timer');
-      if (msg.timers_enabled) {
-        timerEl.style.display = 'block';
-        startTimer('endgame-guess-timer', msg.deadline, () => {
-          if (isFinalist && !document.getElementById('endgame-guess-input').disabled) {
-            send({ type: 'endgame_submit_guess', guess: '' });
-            document.getElementById('endgame-guess-input').disabled = true;
-            document.getElementById('btn-endgame-guess').disabled = true;
-          }
-        });
-      } else {
-        timerEl.style.display = 'none';
-      }
-
-      setEndgamePhaseLabel('Guessing!');
-      log('Ghost hints revealed — finalists can now guess!', 'warn');
-      break;
-    }
-
-    case 'endgame_guess_result': {
-      clearTimer('endgame-guess-timer');
-      const resEl = document.getElementById('endgame-guess-result');
-      if (msg.round_over) {
-        const winner = msg.safe_player_id ? playerName(msg.safe_player_id) : null;
-        resEl.innerHTML = winner
-          ? `<span style="color:#7f7">✅ ${winner} guessed correctly! Target: "${msg.target_word}"</span>`
-          : `<span style="color:#f77">❌ Nobody guessed correctly. Target: "${msg.target_word}"</span>`;
-      } else {
-        // Wrong guess but round not over
-        const line = document.createElement('div');
-        line.style.color = '#f77';
-        line.textContent = `❌ ${playerName(msg.player_id)} guessed wrong.`;
-        resEl.appendChild(line);
-        if (msg.player_id === state.playerId) {
-          document.getElementById('endgame-guess-input').disabled = true;
-          document.getElementById('btn-endgame-guess').disabled = true;
-        }
-      }
-      break;
-    }
-
-    case 'endgame_timeout':
-      clearTimer('endgame-guess-timer');
-      document.getElementById('endgame-guess-result').innerHTML =
-        `<span style="color:#f77">⏰ Time's up! Target was: "${msg.target_word}"</span>`;
-      log(`Endgame timeout. Target was: "${msg.target_word}"`, 'warn');
-      break;
-
-    case 'endgame_round_end':
-      setEndgamePhaseLabel('Round Over');
-      if (msg.safe_player_id) {
-        log(`${playerName(msg.safe_player_id)} survived this round. Target was: "${msg.target_word}"`, 'ok');
-      }
-      if (state.isHost) {
-        const btn = document.createElement('button');
-        btn.className = 'next-round';
-        btn.textContent = 'Next Sudden Death Round';
-        btn.onclick = () => { send({ type: 'next_round' }); btn.disabled = true; };
-        document.getElementById('endgame-guess-result').appendChild(btn);
-      } else {
-        setEndgamePhaseLabel('Round Over — Waiting for host...');
-      }
-      break;
-
-    case 'game_over':
-      clearTimer('guess-timer');
-      clearTimer('endgame-guess-timer');
-      showPanels('lobby', 'endgame');
-      document.getElementById('endgame-title').textContent = 'Game Over!';
-      document.getElementById('endgame-content').innerHTML = msg.winner_id
-        ? `Winner: <strong style="color:#ff9">${msg.winner_name}</strong>`
-        : '<em>Draw!</em>';
-      setPhaseLabel('GAME OVER');
-      log(`Game over! Winner: ${msg.winner_name || 'nobody'}`, 'ok');
-      break;
-
-    case 'game_reset':
-      _localResetToLobby();
-      log('Game reset. Back in lobby.', 'ok');
-      break;
-
-    case 'error':
-      log(`Server error: ${msg.message}`, 'error');
-      break;
-
-    default:
-      log(`Unhandled: ${msg.type}`, 'warn');
-  }
-}
-
-// ─── Role banner ───────────────────────────────────────────────────────────────
-function renderRoleBanner() {
-  const el = document.getElementById('role-banner');
-  el.className = '';
-  if (!state.role) { el.style.display = 'none'; return; }
-  const config = {
-    safe:  { cls: 'safe',  text: 'YOU ARE SAFE' },
-    morp:  { cls: 'morp',  text: 'YOU ARE THE MORP' },
-    ghost: { cls: 'ghost', text: 'YOU HAVE BEEN ELIMINATED' },
-  };
-  const c = config[state.role] || { cls: '', text: state.role.toUpperCase() };
-  el.className = c.cls;
-  el.textContent = c.text;
-  el.style.display = 'block';
-}
-
-// ─── Render helpers ────────────────────────────────────────────────────────────
 function playerName(id) {
   return state.players[id]?.name || id?.slice(0, 8) || '?';
 }
@@ -649,52 +450,387 @@ function setEndgamePhaseLabel(text) {
   document.getElementById('endgame-phase-label').textContent = text;
 }
 
-function renderPlayers() {
-  const el = document.getElementById('player-list');
-  el.innerHTML = '';
-  for (const p of Object.values(state.players)) {
-    const row = document.createElement('div');
-    row.className = 'player-entry' + (p.is_connected === false ? ' disconnected' : '');
+function showAction(name) {
+  ACTIONS.forEach(a => document.getElementById(`act-${a}`)?.classList.toggle('hidden', a !== name));
+}
 
-    const hp = document.createElement('span');
-    hp.className = 'hp-bar';
-    for (let i = 0; i < 3; i++) {
-      const dot = document.createElement('span');
-      if (i >= p.hp) dot.className = 'dead';
-      hp.appendChild(dot);
+// ─── Logging ──────────────────────────────────────────────────────────────────
+function log(msg, cls = '') {
+  const el = document.getElementById('log');
+  const d = document.createElement('div');
+  d.className = cls;
+  d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+function toggleLog() {
+  const hidden = document.getElementById('log').classList.toggle('hidden');
+  document.getElementById('log-toggle').textContent = (hidden ? '▸' : '▾') + ' Event Log';
+}
+
+// ─── REST helpers ─────────────────────────────────────────────────────────────
+function httpBase() {
+  return document.getElementById('server-url').value.replace(/^ws/, 'http');
+}
+
+async function createLobby() {
+  const name = document.getElementById('player-name').value.trim() || 'Player';
+  const base = httpBase();
+  try {
+    const { lobby_id } = await fetch(`${base}/lobby/create`, { method: 'POST' }).then(r => r.json());
+    const { player_id } = await fetch(`${base}/lobby/${lobby_id}/join`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    }).then(r => r.json());
+    connectWS(lobby_id, player_id, name);
+  } catch (e) { log(`Create lobby failed: ${e}`, 'error'); }
+}
+
+async function joinLobby() {
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  const name = document.getElementById('player-name').value.trim() || 'Player';
+  if (!code) { log('Enter a lobby code.', 'warn'); return; }
+  try {
+    const r = await fetch(`${httpBase()}/lobby/${code}/join`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!r.ok) { log('Join failed: lobby not found.', 'error'); return; }
+    const { player_id } = await r.json();
+    connectWS(code, player_id, name);
+  } catch (e) { log(`Join failed: ${e}`, 'error'); }
+}
+
+// ─── WebSocket ────────────────────────────────────────────────────────────────
+function connectWS(lobbyId, playerId, name) {
+  state.lobbyId = lobbyId; state.playerId = playerId; state.playerName = name;
+  state.ws = new WebSocket(`${document.getElementById('server-url').value}/ws/${lobbyId}/${playerId}`);
+
+  state.ws.onopen = () => {
+    log(`Connected to lobby ${lobbyId} as ${name}`, 'ok');
+    const codeEl = document.getElementById('lobby-code-display');
+    codeEl.textContent = lobbyId;
+    codeEl.classList.remove('hidden');
+    document.getElementById('panel-connect').classList.add('hidden');
+    document.getElementById('game-layout').classList.remove('hidden');
+    showAction('lobby');
+  };
+  state.ws.onmessage = e => handleMessage(JSON.parse(e.data));
+  state.ws.onclose = () => log('WebSocket closed.', 'warn');
+  state.ws.onerror = () => log('WebSocket error.', 'error');
+}
+
+function send(msg) { state.ws.send(JSON.stringify(msg)); }
+
+// ─── Message handler ──────────────────────────────────────────────────────────
+function handleMessage(msg) {
+  log(`← ${msg.type}`, 'info');
+
+  switch (msg.type) {
+
+    case 'lobby_update': {
+      state.players = Object.fromEntries(msg.players.map(p => [p.id, p]));
+      state.hostId  = msg.host_id;
+      state.isHost  = msg.host_id === state.playerId;
+      state.isGhost = state.players[state.playerId]?.is_ghost ?? false;
+      renderPlayerRow();
+      document.getElementById('host-controls').classList.toggle('hidden', !state.isHost);
+      document.getElementById('lobby-waiting').style.display = state.isHost ? 'none' : 'block';
+      document.getElementById('btn-start').disabled =
+        !state.isHost || msg.started || msg.players.length < 3;
+      setPhaseLabel(msg.started ? 'IN GAME' : 'WAITING');
+      if (state.isGhost && state.role !== 'ghost') {
+        state.role = 'ghost';
+        renderRoleBanner();
+      }
+      break;
     }
 
-    const name = document.createElement('span');
-    name.textContent = p.name;
+    case 'role_assigned':
+      state.role = msg.role;
+      state.halfBoard = msg.half_board || null;
+      renderRoleBanner();
+      log(`Your role: ${msg.role}${state.halfBoard ? ' (going first — partial board visible)' : ''}`,
+        msg.role === 'morp' ? 'warn' : 'ok');
+      break;
 
-    const tags = [];
-    if (p.id === state.playerId) tags.push('you');
-    if (state.isHost && p.id === state.playerId) tags.push('host');
-    if (p.id === state.playerId && state.role) tags.push(state.role);
-    if (p.is_ghost) tags.push('ghost');
+    case 'round_start':
+      state.board      = { board_hint: msg.board_hint, words: msg.words };
+      state.turnOrder  = msg.turn_order;
+      state.targetWord = msg.target_word || null;
+      state.hints      = [];
+      state.speechBubbles = {};
+      state.endgameTargetWord = null;
+      renderBoard();
+      renderPlayerRow();
+      document.getElementById('board-area').classList.remove('hidden');
+      checkYourTurn();
+      showAction('hint');
+      setPhaseLabel(`ROUND ${msg.round_number} — HINTS`);
+      log(`Round ${msg.round_number} — "${msg.board_hint}"`, 'ok');
+      break;
 
-    row.appendChild(hp);
-    row.appendChild(name);
-    for (const t of tags) {
-      const tag = document.createElement('span');
-      tag.className = `tag ${t}`;
-      tag.textContent = t;
-      row.appendChild(tag);
+    case 'hint_received':
+      state.hints.push({ player_id: msg.player_id, text: msg.text });
+      state.speechBubbles[msg.player_id] = { text: msg.text, skipped: !msg.text };
+      renderPlayerRow();
+      checkYourTurn();
+      log(`Hint from ${playerName(msg.player_id)}: "${msg.text || '(skipped)'}"`, '');
+      break;
+
+    case 'voting_open':
+      state.hints      = msg.hints;
+      state.numVotes   = msg.num_votes;
+      state.selectedVotes = [];
+      // Populate bubbles from server-supplied hints (covers reconnect case)
+      for (const h of msg.hints) {
+        state.speechBubbles[h.player_id] = { text: h.text, skipped: !h.text };
+      }
+      renderPlayerRow();
+      if (!state.isGhost) {
+        renderVoteButtons();
+        showAction('vote');
+      }
+      // Ghosts just watch — action area stays on whatever it was
+      setPhaseLabel('VOTING');
+      log('Voting open!', 'ok');
+      break;
+
+    case 'accusation_result':
+      renderAccusation(msg);
+      showAction('accusation');
+      setPhaseLabel('ACCUSATION');
+      break;
+
+    case 'morp_guess_phase': {
+      state._accusedMorpIds = msg.accused_morp_ids;
+      const isMorpBeingAsked = msg.accused_morp_ids.includes(state.playerId);
+      document.getElementById('morp-guess-input-block').classList.toggle('hidden', !isMorpBeingAsked);
+      document.getElementById('guess-input').disabled = false;
+      document.getElementById('btn-morp-guess').disabled = false;
+      document.getElementById('guess-result').textContent =
+        isMorpBeingAsked ? '' : `Waiting for ${msg.accused_morp_ids.map(playerName).join(', ')} to guess…`;
+      document.getElementById('guess-result').style.color = '#666';
+      if (msg.timers_enabled) {
+        startTimer('guess-timer', msg.deadline, () => {
+          if (isMorpBeingAsked && !document.getElementById('guess-input').disabled) {
+            send({ type: 'submit_morp_guess', guess: '' });
+            document.getElementById('guess-input').disabled = true;
+            document.getElementById('btn-morp-guess').disabled = true;
+          }
+        });
+      } else {
+        document.getElementById('guess-timer').textContent = '∞';
+      }
+      showAction('morp-guess');
+      setPhaseLabel('MORP GUESS');
+      log('Morp is guessing!', 'warn');
+      break;
     }
-    el.appendChild(row);
+
+    case 'morp_guess_result': {
+      clearTimer('guess-timer');
+      const resultText = msg.correct
+        ? `✓ ${playerName(msg.morp_id)} guessed correctly! Target: "${msg.target_word}"`
+        : `✗ ${playerName(msg.morp_id)} guessed wrong. Target: "${msg.target_word}"${msg.timed_out ? ' (timed out)' : ''}`;
+      document.getElementById('guess-result').textContent = resultText;
+      document.getElementById('guess-result').style.color = msg.correct ? '#7f7' : '#f77';
+      log(resultText, msg.correct ? 'ok' : 'warn');
+      state.targetWord = msg.target_word;
+      renderBoard();
+      break;
+    }
+
+    case 'damage_phase': {
+      const isMorp = msg.morp_ids.includes(state.playerId);
+      document.getElementById('damage-morp-action').classList.toggle('hidden', !isMorp);
+      document.getElementById('damage-waiting').style.display = isMorp ? 'none' : 'block';
+      if (isMorp) renderDamageButtons(msg.morp_ids);
+      showAction('damage');
+      setPhaseLabel('DAMAGE');
+      break;
+    }
+
+    case 'damage_dealt':
+      log(`${playerName(msg.from_id)} → ${playerName(msg.to_id)} (${msg.hp_remaining} HP${msg.eliminated ? ', eliminated' : ''})`, 'warn');
+      break;
+
+    case 'round_end': {
+      setPhaseLabel('ROUND OVER');
+      const rc = document.getElementById('round-end-content');
+      rc.innerHTML = '';
+      if (state.isHost) {
+        const btn = document.createElement('button');
+        btn.className = 'primary'; btn.textContent = 'Next Round ▶';
+        btn.onclick = () => { send({ type: 'next_round' }); btn.disabled = true; };
+        rc.appendChild(btn);
+      } else {
+        rc.innerHTML = '<p style="color:#555;font-size:0.88em">Waiting for host to start next round…</p>';
+      }
+      showAction('round-end');
+      log('Round over.', 'ok');
+      break;
+    }
+
+    // ── 2-Player Endgame ──────────────────────────────────────────────────────
+
+    case 'endgame_round_start': {
+      state.endgameTargetWord = msg.target_word || null;
+      state.speechBubbles = {};
+      state.board      = { board_hint: msg.board_hint, words: msg.words };
+      state.targetWord = state.endgameTargetWord; // ghosts see target highlighted
+      renderBoard();
+      renderPlayerRow();
+      document.getElementById('board-area').classList.remove('hidden');
+      const isGhost = (msg.ghost_ids || []).includes(state.playerId);
+      document.getElementById('endgame-ghost-input-block').classList.toggle('hidden', !isGhost);
+      document.getElementById('endgame-ghost-waiting').style.display     = 'none';
+      document.getElementById('endgame-finalist-waiting').style.display  = isGhost ? 'none' : 'block';
+      document.getElementById('endgame-ghost-hint-input').disabled       = false;
+      setEndgamePhaseLabel('Ghost Hints');
+      showAction('endgame-ghost');
+      log(`Endgame! ${msg.finalist_ids.map(playerName).join(' vs ')}`, 'warn');
+      break;
+    }
+
+    case 'endgame_hint_received':
+      if (msg.text) {
+        state.speechBubbles[msg.player_id] = { text: msg.text, skipped: false };
+        renderPlayerRow();
+      }
+      if (msg.player_id === state.playerId) {
+        document.getElementById('endgame-ghost-input-block').classList.add('hidden');
+        document.getElementById('endgame-ghost-waiting').style.display = 'block';
+      }
+      break;
+
+    case 'endgame_hints_revealed': {
+      document.getElementById('endgame-finalist-waiting').style.display = 'none';
+      const isFinalist = !state.isGhost;
+      document.getElementById('endgame-guess-input-block').classList.toggle('hidden', !isFinalist);
+      document.getElementById('endgame-guess-input').disabled    = false;
+      document.getElementById('btn-endgame-guess').disabled      = false;
+      document.getElementById('endgame-guess-result').textContent = '';
+      const timerEl = document.getElementById('endgame-guess-timer');
+      if (msg.timers_enabled) {
+        timerEl.style.display = 'inline-block';
+        startTimer('endgame-guess-timer', msg.deadline, () => {
+          if (isFinalist && !document.getElementById('endgame-guess-input').disabled) {
+            send({ type: 'endgame_submit_guess', guess: '' });
+            document.getElementById('endgame-guess-input').disabled   = true;
+            document.getElementById('btn-endgame-guess').disabled     = true;
+          }
+        });
+      } else {
+        timerEl.style.display = 'none';
+      }
+      setEndgamePhaseLabel('Guessing!');
+      showAction('endgame-guess');
+      log('Ghost hints revealed — guess now!', 'warn');
+      break;
+    }
+
+    case 'endgame_guess_result': {
+      clearTimer('endgame-guess-timer');
+      const resEl = document.getElementById('endgame-guess-result');
+      if (msg.round_over) {
+        const winner = msg.safe_player_id ? playerName(msg.safe_player_id) : null;
+        resEl.innerHTML = winner
+          ? `<span style="color:#7f7">✓ ${winner} guessed correctly! Target: "${msg.target_word}"</span>`
+          : `<span style="color:#f77">✗ Nobody got it. Target: "${msg.target_word}"</span>`;
+      } else {
+        const line = document.createElement('div');
+        line.style.color = '#f77';
+        line.textContent = `✗ ${playerName(msg.player_id)} guessed wrong.`;
+        resEl.appendChild(line);
+        if (msg.player_id === state.playerId) {
+          document.getElementById('endgame-guess-input').disabled  = true;
+          document.getElementById('btn-endgame-guess').disabled    = true;
+        }
+      }
+      break;
+    }
+
+    case 'endgame_timeout':
+      clearTimer('endgame-guess-timer');
+      document.getElementById('endgame-guess-result').innerHTML =
+        `<span style="color:#f77">⏰ Time's up! Target was: "${msg.target_word}"</span>`;
+      log(`Time's up. Target: "${msg.target_word}"`, 'warn');
+      break;
+
+    case 'endgame_round_end': {
+      setEndgamePhaseLabel('Round Over');
+      const ec = document.getElementById('round-end-content');
+      ec.innerHTML = msg.safe_player_id
+        ? `<p style="color:#aaa;margin-bottom:8px">${playerName(msg.safe_player_id)} survived. Target: "${msg.target_word}"</p>`
+        : `<p style="color:#f77;margin-bottom:8px">Nobody guessed correctly. Target: "${msg.target_word}"</p>`;
+      if (state.isHost) {
+        const btn = document.createElement('button');
+        btn.className = 'primary'; btn.textContent = 'Next Sudden Death Round ▶';
+        btn.onclick = () => { send({ type: 'next_round' }); btn.disabled = true; };
+        ec.appendChild(btn);
+      } else {
+        const wait = document.createElement('p');
+        wait.style.cssText = 'color:#555;font-size:0.88em;margin-top:4px';
+        wait.textContent = 'Waiting for host…';
+        ec.appendChild(wait);
+      }
+      showAction('round-end');
+      log(`Endgame round over. Target: "${msg.target_word}"`, 'ok');
+      break;
+    }
+
+    case 'game_over':
+      clearTimer('guess-timer'); clearTimer('endgame-guess-timer');
+      document.getElementById('game-over-title').textContent = 'Game Over!';
+      document.getElementById('game-over-content').innerHTML = msg.winner_id
+        ? `Winner: <strong style="color:#ffd700">${msg.winner_name}</strong>`
+        : '<em style="color:#666">Draw!</em>';
+      showAction('game-over');
+      setPhaseLabel('GAME OVER');
+      log(`Game over! Winner: ${msg.winner_name || 'nobody'}`, 'ok');
+      break;
+
+    case 'game_reset':
+      _localResetToLobby();
+      log('Game reset. Back in lobby.', 'ok');
+      break;
+
+    case 'error':
+      log(`Error: ${msg.message}`, 'error');
+      break;
+
+    default:
+      log(`Unhandled: ${msg.type}`, 'warn');
   }
 }
 
+// ─── Role banner ──────────────────────────────────────────────────────────────
+function renderRoleBanner() {
+  const el = document.getElementById('role-banner');
+  const config = {
+    safe:  { cls: 'safe',  text: 'YOU ARE SAFE' },
+    morp:  { cls: 'morp',  text: 'YOU ARE THE MORP' },
+    ghost: { cls: 'ghost', text: 'YOU HAVE BEEN ELIMINATED' },
+  };
+  const c = config[state.role];
+  if (!c) { el.style.display = 'none'; el.className = ''; return; }
+  el.className = c.cls;
+  el.textContent = c.text;
+  el.style.display = 'block';
+}
+
+// ─── Board ────────────────────────────────────────────────────────────────────
 function renderBoard() {
   if (!state.board) return;
+  const { board_hint, words } = state.board;
+  document.getElementById('board-theme-tag').textContent = board_hint;
   const grid = document.getElementById('board-grid');
-  const words = state.board.words;
   const cols = Math.ceil(Math.sqrt(words.length));
   grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
   grid.innerHTML = '';
-  document.getElementById('board-hint-label').textContent = state.board.board_hint;
   const halfSet = state.halfBoard ? new Set(state.halfBoard) : null;
-
   for (const word of words) {
     const cell = document.createElement('div');
     cell.className = 'word-cell';
@@ -709,52 +845,81 @@ function renderBoard() {
   document.getElementById('half-board-note').style.display = halfSet ? 'block' : 'none';
 }
 
-function renderEndgameBoard(msg) {
-  const wrap = document.getElementById('endgame-board-wrap');
-  wrap.classList.remove('hidden');
-  document.getElementById('endgame-board-hint').textContent = msg.board_hint;
-  const grid = document.getElementById('endgame-board-grid');
-  const cols = Math.ceil(Math.sqrt(msg.words.length));
-  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-  grid.innerHTML = '';
-  for (const word of msg.words) {
-    const cell = document.createElement('div');
-    cell.className = 'word-cell';
-    if (state.endgameTargetWord && word === state.endgameTargetWord) cell.classList.add('target');
-    cell.textContent = word;
-    grid.appendChild(cell);
-  }
-}
-
-function renderHints() {
-  const el = document.getElementById('hints-list');
+// ─── Player row ───────────────────────────────────────────────────────────────
+function renderPlayerRow() {
+  const el = document.getElementById('player-row');
   el.innerHTML = '';
-  for (const h of state.hints) {
-    const div = document.createElement('div');
-    div.className = 'hint-entry';
-    div.innerHTML = `<span class="who">${playerName(h.player_id)}:</span> ${h.text || '<em style="color:#555">skipped</em>'}`;
-    el.appendChild(div);
+  const currentTurnPid = state.turnOrder[state.hints.length];
+
+  for (const p of Object.values(state.players)) {
+    const wrap = document.createElement('div');
+    wrap.className = 'avatar-wrap';
+
+    // Speech bubble
+    const bubble = state.speechBubbles[p.id];
+    if (bubble !== undefined) {
+      const bel = document.createElement('div');
+      bel.className = 'speech-bubble' + (bubble.skipped ? ' skipped' : '');
+      bel.textContent = bubble.skipped ? '(skipped)' : bubble.text;
+      wrap.appendChild(bel);
+    }
+
+    // Avatar circle
+    const circle = document.createElement('div');
+    circle.className = 'avatar-circle';
+    if (p.is_ghost)            circle.classList.add('is-ghost');
+    if (p.id === state.playerId) circle.classList.add('is-you');
+    if (p.id === currentTurnPid && !p.is_ghost) circle.classList.add('is-active');
+    if (p.is_connected === false) circle.classList.add('disconnected');
+    circle.style.background = avatarColor(p.id);
+    circle.textContent = initials(p.name);
+
+    // Host crown
+    if (p.id === state.hostId) {
+      const crown = document.createElement('span');
+      crown.className = 'host-crown'; crown.textContent = '♛';
+      circle.appendChild(crown);
+    }
+
+    // Name
+    const nameEl = document.createElement('div');
+    nameEl.className = 'avatar-name' + (p.id === state.playerId ? ' is-you' : '');
+    nameEl.textContent = p.name;
+
+    // HP pips
+    const hpEl = document.createElement('div');
+    hpEl.className = 'hp-pips';
+    for (let i = 0; i < 3; i++) {
+      const pip = document.createElement('div');
+      pip.className = 'hp-pip' + (i >= p.hp ? ' empty' : '');
+      hpEl.appendChild(pip);
+    }
+
+    wrap.appendChild(circle);
+    wrap.appendChild(nameEl);
+    wrap.appendChild(hpEl);
+    el.appendChild(wrap);
   }
 }
 
+// ─── Hint phase ───────────────────────────────────────────────────────────────
 function checkYourTurn() {
   const currentPid = state.turnOrder[state.hints.length];
-  const isMyTurn = currentPid === state.playerId;
+  const isMyTurn   = currentPid === state.playerId;
   document.getElementById('your-turn-block').classList.toggle('hidden', !isMyTurn);
-  document.getElementById('waiting-turn').style.display = isMyTurn ? 'none' : 'block';
-
   const indicator = document.getElementById('turn-indicator');
   if (!currentPid) {
-    indicator.textContent = '';
+    indicator.textContent = ''; indicator.style.color = '';
   } else if (isMyTurn) {
-    indicator.textContent = 'Your turn!';
-    indicator.style.color = '#7f7';
+    indicator.textContent = 'Your turn!'; indicator.style.color = '#7f7';
   } else {
-    indicator.textContent = `Waiting for ${playerName(currentPid)}...`;
-    indicator.style.color = '#ff9';
+    indicator.textContent = `Waiting for ${playerName(currentPid)}…`; indicator.style.color = '#fa7';
   }
+  // Update active-turn highlight on avatars
+  renderPlayerRow();
 }
 
+// ─── Voting ───────────────────────────────────────────────────────────────────
 function renderVoteButtons() {
   const el = document.getElementById('vote-buttons');
   el.innerHTML = '';
@@ -764,8 +929,7 @@ function renderVoteButtons() {
     if (p.is_ghost || p.id === state.playerId) continue;
     const btn = document.createElement('button');
     btn.className = 'vote-btn';
-    btn.textContent = p.name;
-    btn.dataset.pid = p.id;
+    btn.textContent = p.name; btn.dataset.pid = p.id;
     btn.onclick = () => toggleVote(p.id, btn);
     el.appendChild(btn);
   }
@@ -775,11 +939,9 @@ function renderVoteButtons() {
 function toggleVote(pid, btn) {
   const idx = state.selectedVotes.indexOf(pid);
   if (idx >= 0) {
-    state.selectedVotes.splice(idx, 1);
-    btn.classList.remove('selected');
+    state.selectedVotes.splice(idx, 1); btn.classList.remove('selected');
   } else if (state.selectedVotes.length < state.numVotes) {
-    state.selectedVotes.push(pid);
-    btn.classList.add('selected');
+    state.selectedVotes.push(pid); btn.classList.add('selected');
   }
   updateVoteSubmitBtn();
 }
@@ -789,18 +951,21 @@ function updateVoteSubmitBtn() {
     state.selectedVotes.length !== state.numVotes;
 }
 
+// ─── Accusation ───────────────────────────────────────────────────────────────
 function renderAccusation(msg) {
-  const el = document.getElementById('accusation-content');
   const lines = msg.accused_ids.map(id => {
     const role = msg.roles_revealed[id];
-    return `<div class="player-entry">
+    return `<div style="display:flex;gap:8px;align-items:center;margin:4px 0">
+      <div class="avatar-circle" style="width:28px;height:28px;font-size:0.75em;background:${avatarColor(id)};border:2px solid transparent;flex-shrink:0">${initials(playerName(id))}</div>
       <strong>${playerName(id)}</strong>
       <span class="tag ${role}">${role.toUpperCase()}</span>
     </div>`;
   });
-  el.innerHTML = `<p style="margin-bottom:8px">Accused:</p>${lines.join('')}`;
+  document.getElementById('accusation-content').innerHTML =
+    `<p style="color:#666;font-size:0.85em;margin-bottom:6px">Accused:</p>${lines.join('')}`;
 }
 
+// ─── Damage ───────────────────────────────────────────────────────────────────
 function renderDamageButtons(morpIds) {
   const el = document.getElementById('damage-buttons');
   el.innerHTML = '';
@@ -808,7 +973,7 @@ function renderDamageButtons(morpIds) {
     if (p.is_ghost || morpIds.includes(p.id)) continue;
     const btn = document.createElement('button');
     btn.className = 'danger';
-    btn.textContent = `💥 ${p.name}`;
+    btn.textContent = `✕ ${p.name}`;
     btn.onclick = () => {
       send({ type: 'morp_deal_damage', target_id: p.id });
       el.querySelectorAll('button').forEach(b => b.disabled = true);
@@ -817,7 +982,7 @@ function renderDamageButtons(morpIds) {
   }
 }
 
-// ─── Timer helpers ─────────────────────────────────────────────────────────────
+// ─── Timers ───────────────────────────────────────────────────────────────────
 const _timers = {};
 
 function startTimer(elId, deadline, onExpire) {
@@ -826,10 +991,7 @@ function startTimer(elId, deadline, onExpire) {
   _timers[elId] = setInterval(() => {
     const remaining = Math.max(0, Math.ceil(deadline - Date.now() / 1000));
     el.textContent = remaining;
-    if (remaining <= 0) {
-      clearTimer(elId);
-      onExpire?.();
-    }
+    if (remaining <= 0) { clearTimer(elId); onExpire?.(); }
   }, 250);
 }
 
@@ -837,10 +999,9 @@ function clearTimer(elId) {
   if (_timers[elId]) { clearInterval(_timers[elId]); delete _timers[elId]; }
 }
 
-// ─── Actions ───────────────────────────────────────────────────────────────────
+// ─── Actions ──────────────────────────────────────────────────────────────────
 function startGame() {
-  const timers = document.getElementById('timers-toggle').checked;
-  send({ type: 'start_game', timers_enabled: timers });
+  send({ type: 'start_game', timers_enabled: document.getElementById('timers-toggle').checked });
 }
 
 function nextRound() { send({ type: 'next_round' }); }
@@ -857,7 +1018,7 @@ function submitVotes() {
   if (state.selectedVotes.length !== state.numVotes) return;
   send({ type: 'submit_votes', accused_ids: state.selectedVotes });
   document.getElementById('btn-submit-votes').disabled = true;
-  document.getElementById('vote-waiting').style.display = 'block';
+  document.getElementById('vote-waiting').style.display = 'inline';
 }
 
 function submitMorpGuess() {
@@ -890,14 +1051,15 @@ function _localResetToLobby() {
   Object.assign(state, {
     role: null, halfBoard: null, targetWord: null,
     board: null, turnOrder: [], hints: [],
-    selectedVotes: [], numVotes: 1, isGhost: false,
-    endgameTargetWord: null,
+    speechBubbles: {}, selectedVotes: [], numVotes: 1,
+    isGhost: false, endgameTargetWord: null, hostId: null,
   });
   Object.keys(_timers).forEach(clearTimer);
   renderRoleBanner();
-  showPanels('lobby');
+  renderPlayerRow();
+  document.getElementById('board-area').classList.add('hidden');
+  showAction('lobby');
   setPhaseLabel('WAITING');
-  document.getElementById('btn-next-round').classList.add('hidden');
 }
 
 function resetToLobby() {
@@ -905,14 +1067,15 @@ function resetToLobby() {
   if (state.isHost && state.ws) send({ type: 'reset_game' });
 }
 
-// Enter key shortcuts
+// ─── Enter key shortcuts ──────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
   const id = document.activeElement.id;
-  if (id === 'hint-input') submitHint();
-  if (id === 'guess-input') submitMorpGuess();
+  if (id === 'hint-input')               submitHint();
+  if (id === 'guess-input')              submitMorpGuess();
   if (id === 'endgame-ghost-hint-input') submitEndgameGhostHint();
-  if (id === 'endgame-guess-input') submitEndgameGuess();
+  if (id === 'endgame-guess-input')      submitEndgameGuess();
+  if (id === 'join-code')                joinLobby();
 });
 </script>
 </body>
