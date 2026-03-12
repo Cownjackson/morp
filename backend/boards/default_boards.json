@@ -1,0 +1,32 @@
+[
+  {
+    "board_hint": "Spooky things",
+    "words": [
+      "ghost", "witch", "vampire", "zombie", "demon",
+      "coffin", "cauldron", "spider", "bat", "skull",
+      "potion", "curse", "shadow", "grave", "werewolf",
+      "crypt", "banshee", "goblin", "fog", "hex",
+      "raven", "toad", "candle", "séance", "specter"
+    ]
+  },
+  {
+    "board_hint": "Things at the beach",
+    "words": [
+      "sand", "wave", "shell", "crab", "seagull",
+      "sunscreen", "towel", "umbrella", "tide", "coral",
+      "starfish", "pier", "sailboat", "dune", "lifeguard",
+      "jellyfish", "bucket", "surfboard", "horizon", "kelp",
+      "pebble", "shovel", "lighthouse", "flipflop", "sunburn"
+    ]
+  },
+  {
+    "board_hint": "Things in a kitchen",
+    "words": [
+      "spatula", "whisk", "oven", "ladle", "colander",
+      "saucepan", "tongs", "grater", "blender", "cutting board",
+      "rolling pin", "apron", "timer", "freezer", "dish rack",
+      "peeler", "strainer", "mortar", "skillet", "measuring cup",
+      "thermometer", "funnel", "zester", "ramekin", "trivet"
+    ]
+  }
+]

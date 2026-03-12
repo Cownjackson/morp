@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Morp — Test Client</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #111; color: #eee; padding: 20px; max-width: 900px; margin: 0 auto; }
+    h1 { color: #7cf; margin-bottom: 16px; }
+    h2 { color: #adf; margin-bottom: 10px; font-size: 1em; text-transform: uppercase; letter-spacing: 1px; }
+
+    .panel { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 16px; margin-bottom: 14px; }
+    .panel.hidden { display: none; }
+
+    input, button, select { font-family: monospace; font-size: 0.95em; }
+    input { background: #222; color: #eee; border: 1px solid #444; border-radius: 4px; padding: 6px 10px; }
+    button { background: #2a5; color: #fff; border: none; border-radius: 4px; padding: 7px 14px; cursor: pointer; margin: 3px; }
+    button:hover { background: #3b6; }
+    button:disabled { background: #444; color: #888; cursor: not-allowed; }
+    button.danger { background: #922; }
+    button.danger:hover { background: #b33; }
+
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+
+    /* Board */
+    #board-grid { display: grid; gap: 6px; margin: 10px 0; }
+    .word-cell {
+      background: #252525;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 8px 4px;
+      text-align: center;
+      font-size: 0.85em;
+      cursor: default;
+    }
+    .word-cell.target   { background: #1a4a1a; border-color: #3c3; color: #7f7; font-weight: bold; }
+    .word-cell.half     { background: #2a2a1a; border-color: #884; }
+    .word-cell.hidden-word { background: #181818; border-color: #2a2a2a; color: #444; }
+
+    /* Players list */
+    .player-entry { display: flex; gap: 8px; align-items: center; margin: 4px 0; }
+    .hp-bar span { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #e44; margin-right: 2px; }
+    .hp-bar span.dead { background: #333; }
+    .tag { font-size: 0.75em; padding: 1px 5px; border-radius: 3px; background: #333; }
+    .tag.morp  { background: #622; color: #faa; }
+    .tag.safe  { background: #162; color: #7f7; }
+    .tag.host  { background: #226; color: #aaf; }
+    .tag.ghost { background: #333; color: #888; }
+    .tag.you   { background: #444; color: #ff9; }
+    .disconnected { opacity: 0.45; }
+
+    /* Hints */
+    .hint-entry { margin: 4px 0; padding: 6px 10px; background: #222; border-left: 3px solid #556; border-radius: 0 4px 4px 0; }
+    .hint-entry .who { color: #adf; font-size: 0.8em; }
+
+    /* Log */
+    #log { height: 120px; overflow-y: auto; background: #0d0d0d; border: 1px solid #2a2a2a; border-radius: 4px; padding: 8px; font-size: 0.8em; color: #888; }
+    #log div { margin-bottom: 2px; }
+    #log div.info  { color: #7af; }
+    #log div.ok    { color: #7f7; }
+    #log div.warn  { color: #fa7; }
+    #log div.error { color: #f77; }
+
+    /* Timer */
+    #guess-timer { font-size: 2em; color: #fa7; font-weight: bold; }
+
+    /* Vote buttons */
+    .vote-btn { background: #333; color: #eee; }
+    .vote-btn.selected { background: #522; color: #faa; }
+
+    #phase-label { color: #fa7; font-weight: bold; font-size: 0.9em; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+<h1>🎮 Morp — Test Client</h1>
+
+<!-- Connection -->
+<div id="panel-connect" class="panel">
+  <h2>Connect</h2>
+  <div class="row">
+    <span>Server:</span>
+    <input id="server-url" value="ws://localhost:8000" style="width:220px">
+  </div>
+  <div class="row">
+    <button onclick="createLobby()">Create Lobby</button>
+    <span style="color:#666">— or —</span>
+    <input id="join-code" placeholder="Lobby code" style="width:100px">
+    <button onclick="joinLobby()">Join</button>
+  </div>
+  <div class="row">
+    <span>Name:</span>
+    <input id="player-name" placeholder="Your name" value="Player" style="width:120px">
+  </div>
+</div>
+
+<!-- Lobby -->
+<div id="panel-lobby" class="panel hidden">
+  <h2>Lobby</h2>
+  <div class="row">
+    <span>Code: <strong id="lobby-code-display" style="color:#7cf"></strong></span>
+    <span id="phase-label"></span>
+  </div>
+  <div id="player-list" style="margin:10px 0"></div>
+  <button id="btn-start" onclick="startGame()" disabled>Start Game</button>
+</div>
+
+<!-- Board -->
+<div id="panel-board" class="panel hidden">
+  <h2>Board — <span id="board-hint-label" style="color:#fa7"></span></h2>
+  <div id="board-grid"></div>
+  <div id="half-board-note" style="color:#884;font-size:0.8em;margin-top:6px;display:none">
+    ⚠ You are morp and went first. Greyed words are hidden from you.
+  </div>
+</div>
+
+<!-- Hint phase -->
+<div id="panel-hint" class="panel hidden">
+  <h2>Hint Phase — <span id="turn-indicator" style="color:#ff9"></span></h2>
+  <div id="hints-list" style="margin-bottom:10px"></div>
+  <div id="your-turn-block" class="hidden">
+    <div class="row">
+      <input id="hint-input" placeholder="Your hint..." style="width:260px" maxlength="120">
+      <button onclick="submitHint()">Submit Hint</button>
+    </div>
+  </div>
+  <div id="waiting-turn" style="color:#666;display:none">Waiting for other players...</div>
+</div>
+
+<!-- Voting -->
+<div id="panel-vote" class="panel hidden">
+  <h2>Voting — pick <span id="vote-count-label"></span> player(s) you suspect</h2>
+  <div id="vote-buttons" style="margin:10px 0"></div>
+  <button id="btn-submit-votes" onclick="submitVotes()" disabled>Submit Votes</button>
+  <div id="vote-waiting" style="color:#666;margin-top:8px;display:none">Votes submitted. Waiting...</div>
+</div>
+
+<!-- Accusation result -->
+<div id="panel-accusation" class="panel hidden">
+  <h2>Accusation Result</h2>
+  <div id="accusation-content"></div>
+</div>
+
+<!-- Morp guess -->
+<div id="panel-morp-guess" class="panel hidden">
+  <h2>Morp Must Guess!</h2>
+  <div id="guess-timer">30</div>
+  <div style="margin:10px 0;color:#888">Hints are still visible above. What is the target word?</div>
+  <div id="morp-guess-input-block">
+    <div class="row">
+      <input id="guess-input" placeholder="Guess the target word..." style="width:260px">
+      <button onclick="submitMorpGuess()">Submit Guess</button>
+    </div>
+  </div>
+  <div id="guess-result" style="margin-top:10px;font-size:1.2em"></div>
+</div>
+
+<!-- Damage phase -->
+<div id="panel-damage" class="panel hidden">
+  <h2>Morp Deals Damage</h2>
+  <div id="damage-content">
+    <div id="damage-morp-action" class="hidden">
+      <p style="margin-bottom:8px;color:#faa">You are the morp. Choose a player to damage:</p>
+      <div id="damage-buttons"></div>
+    </div>
+    <div id="damage-waiting" style="color:#666;display:none">Waiting for morp to deal damage...</div>
+  </div>
+</div>
+
+<!-- Endgame / Game over -->
+<div id="panel-endgame" class="panel hidden">
+  <h2 id="endgame-title"></h2>
+  <div id="endgame-content"></div>
+  <button onclick="resetToLobby()" style="margin-top:12px">Back to Lobby</button>
+</div>
+
+<!-- Event log -->
+<div class="panel" style="margin-top:20px">
+  <h2>Event Log</h2>
+  <div id="log"></div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+const state = {
+  ws: null,
+  lobbyId: null,
+  playerId: null,
+  playerName: null,
+  isHost: false,
+  role: null,          // 'safe' | 'morp'
+  halfBoard: null,     // words morp can see if went first
+  targetWord: null,
+  board: null,         // {board_hint, words}
+  turnOrder: [],
+  players: {},         // id -> {id, name, hp, is_ghost, is_connected}
+  hints: [],
+  selectedVotes: [],
+  numVotes: 1,
+  guessTimerInterval: null,
+  phase: 'connect',
+};
+
+// ─── Panels ───────────────────────────────────────────────────────────────────
+const PANELS = ['connect','lobby','board','hint','vote','accusation','morp-guess','damage','endgame'];
+
+function showPanels(...names) {
+  PANELS.forEach(p => {
+    const el = document.getElementById(`panel-${p}`);
+    if (el) el.classList.toggle('hidden', !names.includes(p));
+  });
+}
+
+// ─── Logging ─────────────────────────────────────────────────────────────────
+function log(msg, cls = '') {
+  const el = document.getElementById('log');
+  const d = document.createElement('div');
+  d.className = cls;
+  d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ─── REST helpers ─────────────────────────────────────────────────────────────
+function httpBase() {
+  return document.getElementById('server-url').value.replace(/^ws/, 'http');
+}
+
+async function createLobby() {
+  const name = document.getElementById('player-name').value.trim() || 'Player';
+  const base = httpBase();
+  try {
+    const r1 = await fetch(`${base}/lobby/create`, { method: 'POST' });
+    const { lobby_id } = await r1.json();
+    const r2 = await fetch(`${base}/lobby/${lobby_id}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const { player_id } = await r2.json();
+    connectWS(lobby_id, player_id, name);
+  } catch (e) { log(`Create lobby failed: ${e}`, 'error'); }
+}
+
+async function joinLobby() {
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  const name = document.getElementById('player-name').value.trim() || 'Player';
+  const base = httpBase();
+  if (!code) { log('Enter a lobby code.', 'warn'); return; }
+  try {
+    const r = await fetch(`${base}/lobby/${code}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!r.ok) { log(`Join failed: lobby not found.`, 'error'); return; }
+    const { player_id } = await r.json();
+    connectWS(code, player_id, name);
+  } catch (e) { log(`Join failed: ${e}`, 'error'); }
+}
+
+// ─── WebSocket ────────────────────────────────────────────────────────────────
+function connectWS(lobbyId, playerId, name) {
+  const wsBase = document.getElementById('server-url').value;
+  state.lobbyId = lobbyId;
+  state.playerId = playerId;
+  state.playerName = name;
+
+  state.ws = new WebSocket(`${wsBase}/ws/${lobbyId}/${playerId}`);
+  state.ws.onopen = () => {
+    log(`Connected to lobby ${lobbyId} as ${name}`, 'ok');
+    document.getElementById('lobby-code-display').textContent = lobbyId;
+    showPanels('lobby');
+  };
+  state.ws.onmessage = e => handleMessage(JSON.parse(e.data));
+  state.ws.onclose = () => log('WebSocket closed.', 'warn');
+  state.ws.onerror = () => log('WebSocket error.', 'error');
+}
+
+function send(msg) { state.ws.send(JSON.stringify(msg)); }
+
+// ─── Message handler ──────────────────────────────────────────────────────────
+function handleMessage(msg) {
+  log(`← ${msg.type}`, 'info');
+
+  switch (msg.type) {
+
+    case 'lobby_update':
+      state.players = Object.fromEntries(msg.players.map(p => [p.id, p]));
+      state.isHost = (msg.host_id === state.playerId);
+      renderPlayers();
+      document.getElementById('btn-start').disabled =
+        !state.isHost || msg.started || msg.players.length < 3;
+      setPhaseLabel(msg.started ? 'IN GAME' : 'WAITING');
+      break;
+
+    case 'role_assigned':
+      state.role = msg.role;
+      state.halfBoard = msg.half_board || null;
+      log(`Your role: ${msg.role}${state.halfBoard ? ' (going first — half board revealed)' : ''}`,
+        msg.role === 'morp' ? 'warn' : 'ok');
+      break;
+
+    case 'round_start':
+      state.board = { board_hint: msg.board_hint, words: msg.words };
+      state.turnOrder = msg.turn_order;
+      state.targetWord = msg.target_word || null;
+      state.hints = [];
+      renderBoard();
+      renderHints();
+      checkYourTurn();
+      showPanels('lobby', 'board', 'hint');
+      setPhaseLabel(`ROUND ${msg.round_number} — HINT PHASE`);
+      log(`Round ${msg.round_number} started. Board: "${msg.board_hint}"`, 'ok');
+      break;
+
+    case 'hint_received':
+      state.hints.push({ player_id: msg.player_id, text: msg.text });
+      renderHints();
+      checkYourTurn();
+      log(`Hint from ${playerName(msg.player_id)}: "${msg.text}"`);
+      break;
+
+    case 'voting_open':
+      state.hints = msg.hints;
+      state.numVotes = msg.num_votes;
+      state.selectedVotes = [];
+      renderHints();
+      renderVoteButtons();
+      showPanels('lobby', 'board', 'hint', 'vote');
+      setPhaseLabel('VOTING');
+      log('Voting is open!', 'ok');
+      break;
+
+    case 'accusation_result':
+      renderAccusation(msg);
+      showPanels('lobby', 'board', 'hint', 'accusation');
+      setPhaseLabel('ACCUSATION');
+      break;
+
+    case 'morp_guess_phase':
+      startGuessTimer(msg.deadline);
+      state._accusedMorpIds = msg.accused_morp_ids;
+      const isMorpBeingAsked = msg.accused_morp_ids.includes(state.playerId);
+      document.getElementById('morp-guess-input-block').classList.toggle('hidden', !isMorpBeingAsked);
+      document.getElementById('guess-result').textContent = '';
+      showPanels('lobby', 'board', 'hint', 'accusation', 'morp-guess');
+      setPhaseLabel('MORP GUESS');
+      log('Morp is guessing!', 'warn');
+      break;
+
+    case 'morp_guess_result':
+      clearGuessTimer();
+      const resultText = msg.correct
+        ? `✅ ${playerName(msg.morp_id)} guessed correctly! Target was: "${msg.target_word}"`
+        : `❌ ${playerName(msg.morp_id)} guessed wrong! Target was: "${msg.target_word}"`;
+      document.getElementById('guess-result').textContent = resultText;
+      document.getElementById('guess-result').style.color = msg.correct ? '#7f7' : '#f77';
+      log(resultText, msg.correct ? 'ok' : 'warn');
+      // Reveal target on board
+      state.targetWord = msg.target_word;
+      renderBoard();
+      break;
+
+    case 'damage_phase': {
+      const isMorp = msg.morp_ids.includes(state.playerId);
+      document.getElementById('damage-morp-action').classList.toggle('hidden', !isMorp);
+      document.getElementById('damage-waiting').style.display = isMorp ? 'none' : 'block';
+      if (isMorp) renderDamageButtons(msg.morp_ids);
+      showPanels('lobby', 'board', 'hint', 'accusation', 'damage');
+      setPhaseLabel('DAMAGE PHASE');
+      break;
+    }
+
+    case 'damage_dealt':
+      log(`💥 ${playerName(msg.from_id)} dealt damage to ${playerName(msg.to_id)} (${msg.hp_remaining} HP remaining${msg.eliminated ? ', ELIMINATED' : ''})`, 'warn');
+      break;
+
+    case 'endgame_2p':
+      showPanels('lobby', 'board', 'endgame');
+      document.getElementById('endgame-title').textContent = '⚡ 2-Player Endgame!';
+      document.getElementById('endgame-content').innerHTML =
+        `Final players: ${msg.active_player_ids.map(playerName).join(' vs ')}<br>
+         <em style="color:#888">All eliminated players will reveal hints simultaneously. First correct guess wins!</em>`;
+      setPhaseLabel('ENDGAME');
+      log('2-player endgame triggered!', 'warn');
+      break;
+
+    case 'game_over':
+      clearGuessTimer();
+      showPanels('lobby', 'endgame');
+      document.getElementById('endgame-title').textContent = '🏆 Game Over!';
+      document.getElementById('endgame-content').innerHTML =
+        msg.winner_id
+          ? `Winner: <strong style="color:#ff9">${msg.winner_name}</strong>`
+          : `<em>Draw!</em>`;
+      setPhaseLabel('GAME OVER');
+      log(`Game over! Winner: ${msg.winner_name || 'nobody'}`, 'ok');
+      break;
+
+    case 'error':
+      log(`Server error: ${msg.message}`, 'error');
+      break;
+
+    default:
+      log(`Unhandled: ${msg.type}`, 'warn');
+  }
+}
+
+// ─── Render helpers ───────────────────────────────────────────────────────────
+function playerName(id) {
+  return state.players[id]?.name || id.slice(0, 8);
+}
+
+function setPhaseLabel(text) {
+  document.getElementById('phase-label').textContent = text;
+}
+
+function renderPlayers() {
+  const el = document.getElementById('player-list');
+  el.innerHTML = '';
+  for (const p of Object.values(state.players)) {
+    const row = document.createElement('div');
+    row.className = 'player-entry' + (p.is_connected === false ? ' disconnected' : '');
+
+    const hp = document.createElement('span');
+    hp.className = 'hp-bar';
+    for (let i = 0; i < 3; i++) {
+      const dot = document.createElement('span');
+      if (i >= p.hp) dot.className = 'dead';
+      hp.appendChild(dot);
+    }
+
+    const name = document.createElement('span');
+    name.textContent = p.name;
+
+    const tags = [];
+    if (p.id === state.playerId) tags.push('you');
+    if (state.isHost && p.id === state.playerId) tags.push('host');
+    // Role only shown to self
+    if (p.id === state.playerId && state.role) tags.push(state.role);
+    if (p.is_ghost) tags.push('ghost');
+
+    row.appendChild(hp);
+    row.appendChild(name);
+    for (const t of tags) {
+      const tag = document.createElement('span');
+      tag.className = `tag ${t}`;
+      tag.textContent = t;
+      row.appendChild(tag);
+    }
+    el.appendChild(row);
+  }
+}
+
+function renderBoard() {
+  if (!state.board) return;
+  const grid = document.getElementById('board-grid');
+  const words = state.board.words;
+  const cols = Math.ceil(Math.sqrt(words.length));
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  grid.innerHTML = '';
+
+  document.getElementById('board-hint-label').textContent = state.board.board_hint;
+
+  const halfSet = state.halfBoard ? new Set(state.halfBoard) : null;
+
+  for (const word of words) {
+    const cell = document.createElement('div');
+    cell.className = 'word-cell';
+    cell.textContent = word;
+
+    if (state.targetWord && word === state.targetWord) {
+      cell.classList.add('target');
+    } else if (halfSet) {
+      // Morp going first: highlight visible words, grey out hidden ones
+      if (halfSet.has(word)) cell.classList.add('half');
+      else cell.classList.add('hidden-word');
+    }
+    grid.appendChild(cell);
+  }
+
+  const note = document.getElementById('half-board-note');
+  note.style.display = halfSet ? 'block' : 'none';
+}
+
+function renderHints() {
+  const el = document.getElementById('hints-list');
+  el.innerHTML = '';
+  for (const h of state.hints) {
+    const div = document.createElement('div');
+    div.className = 'hint-entry';
+    div.innerHTML = `<span class="who">${playerName(h.player_id)}:</span> ${h.text}`;
+    el.appendChild(div);
+  }
+}
+
+function checkYourTurn() {
+  const rs_idx = state.hints.length;
+  const currentPid = state.turnOrder[rs_idx];
+  const isMyTurn = currentPid === state.playerId;
+  document.getElementById('your-turn-block').classList.toggle('hidden', !isMyTurn);
+  document.getElementById('waiting-turn').style.display = isMyTurn ? 'none' : 'block';
+
+  const indicator = document.getElementById('turn-indicator');
+  if (!currentPid) {
+    indicator.textContent = '';
+  } else if (isMyTurn) {
+    indicator.textContent = 'Your turn!';
+    indicator.style.color = '#7f7';
+  } else {
+    indicator.textContent = `Waiting for ${playerName(currentPid)}...`;
+    indicator.style.color = '#ff9';
+  }
+}
+
+function renderVoteButtons() {
+  const el = document.getElementById('vote-buttons');
+  el.innerHTML = '';
+  document.getElementById('vote-count-label').textContent = state.numVotes;
+
+  for (const p of Object.values(state.players)) {
+    if (p.is_ghost || p.id === state.playerId) continue;
+    const btn = document.createElement('button');
+    btn.className = 'vote-btn';
+    btn.textContent = p.name;
+    btn.dataset.pid = p.id;
+    btn.onclick = () => toggleVote(p.id, btn);
+    el.appendChild(btn);
+  }
+  updateVoteSubmitBtn();
+}
+
+function toggleVote(pid, btn) {
+  const idx = state.selectedVotes.indexOf(pid);
+  if (idx >= 0) {
+    state.selectedVotes.splice(idx, 1);
+    btn.classList.remove('selected');
+  } else if (state.selectedVotes.length < state.numVotes) {
+    state.selectedVotes.push(pid);
+    btn.classList.add('selected');
+  }
+  updateVoteSubmitBtn();
+}
+
+function updateVoteSubmitBtn() {
+  document.getElementById('btn-submit-votes').disabled =
+    state.selectedVotes.length !== state.numVotes;
+}
+
+function renderAccusation(msg) {
+  const el = document.getElementById('accusation-content');
+  const lines = msg.accused_ids.map(id => {
+    const role = msg.roles_revealed[id];
+    return `<div class="player-entry">
+      <strong>${playerName(id)}</strong>
+      <span class="tag ${role}">${role.toUpperCase()}</span>
+    </div>`;
+  });
+  el.innerHTML = `<p style="margin-bottom:8px">Accused players:</p>${lines.join('')}`;
+}
+
+function renderDamageButtons(morpIds) {
+  const el = document.getElementById('damage-buttons');
+  el.innerHTML = '';
+  for (const p of Object.values(state.players)) {
+    if (p.is_ghost || morpIds.includes(p.id)) continue;
+    const btn = document.createElement('button');
+    btn.className = 'danger';
+    btn.textContent = `💥 ${p.name}`;
+    btn.onclick = () => {
+      send({ type: 'morp_deal_damage', target_id: p.id });
+      el.querySelectorAll('button').forEach(b => b.disabled = true);
+    };
+    el.appendChild(btn);
+  }
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+function startGame() { send({ type: 'start_game' }); }
+
+function submitHint() {
+  const input = document.getElementById('hint-input');
+  const text = input.value.trim();
+  if (!text) return;
+  send({ type: 'submit_hint', text });
+  input.value = '';
+}
+
+function submitVotes() {
+  if (state.selectedVotes.length !== state.numVotes) return;
+  send({ type: 'submit_votes', accused_ids: state.selectedVotes });
+  document.getElementById('btn-submit-votes').disabled = true;
+  document.getElementById('vote-waiting').style.display = 'block';
+}
+
+function submitMorpGuess() {
+  const input = document.getElementById('guess-input');
+  const guess = input.value.trim();
+  if (!guess) return;
+  send({ type: 'submit_morp_guess', guess });
+  input.disabled = true;
+  document.querySelector('#panel-morp-guess button').disabled = true;
+}
+
+// ─── Guess timer ──────────────────────────────────────────────────────────────
+function startGuessTimer(deadline) {
+  clearGuessTimer();
+  const el = document.getElementById('guess-timer');
+  state.guessTimerInterval = setInterval(() => {
+    const remaining = Math.max(0, Math.ceil(deadline - Date.now() / 1000));
+    el.textContent = remaining;
+    if (remaining <= 0) {
+      clearGuessTimer();
+      el.textContent = '0';
+      // Auto-submit empty guess if morp and hasn't guessed yet
+      const input = document.getElementById('guess-input');
+      if (!input.disabled && state._accusedMorpIds?.includes(state.playerId)) {
+        send({ type: 'submit_morp_guess', guess: '' });
+        input.disabled = true;
+      }
+    }
+  }, 250);
+}
+
+function clearGuessTimer() {
+  if (state.guessTimerInterval) {
+    clearInterval(state.guessTimerInterval);
+    state.guessTimerInterval = null;
+  }
+}
+
+// ─── Misc ─────────────────────────────────────────────────────────────────────
+function resetToLobby() {
+  // Reconnect to lobby without reloading
+  Object.assign(state, {
+    role: null, halfBoard: null, targetWord: null,
+    board: null, turnOrder: [], hints: [],
+    selectedVotes: [], numVotes: 1,
+  });
+  clearGuessTimer();
+  showPanels('lobby');
+  setPhaseLabel('WAITING');
+}
+
+// Enter key shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (document.activeElement.id === 'hint-input') submitHint();
+    if (document.activeElement.id === 'guess-input') submitMorpGuess();
+  }
+});
+</script>
+</body>
+</html>
