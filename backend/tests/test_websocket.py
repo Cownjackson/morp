@@ -366,6 +366,63 @@ def test_finalists_receive_morp_role_on_endgame_start(client):
 
 # --- Name uniqueness / reconnect (REST) ---
 
+def test_lobby_deleted_when_all_players_disconnect(client):
+    from backend.main import _engines
+    lobby_id = client.post("/lobby/create").json()["lobby_id"]
+    pid = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
+    with client.websocket_connect(f"/ws/{lobby_id}/{pid}") as ws:
+        drain_until(ws, "lobby_update")
+    # All disconnected — engine should be cleaned up
+    assert lobby_id not in _engines
+
+
+def test_hint_truncated_to_max_length(client):
+    from backend.game.engine import MAX_HINT_LENGTH
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
+        wss = {player_ids[0]: ws0, player_ids[1]: ws1, player_ids[2]: ws2}
+        for ws in (ws0, ws1, ws2):
+            drain_until(ws, "lobby_update")
+        ws0.send_json({"type": "start_game"})
+        for ws in (ws0, ws1, ws2):
+            drain_until(ws, "role_assigned")
+        round_msg = drain_until(ws0, "round_start")
+        drain_until(ws1, "round_start"); drain_until(ws2, "round_start")
+        first_pid = round_msg["turn_order"][0]
+        long_hint = "X" * (MAX_HINT_LENGTH + 20)
+        wss[first_pid].send_json({"type": "submit_hint", "text": long_hint})
+        for ws in (ws0, ws1, ws2):
+            hint_msg = drain_until(ws, "hint_received")
+            assert len(hint_msg["text"]) <= MAX_HINT_LENGTH
+
+
+def test_max_players_enforced(client):
+    lobby_id = client.post("/lobby/create").json()["lobby_id"]
+    from backend.main import _engines
+    # Override max_players to a small number for test speed
+    _engines[lobby_id].lobby.config.max_players = 2
+    client.post(f"/lobby/{lobby_id}/join", json={"name": "P1"})
+    client.post(f"/lobby/{lobby_id}/join", json={"name": "P2"})
+    resp = client.post(f"/lobby/{lobby_id}/join", json={"name": "P3"})
+    assert resp.status_code == 409
+
+
+def test_host_reassigned_on_disconnect_broadcast(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
+        drain_until(ws1, "lobby_update"); drain_until(ws2, "lobby_update")
+        with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0:
+            drain_until(ws0, "lobby_update")
+            drain_until(ws1, "lobby_update"); drain_until(ws2, "lobby_update")
+        # host (player_ids[0]) disconnects
+        lu = drain_until(ws1, "lobby_update")
+        # New host must be one of the remaining connected players
+        assert lu["host_id"] in (player_ids[1], player_ids[2])
+
+
 def test_duplicate_name_in_lobby_returns_409(client):
     """Joining with a name already held by a connected player must return 409."""
     lobby_id = client.post("/lobby/create").json()["lobby_id"]

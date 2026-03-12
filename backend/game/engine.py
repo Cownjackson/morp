@@ -26,6 +26,8 @@ class GameEngine:
     # ── Lobby ─────────────────────────────────────────────────────────────────
 
     def add_player(self, player_id: str, name: str, is_host: bool = False) -> Player:
+        if len(self.lobby.players) >= self.lobby.config.max_players:
+            raise ValueError(f"Lobby is full (max {self.lobby.config.max_players} players).")
         for p in self.lobby.players.values():
             if p.name.strip().lower() == name.strip().lower() and p.is_connected:
                 raise ValueError(f"Name '{name}' is already taken.")
@@ -65,19 +67,22 @@ class GameEngine:
     def _start_round(self, seed: int) -> None:
         self._round_seed = seed
         rng = random.Random(seed)
-        active = self.lobby.active_players()
 
-        # Assign roles
+        # Only connected, living players participate in this round
+        participants = [p for p in self.lobby.active_players() if p.is_connected]
+
+        # Assign roles only to participants; clear role for absent players
+        for p in self.lobby.active_players():
+            p.role = None
         num_morps = self.lobby.config.num_morps
-        ids = [p.id for p in active]
+        ids = [p.id for p in participants]
         morp_ids = set(rng.sample(ids, num_morps))
-        for player in active:
+        for player in participants:
             player.role = Role.MORP if player.id in morp_ids else Role.SAFE
 
-        # Turn order: shuffle all IDs for RNG consistency, then filter to connected players only
+        # Turn order: shuffle all participant IDs deterministically
         turn_order = ids[:]
         rng.shuffle(turn_order)
-        turn_order = [pid for pid in turn_order if self.lobby.players[pid].is_connected]
 
         # Board + target
         board, target = self.board_manager.select_round(seed=seed)
@@ -95,7 +100,7 @@ class GameEngine:
 
     def get_half_board_for_morp(self, seed: int) -> list[str] | None:
         rs = self.state.round_state
-        if rs is None:
+        if rs is None or not rs.turn_order:
             return None
         first_player = self.lobby.players[rs.turn_order[0]]
         if first_player.role != Role.MORP:
@@ -109,7 +114,7 @@ class GameEngine:
         if rs is None or self.state.phase != GamePhase.HINT:
             raise ValueError("Not in hint phase.")
         if rs.current_player_id() != player_id:
-            raise ValueError(f"It is not your turn — not your turn, {player_id}.")
+            raise ValueError("It is not your turn.")
         rs.hints.append(Hint(player_id=player_id, text=text[:MAX_HINT_LENGTH]))
         rs.current_turn_index += 1
         if rs.all_hints_submitted():
@@ -171,10 +176,13 @@ class GameEngine:
 
     def morp_deal_damage(self, morp_id: str, target_id: str) -> bool:
         """Deal 1 damage. Returns True when all pending morps have dealt damage."""
+        if self.state.phase != GamePhase.ACCUSATION:
+            raise ValueError("Not in damage phase.")
+        if morp_id not in self._pending_damage_morps:
+            raise ValueError("You are not authorized to deal damage.")
         if morp_id == target_id:
             raise ValueError("Cannot deal damage to yourself.")
-        if morp_id in self._pending_damage_morps:
-            self._pending_damage_morps.remove(morp_id)
+        self._pending_damage_morps.remove(morp_id)
         self.lobby.players[target_id].take_damage()
         if not self._pending_damage_morps:
             self._resolve_round()

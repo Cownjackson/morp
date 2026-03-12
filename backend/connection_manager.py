@@ -30,4 +30,4 @@ class ConnectionManager:
             for ws in self._connections.get(lobby_id, {}).values()
         ]
         if tasks:
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+            await asyncio.gather(*tasks, return_exceptions=True)

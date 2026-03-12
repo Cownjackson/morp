@@ -8,12 +8,16 @@ _BOARDS_PATH = Path(__file__).parent.parent / "boards" / "default_boards.json"
 
 
 def validate_custom_board(data: dict) -> Board:
+    if not data.get("board_hint", "").strip():
+        raise ValueError("Board must have a non-empty 'board_hint'.")
     words = data.get("words", [])
     if len(words) == 0:
-        raise ValueError("Board cannot be empty — must have at least 1 word.")
+        raise ValueError("Board must have at least 1 word.")
     if len(words) > 100:
         raise ValueError(f"Board exceeds maximum of 100 words (got {len(words)}).")
-    return Board(**data)
+    if not all(isinstance(w, str) and w.strip() for w in words):
+        raise ValueError("All board words must be non-empty strings.")
+    return Board(board_hint=data["board_hint"], words=words)
 
 
 class BoardManager:

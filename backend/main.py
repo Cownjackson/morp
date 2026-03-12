@@ -29,6 +29,8 @@ manager = ConnectionManager()
 _engines: dict[str, GameEngine] = {}
 _timer_tasks: dict[str, asyncio.Task] = {}  # lobby_id -> active timer task
 
+_TIMER_SECONDS = 30  # duration for morp-guess and endgame-guess timers
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -184,10 +186,11 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
 
         elif msg_type == "submit_hint":
             engine.submit_hint(player_id, data.get("text", ""))
+            stored_text = engine.state.round_state.hints[-1].text
             await manager.broadcast(lobby_id, {
                 "type": "hint_received",
                 "player_id": player_id,
-                "text": data.get("text", ""),
+                "text": stored_text,
             })
             if engine.state.phase == GamePhase.VOTING:
                 await _broadcast_voting_open(lobby_id, engine)
@@ -211,7 +214,10 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
             await _check_round_end(lobby_id, engine)
 
         elif msg_type == "morp_deal_damage":
-            all_done = engine.morp_deal_damage(player_id, data["target_id"])
+            target_id = data.get("target_id")
+            if not target_id:
+                raise ValueError("Missing target_id.")
+            all_done = engine.morp_deal_damage(player_id, target_id)
             target = engine.lobby.players[data["target_id"]]
             await manager.broadcast(lobby_id, {
                 "type": "damage_dealt",
@@ -322,7 +328,7 @@ async def _handle_accusation(lobby_id: str, engine: GameEngine):
     result = engine.resolve_accusation()
 
     if result["morp_must_guess"]:
-        deadline = time.time() + 30
+        deadline = time.time() + _TIMER_SECONDS
         engine.state.morp_guess_deadline = deadline
         await manager.broadcast(lobby_id, {
             "type": "morp_guess_phase",
@@ -381,7 +387,7 @@ async def _broadcast_endgame_round_start(lobby_id: str, engine: GameEngine):
 
 async def _broadcast_endgame_hints_revealed(lobby_id: str, engine: GameEngine):
     es = engine.state.endgame_state
-    deadline = time.time() + 30
+    deadline = time.time() + _TIMER_SECONDS
     await manager.broadcast(lobby_id, {
         "type": "endgame_hints_revealed",
         "hints": [{"player_id": h.player_id, "text": h.text} for h in es.ghost_hints],
@@ -421,7 +427,7 @@ def _schedule_morp_guess_timeout(
     lobby_id: str, engine: GameEngine, accused_morp_ids: list[str], target_word: str
 ):
     async def _run():
-        await asyncio.sleep(30)
+        await asyncio.sleep(_TIMER_SECONDS)
         if engine.state.phase != GamePhase.MORP_GUESS:
             return
         # Auto-submit empty guess for any morp who hasn't guessed

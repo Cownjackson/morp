@@ -86,5 +86,29 @@ def test_custom_board_json_validation_max():
 def test_custom_board_json_validation_min():
     """Boards with 0 words should be rejected."""
     from backend.game.board import validate_custom_board
-    with pytest.raises(ValueError, match="empty"):
-        validate_custom_board({"board_hint": "empty", "words": []})
+    with pytest.raises(ValueError, match="at least 1"):
+        validate_custom_board({"board_hint": "test", "words": []})
+
+
+def test_custom_board_missing_board_hint_rejected():
+    from backend.game.board import validate_custom_board
+    with pytest.raises(ValueError, match="board_hint"):
+        validate_custom_board({"words": ["A", "B", "C"]})
+
+
+def test_custom_board_empty_board_hint_rejected():
+    from backend.game.board import validate_custom_board
+    with pytest.raises(ValueError, match="board_hint"):
+        validate_custom_board({"board_hint": "   ", "words": ["A", "B"]})
+
+
+def test_custom_board_non_string_word_rejected():
+    from backend.game.board import validate_custom_board
+    with pytest.raises(ValueError, match="non-empty strings"):
+        validate_custom_board({"board_hint": "test", "words": ["A", 42, "C"]})
+
+
+def test_custom_board_empty_word_rejected():
+    from backend.game.board import validate_custom_board
+    with pytest.raises(ValueError, match="non-empty strings"):
+        validate_custom_board({"board_hint": "test", "words": ["A", "", "C"]})

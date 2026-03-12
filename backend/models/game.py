@@ -13,7 +13,6 @@ class GamePhase(str, Enum):
     ENDGAME_ROUND_END = "endgame_round_end"
     ENDGAME_GHOST_HINTS = "endgame_ghost_hints"
     ENDGAME_GUESSING = "endgame_guessing"
-    SUDDEN_DEATH = "sudden_death"
     GAME_OVER = "game_over"
 
 

@@ -300,3 +300,64 @@ def test_reconnect_player_sets_is_connected():
     engine.lobby.players["p0"].is_connected = False
     engine.reconnect_player("p0")
     assert engine.lobby.players["p0"].is_connected is True
+
+
+# --- max_players enforcement ---
+
+def test_lobby_full_raises_on_add():
+    engine = GameEngine(lobby_id="x", num_morps=1)
+    engine.lobby.config.max_players = 3
+    for i in range(3):
+        engine.add_player(f"p{i}", f"Player{i}")
+    with pytest.raises(ValueError, match="full"):
+        engine.add_player("p3", "Extra")
+
+
+# --- morp_deal_damage phase guard ---
+
+def test_morp_deal_damage_outside_accusation_raises():
+    engine = make_engine(num_players=3)
+    engine.start_game(seed=1)
+    # Phase is HINT, not ACCUSATION
+    with pytest.raises(ValueError, match="damage phase"):
+        engine.morp_deal_damage("p0", "p1")
+
+
+def test_morp_deal_damage_not_in_pending_raises():
+    engine = make_engine(num_players=3)
+    engine.start_game(seed=1)
+    from backend.models.game import GamePhase
+    engine.state.phase = GamePhase.ACCUSATION
+    engine._pending_damage_morps = ["p1"]
+    with pytest.raises(ValueError, match="not authorized"):
+        engine.morp_deal_damage("p0", "p2")  # p0 not in pending
+
+
+# --- host reassignment ---
+
+def test_host_reassigned_when_host_disconnects():
+    engine = make_engine(num_players=3)
+    original_host = engine.lobby.host_id
+    engine.on_player_disconnect(original_host)
+    assert engine.lobby.host_id != original_host
+    assert engine.lobby.players[engine.lobby.host_id].is_connected
+
+
+def test_ghost_player_cannot_become_host():
+    engine = make_engine(num_players=3)
+    # Make p0 the host, make p1 a ghost, disconnect p0
+    engine.lobby.host_id = "p0"
+    engine.lobby.players["p1"].is_ghost = True
+    engine.on_player_disconnect("p0")
+    # Host must be p2 (not ghost p1)
+    assert engine.lobby.host_id == "p2"
+
+
+# --- get_half_board_for_morp edge case ---
+
+def test_half_board_returns_none_when_turn_order_empty():
+    engine = make_engine(num_players=3)
+    engine.start_game(seed=1)
+    # Force empty turn_order
+    engine.state.round_state.turn_order = []
+    assert engine.get_half_board_for_morp(seed=1) is None
