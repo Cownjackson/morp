@@ -1,11 +1,15 @@
 import asyncio
+import pathlib
 import secrets
 import string
 import time
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
+
+_FRONTEND = pathlib.Path(__file__).parent.parent / "frontend" / "index.html"
 
 from backend.connection_manager import ConnectionManager
 from backend.game.engine import GameEngine
@@ -48,6 +52,13 @@ def _cancel_timer(lobby_id: str) -> None:
     task = _timer_tasks.pop(lobby_id, None)
     if task:
         task.cancel()
+
+
+# ── Frontend ──────────────────────────────────────────────────────────────────
+
+@app.get("/")
+async def serve_frontend():
+    return FileResponse(_FRONTEND)
 
 
 # ── REST endpoints ────────────────────────────────────────────────────────────

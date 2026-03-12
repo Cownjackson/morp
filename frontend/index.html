@@ -254,7 +254,7 @@
   <h2>Join a Game</h2>
   <div class="row">
     <span style="color:#666;width:54px">Server</span>
-    <input type="text" id="server-url" value="ws://localhost:8000" style="width:220px">
+    <input type="text" id="server-url" style="width:220px">
   </div>
   <div class="row">
     <span style="color:#666;width:54px">Name</span>
@@ -403,6 +403,10 @@
 </div>
 
 <script>
+// Default the server URL to wherever this page was served from
+document.getElementById('server-url').value =
+  (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host;
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
   '#c0392b','#2980b9','#27ae60','#d4ac0d',
