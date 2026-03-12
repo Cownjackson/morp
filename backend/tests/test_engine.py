@@ -158,3 +158,58 @@ def test_phase_is_hint_after_start():
     engine = make_engine(num_players=3)
     engine.start_game(seed=1)
     assert engine.state.phase == GamePhase.HINT
+
+
+# --- Game reset ---
+
+def test_reset_clears_started():
+    engine = make_engine(num_players=3)
+    engine.start_game(seed=1)
+    engine.reset_game()
+    assert engine.lobby.started is False
+
+
+def test_reset_restores_player_hp():
+    engine = make_engine(num_players=3)
+    engine.start_game(seed=1)
+    for p in engine.lobby.players.values():
+        p.take_damage()
+    engine.reset_game()
+    for p in engine.lobby.players.values():
+        assert p.hp == 3
+
+
+def test_reset_clears_roles_and_ghosts():
+    engine = make_engine(num_players=3)
+    engine.start_game(seed=1)
+    for p in engine.lobby.players.values():
+        p.is_ghost = True
+    engine.reset_game()
+    for p in engine.lobby.players.values():
+        assert p.role is None
+        assert p.is_ghost is False
+
+
+def test_reset_phase_returns_to_lobby():
+    engine = make_engine(num_players=3)
+    engine.start_game(seed=1)
+    engine.reset_game()
+    assert engine.state.phase == GamePhase.LOBBY
+
+
+def test_reset_preserves_player_list():
+    engine = make_engine(num_players=3)
+    ids_before = set(engine.lobby.players.keys())
+    engine.start_game(seed=1)
+    engine.reset_game()
+    assert set(engine.lobby.players.keys()) == ids_before
+
+
+def test_can_start_new_game_after_reset():
+    engine = make_engine(num_players=3)
+    engine.start_game(seed=1)
+    engine.reset_game()
+    engine.start_game(seed=2)
+    assert engine.lobby.started is True
+    assert engine.state.phase == GamePhase.HINT
+    assert engine.state.round_state.round_number == 1

@@ -219,3 +219,135 @@ def test_voting_opens_after_all_hints(client):
         for ws in (ws0, ws1, ws2):
             voting_msg = drain_until(ws, "voting_open")
             assert voting_msg["type"] == "voting_open"
+
+
+# --- Game reset ---
+
+def _start_game(wss, ws0):
+    """Helper: drain lobby_updates, start game, drain role_assigned + round_start for all."""
+    for ws in wss:
+        drain_until(ws, "lobby_update")
+    ws0.send_json({"type": "start_game"})
+    for ws in wss:
+        drain_until(ws, "role_assigned")
+        drain_until(ws, "round_start")
+
+
+def test_host_reset_broadcasts_game_reset_and_lobby_update(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
+
+        wss = [ws0, ws1, ws2]
+        _start_game(wss, ws0)
+
+        ws0.send_json({"type": "reset_game"})
+
+        for ws in wss:
+            drain_until(ws, "game_reset")
+            lu = drain_until(ws, "lobby_update")
+            assert lu["started"] is False
+
+
+def test_non_host_cannot_reset_game(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
+
+        _start_game([ws0, ws1, ws2], ws0)
+
+        ws1.send_json({"type": "reset_game"})
+        err = drain_until(ws1, "error")
+        assert "host" in err["message"].lower()
+
+
+def test_new_game_starts_successfully_after_reset(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
+
+        wss = [ws0, ws1, ws2]
+        _start_game(wss, ws0)
+
+        ws0.send_json({"type": "reset_game"})
+        for ws in wss:
+            drain_until(ws, "game_reset")
+            drain_until(ws, "lobby_update")
+
+        # Second game starts cleanly
+        ws0.send_json({"type": "start_game"})
+        for ws in wss:
+            role_msg = drain_until(ws, "role_assigned")
+            assert role_msg["role"] in ("safe", "morp")
+        for ws in wss:
+            round_msg = drain_until(ws, "round_start")
+            assert round_msg["round_number"] == 1
+
+
+# --- Endgame role assignment ---
+
+def test_finalists_receive_morp_role_on_endgame_start(client):
+    """Both finalists must be told they are morp when the 2-player endgame begins.
+
+    Uses a 3-player game: accuse a safe player, morp damages the other safe
+    player (who has 1 HP) to trigger endgame_2p, then verifies both finalists
+    receive role_assigned: morp.
+    """
+    from backend.main import _engines
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
+
+        wss = [ws0, ws1, ws2]
+        wss_by_id = dict(zip(player_ids, wss))
+
+        for ws in wss:
+            drain_until(ws, "lobby_update")
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
+
+        role_msgs = {pid: drain_until(wss_by_id[pid], "role_assigned") for pid in player_ids}
+        round_msgs = {pid: drain_until(wss_by_id[pid], "round_start") for pid in player_ids}
+
+        morp_id = next(pid for pid, rm in role_msgs.items() if rm["role"] == "morp")
+        safe_ids = [pid for pid, rm in role_msgs.items() if rm["role"] == "safe"]
+        turn_order = round_msgs[player_ids[0]]["turn_order"]
+
+        # Submit all hints
+        for pid in turn_order:
+            wss_by_id[pid].send_json({"type": "submit_hint", "text": "hint"})
+            for ws in wss:
+                drain_until(ws, "hint_received")
+        for ws in wss:
+            drain_until(ws, "voting_open")
+
+        # All vote for safe_ids[0] to accuse a safe player
+        for pid in player_ids:
+            target = safe_ids[0] if pid != safe_ids[0] else safe_ids[1]
+            wss_by_id[pid].send_json({"type": "submit_votes", "accused_ids": [target]})
+
+        for ws in wss:
+            drain_until(ws, "accusation_result")
+
+        # Set the surviving safe player to 1 HP so damage eliminates them
+        engine = _engines[lobby_id]
+        engine.lobby.players[safe_ids[1]].hp = 1
+
+        # Morp deals damage to the low-HP player, triggering endgame
+        wss_by_id[morp_id].send_json({"type": "morp_deal_damage", "target_id": safe_ids[1]})
+        for ws in wss:
+            drain_until(ws, "damage_dealt")
+            drain_until(ws, "lobby_update")
+
+        # Both finalists (morp_id + safe_ids[0]) should receive role_assigned: morp
+        finalist_ids = [morp_id, safe_ids[0]]
+        for pid in finalist_ids:
+            rm = drain_until(wss_by_id[pid], "role_assigned")
+            assert rm["role"] == "morp"

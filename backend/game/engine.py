@@ -254,6 +254,18 @@ class GameEngine:
             # Both still alive — wait for main.py to trigger next round
             self.state.phase = GamePhase.ENDGAME_ROUND_END
 
+    # ── Game reset ────────────────────────────────────────────────────────────
+
+    def reset_game(self) -> None:
+        """Reset to pre-game lobby state, preserving players and connections."""
+        self.lobby.started = False
+        for p in self.lobby.players.values():
+            p.hp = 3
+            p.role = None
+            p.is_ghost = False
+        self.state = GameState(lobby_id=self.lobby.id)
+        self._pending_damage_morps = []
+
     # ── Disconnect handling ───────────────────────────────────────────────────
 
     def on_player_disconnect(self, player_id: str) -> None:

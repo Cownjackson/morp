@@ -606,6 +606,11 @@ function handleMessage(msg) {
       log(`Game over! Winner: ${msg.winner_name || 'nobody'}`, 'ok');
       break;
 
+    case 'game_reset':
+      _localResetToLobby();
+      log('Game reset. Back in lobby.', 'ok');
+      break;
+
     case 'error':
       log(`Server error: ${msg.message}`, 'error');
       break;
@@ -881,7 +886,7 @@ function submitEndgameGuess() {
   document.getElementById('btn-endgame-guess').disabled = true;
 }
 
-function resetToLobby() {
+function _localResetToLobby() {
   Object.assign(state, {
     role: null, halfBoard: null, targetWord: null,
     board: null, turnOrder: [], hints: [],
@@ -893,6 +898,11 @@ function resetToLobby() {
   showPanels('lobby');
   setPhaseLabel('WAITING');
   document.getElementById('btn-next-round').classList.add('hidden');
+}
+
+function resetToLobby() {
+  _localResetToLobby();
+  if (state.isHost && state.ws) send({ type: 'reset_game' });
 }
 
 // Enter key shortcuts
