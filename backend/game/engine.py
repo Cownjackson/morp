@@ -2,21 +2,26 @@ import random
 
 from backend.game.board import BoardManager
 from backend.game.voting import tally_votes, resolve_accusation as _resolve
-from backend.models.game import GamePhase, GameState, Hint, RoundState
+from backend.models.game import (
+    EndgameRoundState, GamePhase, GameState, Hint, RoundState,
+)
 from backend.models.lobby import Lobby, LobbyConfig
 from backend.models.player import Player, Role
 
 
 class GameEngine:
-    def __init__(self, lobby_id: str, num_morps: int = 1):
+    def __init__(self, lobby_id: str, num_morps: int = 1, timers_enabled: bool = True):
         self.lobby = Lobby(
             id=lobby_id,
             host_id="",
-            config=LobbyConfig(num_morps=num_morps),
+            config=LobbyConfig(num_morps=num_morps, timers_enabled=timers_enabled),
         )
         self.state = GameState(lobby_id=lobby_id)
         self.board_manager = BoardManager()
         self._round_seed: int = 0
+        self._pending_damage_morps: list[str] = []
+
+    # ── Lobby ─────────────────────────────────────────────────────────────────
 
     def add_player(self, player_id: str, name: str, is_host: bool = False) -> Player:
         player = Player(id=player_id, name=name)
@@ -25,11 +30,18 @@ class GameEngine:
             self.lobby.host_id = player_id
         return player
 
+    # ── Game start / round management ─────────────────────────────────────────
+
     def start_game(self, seed: int) -> None:
         active = self.lobby.active_players()
         if len(active) < 3:
             raise ValueError("Need at least 3 players to start.")
         self.lobby.started = True
+        self._start_round(seed=seed)
+
+    def start_new_round(self, seed: int) -> None:
+        if self.state.phase != GamePhase.ROUND_END:
+            raise ValueError("Can only start a new round from ROUND_END phase.")
         self._start_round(seed=seed)
 
     def _start_round(self, seed: int) -> None:
@@ -51,17 +63,18 @@ class GameEngine:
         # Board + target
         board, target = self.board_manager.select_round(seed=seed)
 
+        prev_round = self.state.round_state.round_number if self.state.round_state else 0
         self.state.round_state = RoundState(
-            round_number=getattr(self.state.round_state, "round_number", 0) + 1
-            if self.state.round_state else 1,
+            round_number=prev_round + 1,
             board=board,
             target_word=target,
             turn_order=turn_order,
         )
         self.state.phase = GamePhase.HINT
 
+    # ── Half-board ────────────────────────────────────────────────────────────
+
     def get_half_board_for_morp(self, seed: int) -> list[str] | None:
-        """Return half the board words if the morp is first in turn order, else None."""
         rs = self.state.round_state
         if rs is None:
             return None
@@ -69,6 +82,8 @@ class GameEngine:
         if first_player.role != Role.MORP:
             return None
         return rs.board.half(seed=seed, must_include=rs.target_word)
+
+    # ── Hint phase ────────────────────────────────────────────────────────────
 
     def submit_hint(self, player_id: str, text: str) -> None:
         rs = self.state.round_state
@@ -80,6 +95,8 @@ class GameEngine:
         rs.current_turn_index += 1
         if rs.all_hints_submitted():
             self.state.phase = GamePhase.VOTING
+
+    # ── Voting ────────────────────────────────────────────────────────────────
 
     def submit_votes(self, voter_id: str, accused_ids: list[str]) -> None:
         rs = self.state.round_state
@@ -101,11 +118,12 @@ class GameEngine:
         rs = self.state.round_state
         if rs is None:
             return
-        # Only wait on connected active players; disconnected ones abstain
         connected_ids = {p.id for p in self.lobby.active_players() if p.is_connected}
         if connected_ids and connected_ids.issubset(rs.votes.keys()):
             rs.accused_ids = tally_votes(rs.votes, self.lobby.config.num_morps, seed=self._round_seed)
             self.state.phase = GamePhase.ACCUSATION
+
+    # ── Accusation ────────────────────────────────────────────────────────────
 
     def resolve_accusation(self) -> dict:
         rs = self.state.round_state
@@ -115,6 +133,9 @@ class GameEngine:
         result = _resolve(rs.accused_ids, player_roles)
         if result["morp_must_guess"]:
             self.state.phase = GamePhase.MORP_GUESS
+        elif result["morp_gets_to_damage"]:
+            surviving_morps = [p.id for p in self.lobby.active_players() if p.role == Role.MORP]
+            self._pending_damage_morps = surviving_morps[:]
         return result
 
     def submit_morp_guess(self, morp_id: str, guess: str) -> bool:
@@ -126,25 +147,118 @@ class GameEngine:
         correct = guess.strip().lower() == rs.target_word.strip().lower()
         if not correct:
             self.lobby.players[morp_id].take_damage()
-        self._check_eliminations()
+        self._resolve_round()
         return correct
 
-    def morp_deal_damage(self, morp_id: str, target_id: str) -> None:
+    def morp_deal_damage(self, morp_id: str, target_id: str) -> bool:
+        """Deal 1 damage. Returns True when all pending morps have dealt damage."""
         if morp_id == target_id:
             raise ValueError("Cannot deal damage to yourself.")
+        if morp_id in self._pending_damage_morps:
+            self._pending_damage_morps.remove(morp_id)
         self.lobby.players[target_id].take_damage()
-        self._check_eliminations()
+        if not self._pending_damage_morps:
+            self._resolve_round()
+            return True
+        return False
 
-    def _check_eliminations(self) -> None:
+    def _resolve_round(self) -> None:
+        """Set the next phase after a round's damage/guess is fully resolved."""
         active = self.lobby.active_players()
-        if len(active) <= 2:
-            self.state.phase = GamePhase.ENDGAME_2P if len(active) == 2 else GamePhase.GAME_OVER
+        if len(active) == 0:
+            self.state.phase = GamePhase.GAME_OVER
+        elif len(active) <= 2:
+            self.state.phase = GamePhase.ENDGAME_2P
+        else:
+            self.state.phase = GamePhase.ROUND_END
+
+    # ── 2-Player Endgame ─────────────────────────────────────────────────────
+
+    def start_endgame_round(self, seed: int) -> None:
+        board, target = self.board_manager.select_round(seed=seed)
+        self.state.endgame_state = EndgameRoundState(board=board, target_word=target)
+        # Both finalists become morps
+        for p in self.lobby.active_players():
+            p.role = Role.MORP
+        self.state.phase = GamePhase.ENDGAME_GHOST_HINTS
+
+    def endgame_submit_ghost_hint(self, player_id: str, text: str) -> bool:
+        """Ghost submits a hint. Returns True when all ghosts have submitted."""
+        player = self.lobby.players.get(player_id)
+        if not player or not player.is_ghost:
+            raise ValueError("Only ghost players can submit endgame hints.")
+        es = self.state.endgame_state
+        if es is None:
+            raise ValueError("No endgame round in progress.")
+        # Avoid duplicate submissions
+        if any(h.player_id == player_id for h in es.ghost_hints):
+            return False
+        es.ghost_hints.append(Hint(player_id=player_id, text=text))
+        ghost_ids = {p.id for p in self.lobby.ghost_players()}
+        all_in = {h.player_id for h in es.ghost_hints} >= ghost_ids
+        if all_in:
+            self.state.phase = GamePhase.ENDGAME_GUESSING
+        return all_in
+
+    def endgame_submit_guess(self, player_id: str, guess: str) -> dict:
+        """A finalist submits a guess. Returns result dict."""
+        if self.state.phase != GamePhase.ENDGAME_GUESSING:
+            raise ValueError("Not in endgame guessing phase.")
+        es = self.state.endgame_state
+        if player_id in es.guesses:
+            raise ValueError(f"{player_id} has already guessed.")
+        es.guesses[player_id] = guess
+        correct = guess.strip().lower() == es.target_word.strip().lower()
+
+        if correct:
+            es.safe_player_id = player_id
+            # Other finalist takes damage
+            other = next(p for p in self.lobby.active_players() if p.id != player_id)
+            other.take_damage()
+            self._resolve_endgame_round()
+            return {"correct": True, "round_over": True}
+
+        # Wrong guess — check if opponent has also guessed
+        active_ids = {p.id for p in self.lobby.active_players()}
+        all_guessed = active_ids.issubset(es.guesses.keys())
+        if all_guessed:
+            # Both wrong — both take damage
+            for p in self.lobby.active_players():
+                p.take_damage()
+            self._resolve_endgame_round()
+            return {"correct": False, "round_over": True}
+
+        return {"correct": False, "round_over": False}
+
+    def endgame_timeout(self) -> None:
+        """Called when the guess timer expires. Unguessed players take damage."""
+        es = self.state.endgame_state
+        for p in self.lobby.active_players():
+            if p.id not in es.guesses:
+                p.take_damage()
+        self._resolve_endgame_round()
+
+    def start_next_endgame_round(self, seed: int) -> None:
+        """Start the next sudden-death endgame round. Called by main.py after ENDGAME_ROUND_END."""
+        if self.state.phase != GamePhase.ENDGAME_ROUND_END:
+            raise ValueError("Can only start next endgame round from ENDGAME_ROUND_END phase.")
+        board, target = self.board_manager.select_round(seed=seed)
+        self.state.endgame_state = EndgameRoundState(board=board, target_word=target)
+        self.state.phase = GamePhase.ENDGAME_GHOST_HINTS
+
+    def _resolve_endgame_round(self) -> None:
+        active = self.lobby.active_players()
+        if len(active) <= 1:
+            self.state.phase = GamePhase.GAME_OVER
+        else:
+            # Both still alive — wait for main.py to trigger next round
+            self.state.phase = GamePhase.ENDGAME_ROUND_END
+
+    # ── Disconnect handling ───────────────────────────────────────────────────
 
     def on_player_disconnect(self, player_id: str) -> None:
-        """Mark player disconnected and unblock any phase waiting on them."""
         self.lobby.players[player_id].is_connected = False
         self._reassign_host_if_needed()
-
         phase = self.state.phase
         if phase == GamePhase.HINT:
             self._skip_disconnected_hints()
@@ -152,17 +266,15 @@ class GameEngine:
             self._check_voting_complete()
 
     def _reassign_host_if_needed(self) -> None:
-        if self.lobby.players.get(self.lobby.host_id, None) and \
-                self.lobby.players[self.lobby.host_id].is_connected:
+        current_host = self.lobby.players.get(self.lobby.host_id)
+        if current_host and current_host.is_connected:
             return
-        # Pick the first connected non-ghost player as the new host
         for p in self.lobby.players.values():
             if p.is_connected and not p.is_ghost:
                 self.lobby.host_id = p.id
                 return
 
     def _skip_disconnected_hints(self) -> None:
-        """Auto-submit blank hints for any consecutive disconnected players whose turn it is."""
         rs = self.state.round_state
         if rs is None:
             return

@@ -8,7 +8,11 @@ class GamePhase(str, Enum):
     VOTING = "voting"
     ACCUSATION = "accusation"
     MORP_GUESS = "morp_guess"
+    ROUND_END = "round_end"
     ENDGAME_2P = "endgame_2p"
+    ENDGAME_ROUND_END = "endgame_round_end"
+    ENDGAME_GHOST_HINTS = "endgame_ghost_hints"
+    ENDGAME_GUESSING = "endgame_guessing"
     SUDDEN_DEATH = "sudden_death"
     GAME_OVER = "game_over"
 
@@ -57,8 +61,17 @@ class RoundState(BaseModel):
         return submitted == set(self.turn_order)
 
 
+class EndgameRoundState(BaseModel):
+    board: Board
+    target_word: str
+    ghost_hints: list[Hint] = Field(default_factory=list)
+    guesses: dict[str, str] = Field(default_factory=dict)   # player_id -> guess text
+    safe_player_id: str | None = None                        # set when someone guesses correctly
+
+
 class GameState(BaseModel):
     lobby_id: str
     round_state: RoundState | None = None
+    endgame_state: EndgameRoundState | None = None
     phase: GamePhase = GamePhase.LOBBY
     morp_guess_deadline: float | None = None  # unix timestamp

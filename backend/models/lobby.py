@@ -5,6 +5,7 @@ from .player import Player
 class LobbyConfig(BaseModel):
     num_morps: int = 1
     max_players: int = 10
+    timers_enabled: bool = True
 
 
 class Lobby(BaseModel):
