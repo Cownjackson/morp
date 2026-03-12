@@ -26,11 +26,27 @@ class GameEngine:
     # ── Lobby ─────────────────────────────────────────────────────────────────
 
     def add_player(self, player_id: str, name: str, is_host: bool = False) -> Player:
+        for p in self.lobby.players.values():
+            if p.name.strip().lower() == name.strip().lower() and p.is_connected:
+                raise ValueError(f"Name '{name}' is already taken.")
         player = Player(id=player_id, name=name)
         self.lobby.players[player_id] = player
         if is_host or not self.lobby.host_id:
             self.lobby.host_id = player_id
         return player
+
+    def find_disconnected_by_name(self, name: str) -> Player | None:
+        """Return a disconnected player with the given name, or None."""
+        low = name.strip().lower()
+        for p in self.lobby.players.values():
+            if p.name.strip().lower() == low and not p.is_connected:
+                return p
+        return None
+
+    def reconnect_player(self, player_id: str) -> None:
+        """Mark a disconnected player as reconnected."""
+        self.lobby.players[player_id].is_connected = True
+        self._reassign_host_if_needed()
 
     # ── Game start / round management ─────────────────────────────────────────
 
@@ -58,9 +74,10 @@ class GameEngine:
         for player in active:
             player.role = Role.MORP if player.id in morp_ids else Role.SAFE
 
-        # Turn order
+        # Turn order: shuffle all IDs for RNG consistency, then filter to connected players only
         turn_order = ids[:]
         rng.shuffle(turn_order)
+        turn_order = [pid for pid in turn_order if self.lobby.players[pid].is_connected]
 
         # Board + target
         board, target = self.board_manager.select_round(seed=seed)

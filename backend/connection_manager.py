@@ -19,7 +19,10 @@ class ConnectionManager:
     async def send(self, lobby_id: str, player_id: str, message: dict) -> None:
         ws = self._connections.get(lobby_id, {}).get(player_id)
         if ws:
-            await ws.send_json(message)
+            try:
+                await ws.send_json(message)
+            except Exception:
+                pass
 
     async def broadcast(self, lobby_id: str, message: dict) -> None:
         tasks = [
@@ -27,4 +30,4 @@ class ConnectionManager:
             for ws in self._connections.get(lobby_id, {}).values()
         ]
         if tasks:
-            await asyncio.gather(*tasks)
+            results = await asyncio.gather(*tasks, return_exceptions=True)

@@ -364,6 +364,196 @@ def test_finalists_receive_morp_role_on_endgame_start(client):
             assert rm["role"] == "morp"
 
 
+# --- Name uniqueness / reconnect (REST) ---
+
+def test_duplicate_name_in_lobby_returns_409(client):
+    """Joining with a name already held by a connected player must return 409."""
+    lobby_id = client.post("/lobby/create").json()["lobby_id"]
+    pid = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
+    # Alice must have an active WS for her slot to be truly "connected"
+    with client.websocket_connect(f"/ws/{lobby_id}/{pid}") as ws:
+        drain_until(ws, "lobby_update")
+        resp = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"})
+        assert resp.status_code == 409
+
+
+def test_join_started_game_as_new_player_returns_403(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+    wss = [client.websocket_connect(f"/ws/{lobby_id}/{pid}") for pid in player_ids]
+    opened = [ws.__enter__() for ws in wss]
+    try:
+        for ws in opened:
+            drain_until(ws, "lobby_update")
+        opened[0].send_json({"type": "start_game"})
+        for ws in opened:
+            drain_until(ws, "role_assigned")
+            drain_until(ws, "round_start")
+        resp = client.post(f"/lobby/{lobby_id}/join", json={"name": "Newcomer"})
+        assert resp.status_code == 403
+    finally:
+        for ws in wss:
+            try:
+                ws.__exit__(None, None, None)
+            except Exception:
+                pass
+
+
+def test_reconnect_by_name_returns_original_player_id(client):
+    """Rejoining with a disconnected player's name gives back their original player_id."""
+    lobby_id = client.post("/lobby/create").json()["lobby_id"]
+    p0 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
+    p1 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Bob"}).json()["player_id"]
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{p0}") as ws0, \
+         client.websocket_connect(f"/ws/{lobby_id}/{p1}") as ws1:
+        for ws in (ws0, ws1):
+            drain_until(ws, "lobby_update")
+    # Both WS closed — but lobby survives because both disconnected simultaneously;
+    # re-join Bob to keep lobby alive, then check Alice's reconnect
+    # Actually: lobby is deleted when all disconnect. Use nested context instead.
+
+    # Re-run: keep Bob's WS open while Alice disconnects and reconnects
+    lobby_id = client.post("/lobby/create").json()["lobby_id"]
+    p0 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
+    p1 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Bob"}).json()["player_id"]
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{p1}") as ws_bob:
+        drain_until(ws_bob, "lobby_update")
+        with client.websocket_connect(f"/ws/{lobby_id}/{p0}") as ws_alice:
+            drain_until(ws_alice, "lobby_update")
+            drain_until(ws_bob, "lobby_update")
+        # Alice's WS closed; Bob still open → lobby alive
+        drain_until(ws_bob, "lobby_update")  # disconnect broadcast
+
+        reconnect_id = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
+        assert reconnect_id == p0
+
+
+def test_reconnect_preserves_player_hp(client):
+    """Reconnecting player's HP must survive the disconnect/reconnect cycle."""
+    from backend.main import _engines
+    lobby_id = client.post("/lobby/create").json()["lobby_id"]
+    p0 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
+    p1 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Bob"}).json()["player_id"]
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{p1}") as ws_bob:
+        drain_until(ws_bob, "lobby_update")
+        with client.websocket_connect(f"/ws/{lobby_id}/{p0}") as ws_alice:
+            drain_until(ws_alice, "lobby_update")
+            drain_until(ws_bob, "lobby_update")
+            # Damage Alice while she's connected
+            _engines[lobby_id].lobby.players[p0].hp = 1
+        # Alice disconnects; Bob's WS keeps the lobby alive
+        drain_until(ws_bob, "lobby_update")
+
+        reconnect_id = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
+        assert reconnect_id == p0
+
+        with client.websocket_connect(f"/ws/{lobby_id}/{reconnect_id}") as ws_alice2:
+            lu = drain_until(ws_alice2, "lobby_update")
+            player_data = next(p for p in lu["players"] if p["id"] == reconnect_id)
+            assert player_data["hp"] == 1
+
+
+def test_new_player_appears_disconnected_until_ws_connects(client):
+    """Player added via REST must be is_connected=False until WS handshake completes."""
+    lobby_id = client.post("/lobby/create").json()["lobby_id"]
+    p0 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
+    p1 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Bob"}).json()["player_id"]
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{p0}") as ws0:
+        # First lobby_update: p0 just connected; p1 has not connected WS yet
+        lu = drain_until(ws0, "lobby_update")
+        bob = next(p for p in lu["players"] if p["id"] == p1)
+        assert bob["is_connected"] is False
+
+        # Bob connects WS — new broadcast shows him as connected
+        with client.websocket_connect(f"/ws/{lobby_id}/{p1}") as ws1:
+            lu2 = drain_until(ws0, "lobby_update")
+            bob2 = next(p for p in lu2["players"] if p["id"] == p1)
+            assert bob2["is_connected"] is True
+
+
+# --- Disconnect / hint skipping ---
+
+def test_skipped_hint_broadcast_on_disconnect(client):
+    """When the active hint player disconnects, all others receive hint_received for them."""
+    from backend.main import _engines
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+
+    wss = [client.websocket_connect(f"/ws/{lobby_id}/{pid}") for pid in player_ids]
+    opened = [ws.__enter__() for ws in wss]
+    wss_by_id = dict(zip(player_ids, opened))
+
+    try:
+        for ws in opened:
+            drain_until(ws, "lobby_update")
+        opened[0].send_json({"type": "start_game"})
+        for ws in opened:
+            drain_until(ws, "role_assigned")
+            drain_until(ws, "round_start")
+
+        engine = _engines[lobby_id]
+        first_pid = engine.state.round_state.turn_order[0]
+        others = [pid for pid in player_ids if pid != first_pid]
+
+        # Disconnect the first-turn player by closing their WS
+        wss_by_id[first_pid].__exit__(None, None, None)
+
+        # Remaining players should each receive a hint_received for the disconnected player
+        for pid in others:
+            hint_msg = drain_until(wss_by_id[pid], "hint_received")
+            assert hint_msg["player_id"] == first_pid
+            assert hint_msg["text"] == ""
+    finally:
+        for pid, ws in list(wss_by_id.items()):
+            if pid != first_pid:
+                try:
+                    ws.__exit__(None, None, None)
+                except Exception:
+                    pass
+
+
+def test_turn_advances_after_disconnect_skip(client):
+    """After a disconnected player's hint is skipped, the next player's turn is active."""
+    from backend.main import _engines
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+
+    wss = [client.websocket_connect(f"/ws/{lobby_id}/{pid}") for pid in player_ids]
+    opened = [ws.__enter__() for ws in wss]
+    wss_by_id = dict(zip(player_ids, opened))
+
+    try:
+        for ws in opened:
+            drain_until(ws, "lobby_update")
+        opened[0].send_json({"type": "start_game"})
+        for ws in opened:
+            drain_until(ws, "role_assigned")
+            drain_until(ws, "round_start")
+
+        engine = _engines[lobby_id]
+        turn_order = engine.state.round_state.turn_order
+        first_pid  = turn_order[0]
+        second_pid = turn_order[1]
+
+        # Disconnect the first player
+        wss_by_id[first_pid].__exit__(None, None, None)
+
+        # Drain the skip broadcast on one of the remaining clients
+        remaining_pid = next(pid for pid in player_ids if pid != first_pid)
+        drain_until(wss_by_id[remaining_pid], "hint_received")
+
+        # It should now be the second player's turn in the engine
+        assert engine.state.round_state.current_player_id() == second_pid
+    finally:
+        for pid, ws in list(wss_by_id.items()):
+            if pid != first_pid:
+                try:
+                    ws.__exit__(None, None, None)
+                except Exception:
+                    pass
+
+
 def test_ghost_does_not_receive_role_assigned_on_endgame_start(client):
     """Ghost players must NOT receive role_assigned when the endgame begins.
 

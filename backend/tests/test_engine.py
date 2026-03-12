@@ -213,3 +213,90 @@ def test_can_start_new_game_after_reset():
     assert engine.lobby.started is True
     assert engine.state.phase == GamePhase.HINT
     assert engine.state.round_state.round_number == 1
+
+
+# --- Disconnect / turn-order filtering ---
+
+def test_disconnected_player_excluded_from_turn_order_at_start():
+    """Player who disconnects before game start must not appear in turn_order."""
+    engine = make_engine(num_players=4)
+    engine.lobby.players["p1"].is_connected = False
+    engine.start_game(seed=7)
+    assert "p1" not in engine.state.round_state.turn_order
+
+
+def test_connected_players_all_in_turn_order():
+    """All connected players must appear in turn_order."""
+    engine = make_engine(num_players=4)
+    engine.lobby.players["p1"].is_connected = False
+    engine.start_game(seed=7)
+    turn_order = engine.state.round_state.turn_order
+    for pid in ("p0", "p2", "p3"):
+        assert pid in turn_order
+
+
+def test_mid_game_disconnect_skips_disconnected_hint_turn():
+    """If the current hint player disconnects, their turn is auto-skipped."""
+    engine = make_engine(num_players=4)
+    engine.start_game(seed=1)
+    rs = engine.state.round_state
+    # Disconnect whoever is up first
+    first = rs.turn_order[0]
+    engine.on_player_disconnect(first)
+    # The skipped player should have a blank hint appended
+    assert any(h.player_id == first and h.text == "" for h in rs.hints)
+    # Turn should have advanced past the disconnected player
+    assert rs.current_player_id() != first or engine.state.phase == GamePhase.VOTING
+
+
+# --- Name uniqueness / reconnect ---
+
+def test_duplicate_connected_name_raises():
+    engine = make_engine(num_players=0)
+    engine.add_player("p0", "Alice")
+    with pytest.raises(ValueError, match="already taken"):
+        engine.add_player("p1", "Alice")
+
+
+def test_duplicate_name_check_is_case_insensitive():
+    engine = make_engine(num_players=0)
+    engine.add_player("p0", "Alice")
+    with pytest.raises(ValueError, match="already taken"):
+        engine.add_player("p1", "alice")
+
+
+def test_duplicate_name_allowed_if_original_disconnected():
+    """Once a player disconnects, their name slot frees up for reconnect lookup."""
+    engine = make_engine(num_players=0)
+    engine.add_player("p0", "Alice")
+    engine.lobby.players["p0"].is_connected = False
+    # Should not raise — disconnected player's name is available for reconnect
+    result = engine.find_disconnected_by_name("Alice")
+    assert result is not None
+    assert result.id == "p0"
+
+
+def test_find_disconnected_by_name_ignores_connected_players():
+    engine = make_engine(num_players=0)
+    engine.add_player("p0", "Alice")
+    assert engine.find_disconnected_by_name("Alice") is None
+
+
+def test_find_disconnected_by_name_case_insensitive():
+    engine = make_engine(num_players=0)
+    engine.add_player("p0", "Alice")
+    engine.lobby.players["p0"].is_connected = False
+    assert engine.find_disconnected_by_name("ALICE") is not None
+
+
+def test_find_disconnected_by_name_returns_none_when_no_match():
+    engine = make_engine(num_players=0)
+    assert engine.find_disconnected_by_name("Ghost") is None
+
+
+def test_reconnect_player_sets_is_connected():
+    engine = make_engine(num_players=0)
+    engine.add_player("p0", "Alice")
+    engine.lobby.players["p0"].is_connected = False
+    engine.reconnect_player("p0")
+    assert engine.lobby.players["p0"].is_connected is True

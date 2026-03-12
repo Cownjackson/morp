@@ -79,8 +79,22 @@ async def create_lobby():
 @app.post("/lobby/{lobby_id}/join")
 async def join_lobby(lobby_id: str, body: JoinRequest):
     engine = _get_engine(lobby_id)
+    # Reconnection: find a disconnected player with the same name
+    existing = engine.find_disconnected_by_name(body.name)
+    if existing:
+        # Don't mark connected yet — wait for WebSocket to actually establish
+        return {"player_id": existing.id}
+    # Block new players from joining a game that has already started
+    if engine.lobby.started:
+        raise HTTPException(status_code=403, detail="Game already in progress.")
+    # New player — reject if name is already taken
     player_id = secrets.token_hex(8)
-    engine.add_player(player_id, body.name)
+    try:
+        engine.add_player(player_id, body.name)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    # Mark not connected until the WebSocket handshake completes
+    engine.lobby.players[player_id].is_connected = False
     return {"player_id": player_id}
 
 
@@ -104,6 +118,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
         return
 
     await websocket.accept()
+    engine.reconnect_player(player_id)   # marks is_connected=True, reassigns host if needed
     manager.connect(lobby_id, player_id, websocket)
     await manager.broadcast(lobby_id, _lobby_update(engine))
 
@@ -113,6 +128,9 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
             await _handle_message(lobby_id, player_id, data, engine)
     except WebSocketDisconnect:
         phase_before = engine.state.phase
+        rs = engine.state.round_state
+        hints_before = len(rs.hints) if rs and phase_before == GamePhase.HINT else 0
+
         manager.disconnect(lobby_id, player_id)
         engine.on_player_disconnect(player_id)
 
@@ -124,13 +142,17 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
         await manager.broadcast(lobby_id, _lobby_update(engine))
         phase_after = engine.state.phase
 
+        # Broadcast hint_received for every hint that was auto-skipped on disconnect
+        if phase_before == GamePhase.HINT and rs:
+            for h in rs.hints[hints_before:]:
+                await manager.broadcast(lobby_id, {
+                    "type": "hint_received",
+                    "player_id": h.player_id,
+                    "text": h.text,
+                })
+
         if phase_before == GamePhase.HINT and phase_after == GamePhase.VOTING:
-            rs = engine.state.round_state
-            await manager.broadcast(lobby_id, {
-                "type": "voting_open",
-                "hints": [{"player_id": h.player_id, "text": h.text} for h in rs.hints],
-                "num_votes": engine.lobby.config.num_morps,
-            })
+            await _broadcast_voting_open(lobby_id, engine)
         elif phase_before == GamePhase.VOTING and phase_after == GamePhase.ACCUSATION:
             await _handle_accusation(lobby_id, engine)
 
@@ -289,7 +311,7 @@ async def _broadcast_voting_open(lobby_id: str, engine: GameEngine):
 
 async def _handle_accusation(lobby_id: str, engine: GameEngine):
     rs = engine.state.round_state
-    player_roles = {p.id: p.role.value for p in engine.lobby.players.values()}
+    player_roles = {p.id: p.role.value for p in engine.lobby.players.values() if p.role is not None}
 
     await manager.broadcast(lobby_id, {
         "type": "accusation_result",

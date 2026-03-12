@@ -407,6 +407,14 @@
 document.getElementById('server-url').value =
   (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host;
 
+function _checkProtocol() {
+  if (location.protocol === 'file:') {
+    log('Open this app via http://localhost:2718 — direct file:// access is not supported.', 'error');
+    return false;
+  }
+  return true;
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
   '#c0392b','#2980b9','#27ae60','#d4ac0d',
@@ -483,7 +491,16 @@ function httpBase() {
   return document.getElementById('server-url').value.replace(/^ws/, 'http');
 }
 
+let _connecting = false;
+
+function _setConnectBusy(busy) {
+  _connecting = busy;
+  document.querySelectorAll('#panel-connect button').forEach(b => b.disabled = busy);
+}
+
 async function createLobby() {
+  if (!_checkProtocol() || _connecting) return;
+  _setConnectBusy(true);
   const name = document.getElementById('player-name').value.trim() || 'Player';
   const base = httpBase();
   try {
@@ -493,22 +510,35 @@ async function createLobby() {
       body: JSON.stringify({ name }),
     }).then(r => r.json());
     connectWS(lobby_id, player_id, name);
-  } catch (e) { log(`Create lobby failed: ${e}`, 'error'); }
+  } catch (e) {
+    log(`Create lobby failed: ${e}`, 'error');
+    _setConnectBusy(false);
+  }
 }
 
 async function joinLobby() {
+  if (!_checkProtocol() || _connecting) return;
   const code = document.getElementById('join-code').value.trim().toUpperCase();
   const name = document.getElementById('player-name').value.trim() || 'Player';
   if (!code) { log('Enter a lobby code.', 'warn'); return; }
+  _setConnectBusy(true);
   try {
     const r = await fetch(`${httpBase()}/lobby/${code}/join`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
     });
-    if (!r.ok) { log('Join failed: lobby not found.', 'error'); return; }
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({}));
+      log(`Join failed: ${body.detail || (r.status === 404 ? 'Lobby not found.' : 'Error.')}`, 'error');
+      _setConnectBusy(false);
+      return;
+    }
     const { player_id } = await r.json();
     connectWS(code, player_id, name);
-  } catch (e) { log(`Join failed: ${e}`, 'error'); }
+  } catch (e) {
+    log(`Join failed: ${e}`, 'error');
+    _setConnectBusy(false);
+  }
 }
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
