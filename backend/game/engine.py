@@ -1,5 +1,7 @@
 import random
 
+MAX_HINT_LENGTH = 30
+
 from backend.game.board import BoardManager
 from backend.game.voting import tally_votes, resolve_accusation as _resolve
 from backend.models.game import (
@@ -91,7 +93,7 @@ class GameEngine:
             raise ValueError("Not in hint phase.")
         if rs.current_player_id() != player_id:
             raise ValueError(f"It is not your turn — not your turn, {player_id}.")
-        rs.hints.append(Hint(player_id=player_id, text=text))
+        rs.hints.append(Hint(player_id=player_id, text=text[:MAX_HINT_LENGTH]))
         rs.current_turn_index += 1
         if rs.all_hints_submitted():
             self.state.phase = GamePhase.VOTING
@@ -193,7 +195,7 @@ class GameEngine:
         # Avoid duplicate submissions
         if any(h.player_id == player_id for h in es.ghost_hints):
             return False
-        es.ghost_hints.append(Hint(player_id=player_id, text=text))
+        es.ghost_hints.append(Hint(player_id=player_id, text=text[:MAX_HINT_LENGTH]))
         ghost_ids = {p.id for p in self.lobby.ghost_players()}
         all_in = {h.player_id for h in es.ghost_hints} >= ghost_ids
         if all_in:

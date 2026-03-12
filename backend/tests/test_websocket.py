@@ -23,6 +23,17 @@ def drain_until(ws, target_type: str) -> dict:
     raise AssertionError(f"Never received a '{target_type}' message within 20 reads")
 
 
+def collect_until(ws, target_type: str, limit: int = 20) -> list[dict]:
+    """Return all messages up to and including the first occurrence of target_type."""
+    msgs = []
+    for _ in range(limit):
+        msg = ws.receive_json()
+        msgs.append(msg)
+        if msg["type"] == target_type:
+            return msgs
+    raise AssertionError(f"Never received '{target_type}' within {limit} reads")
+
+
 # --- REST: lobby lifecycle ---
 
 def test_create_lobby_returns_lobby_id(client):
@@ -351,3 +362,66 @@ def test_finalists_receive_morp_role_on_endgame_start(client):
         for pid in finalist_ids:
             rm = drain_until(wss_by_id[pid], "role_assigned")
             assert rm["role"] == "morp"
+
+
+def test_ghost_does_not_receive_role_assigned_on_endgame_start(client):
+    """Ghost players must NOT receive role_assigned when the endgame begins.
+
+    The frontend relies on this: if a ghost was previously a morp who went first
+    (and therefore has halfBoard state), role_assigned would clear it automatically.
+    Since ghosts don't get that message, the frontend must clear halfBoard itself
+    when it receives endgame_round_start. This test documents that invariant so
+    any future backend change that accidentally sends role_assigned to ghosts is caught.
+    """
+    from backend.main import _engines
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
+
+        wss = [ws0, ws1, ws2]
+        wss_by_id = dict(zip(player_ids, wss))
+
+        for ws in wss:
+            drain_until(ws, "lobby_update")
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
+
+        role_msgs = {pid: drain_until(wss_by_id[pid], "role_assigned") for pid in player_ids}
+        for pid in player_ids:
+            drain_until(wss_by_id[pid], "round_start")
+
+        morp_id  = next(pid for pid, rm in role_msgs.items() if rm["role"] == "morp")
+        safe_ids = [pid for pid, rm in role_msgs.items() if rm["role"] == "safe"]
+
+        engine = _engines[lobby_id]
+        for pid in engine.state.round_state.turn_order:
+            wss_by_id[pid].send_json({"type": "submit_hint", "text": "hint"})
+            for ws in wss:
+                drain_until(ws, "hint_received")
+        for ws in wss:
+            drain_until(ws, "voting_open")
+
+        # Vote to accuse a safe player
+        for pid in player_ids:
+            target = safe_ids[0] if pid != safe_ids[0] else safe_ids[1]
+            wss_by_id[pid].send_json({"type": "submit_votes", "accused_ids": [target]})
+        for ws in wss:
+            drain_until(ws, "accusation_result")
+
+        # Set surviving safe player to 1 HP so damage eliminates them → endgame
+        engine.lobby.players[safe_ids[1]].hp = 1
+        wss_by_id[morp_id].send_json({"type": "morp_deal_damage", "target_id": safe_ids[1]})
+        for ws in wss:
+            drain_until(ws, "damage_dealt")
+            drain_until(ws, "lobby_update")
+
+        # The eliminated player (safe_ids[1]) is now a ghost.
+        # Collect every message from their websocket up to and including endgame_round_start.
+        ghost_ws = wss_by_id[safe_ids[1]]
+        msgs_before_endgame = collect_until(ghost_ws, "endgame_round_start")
+        msg_types = [m["type"] for m in msgs_before_endgame]
+
+        # The ghost must NOT receive role_assigned — the frontend must clear halfBoard itself.
+        assert "role_assigned" not in msg_types
+        assert msg_types[-1] == "endgame_round_start"

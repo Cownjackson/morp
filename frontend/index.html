@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morp</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -151,7 +152,7 @@
       display: flex;
       justify-content: center;
       align-items: flex-end;
-      gap: 14px;
+      gap: 20px;
       flex-wrap: wrap;
       padding: 8px 0 2px;
     }
@@ -169,10 +170,14 @@
       left: 50%; transform: translateX(-50%);
       background: #222; border: 1px solid #4a4a4a;
       border-radius: 8px; padding: 5px 9px;
-      font-size: 0.74em; max-width: 150px;
+      font-size: 0.74em; width: 110px;
       text-align: center; word-break: break-word;
       white-space: normal; pointer-events: none;
       z-index: 10; color: #ddd; line-height: 1.3;
+    }
+    /* Stagger even-position bubbles higher so adjacent ones don't collide */
+    .avatar-wrap:nth-child(even) .speech-bubble {
+      bottom: calc(100% + 28px);
     }
     .speech-bubble::after {
       content: '';
@@ -295,7 +300,7 @@
       <div id="turn-indicator" style="margin-bottom:8px;font-size:0.88em"></div>
       <div id="your-turn-block" class="hidden">
         <div class="row">
-          <input type="text" id="hint-input" placeholder="Your hint…" style="width:260px" maxlength="120">
+          <input type="text" id="hint-input" placeholder="Your hint…" style="width:260px" maxlength="30">
           <button onclick="submitHint()">Submit</button>
         </div>
       </div>
@@ -349,7 +354,7 @@
       <div id="endgame-ghost-input-block" class="hidden">
         <p style="color:#777;font-size:0.85em;margin-bottom:6px">You are a ghost — submit a hint for the finalists:</p>
         <div class="row">
-          <input type="text" id="endgame-ghost-hint-input" placeholder="Your hint…" style="width:260px" maxlength="120">
+          <input type="text" id="endgame-ghost-hint-input" placeholder="Your hint…" style="width:260px" maxlength="30">
           <button onclick="submitEndgameGhostHint()">Submit</button>
         </div>
       </div>
@@ -677,6 +682,7 @@ function handleMessage(msg) {
 
     case 'endgame_round_start': {
       state.endgameTargetWord = msg.target_word || null;
+      state.halfBoard = null;  // never apply normal-round half-board overlay to endgame board
       state.speechBubbles = {};
       state.board      = { board_hint: msg.board_hint, words: msg.words };
       state.targetWord = state.endgameTargetWord; // ghosts see target highlighted
