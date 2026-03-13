@@ -125,8 +125,33 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
     await manager.broadcast(lobby_id, _lobby_update(engine))
 
     # If a round is in progress, restore enough context for the reconnecting player to act
-    if engine.state.phase == GamePhase.HINT:
+    _phase = engine.state.phase
+    if _phase == GamePhase.HINT:
         await _send_hint_phase_rejoin(lobby_id, player_id, engine)
+    elif _phase == GamePhase.VOTING:
+        await _send_hint_phase_rejoin(lobby_id, player_id, engine)
+        rs = engine.state.round_state
+        await manager.send(lobby_id, player_id, {
+            "type": "voting_open",
+            "hints": [{"player_id": h.player_id, "text": h.text} for h in rs.hints],
+            "num_votes": engine.lobby.config.num_morps,
+        })
+    elif _phase == GamePhase.MORP_GUESS:
+        await _send_hint_phase_rejoin(lobby_id, player_id, engine)
+        rs = engine.state.round_state
+        player_roles = {p.id: p.role.value for p in engine.lobby.players.values() if p.role is not None}
+        await manager.send(lobby_id, player_id, {
+            "type": "accusation_result",
+            "accused_ids": rs.accused_ids,
+            "roles_revealed": {pid: player_roles[pid] for pid in rs.accused_ids},
+        })
+        accused_morps = [pid for pid in rs.accused_ids if engine.lobby.players[pid].role == Role.MORP]
+        await manager.send(lobby_id, player_id, {
+            "type": "morp_guess_phase",
+            "accused_morp_ids": accused_morps,
+            "deadline": engine.state.morp_guess_deadline,
+            "timers_enabled": engine.lobby.config.timers_enabled,
+        })
 
     try:
         while True:

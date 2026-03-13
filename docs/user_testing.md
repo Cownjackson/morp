@@ -61,35 +61,37 @@ Mark each as ✅ Pass / ❌ Fail / ⚠️ Partial, and note any unexpected behav
 
 ---
 
-## 5. Disconnect before game start — excluded from turn order and morp pool
+## 5. Disconnect before game start — removed from lobby
 
-**Setup:** 3 players in lobby, game not yet started
+**Setup:** 4 players in lobby, game not yet started
 
 **Steps:**
-1. Player C closes their tab / disconnects
-2. Host starts the game with Players A and B (the minimum 3 connected players is not met with 2 — so add a Player D to verify with 3 connected and 1 disconnected)
-3. Confirm Player C's avatar shows as greyed-out / disconnected
-4. Confirm Player C does NOT appear in the turn order
-5. Confirm Player C is not assigned as morp across several runs (restart to re-test)
+1. Player D closes their tab / disconnects
+2. Host starts the game (3 connected players remain — the minimum)
+3. Confirm Player D no longer appears in the player row on any screen
+4. Confirm Player D does NOT appear in the turn order
+5. Confirm Player D cannot rejoin while the game is in progress
 
-**Expected:** Only connected players at game-start time are assigned roles and added to turn order. Disconnected players are bystanders until next round.
+**Expected:** Disconnected players are permanently removed from the lobby at game start. Only connected players receive roles and appear in turn order. A disconnected player attempting to rejoin is blocked with "Game already in progress."
 
 ---
 
-## 6. Disconnect mid-round (not their turn) — turn skipped, game continues
+## 6. Disconnect mid-round (not their turn) — game stalls, round-start purge
 
-**Setup:** 3-player game, hint phase, Player C is NOT first in turn order
+**Setup:** 3-player game, hint phase, Player C is NOT the current hint player
 
 **Steps:**
 1. Player C closes their tab after the round starts
 2. Play through until the turn reaches Player C
-3. Confirm Player C's turn is automatically skipped (blank hint broadcast) and the next player's turn begins without any action needed
+3. Confirm the game stalls waiting for Player C (no auto-skip — a timer for this is planned for a future stage)
+4. The round ends (by other means, or Player C reconnects and submits); confirm Player C's avatar is greyed-out for the rest of the round
+5. When the host starts the next round, confirm Player C is removed from the lobby entirely and does not appear in the new turn order
 
-**Expected:** Other players see the turn indicator move past Player C automatically. Game continues without stalling.
+**Expected (current behaviour):** Mid-round disconnects are not auto-skipped — the game waits. A skip timer is planned. When a new round begins, any player still disconnected is purged from the lobby and cannot vote or act in the new round.
 
 ---
 
-## 7. Disconnect mid-round (their turn) — reconnect and supply hint
+## 7. Disconnect mid-round (their turn) — reconnect and resume
 
 **Setup:** 3-player game, hint phase, Player C IS the current hint player
 
@@ -101,7 +103,18 @@ Mark each as ✅ Pass / ❌ Fail / ⚠️ Partial, and note any unexpected behav
 5. Player C submits a hint
 6. Confirm the hint appears on all clients and the turn advances
 
-**Expected:** Reconnecting player is fully restored to their hint turn. Other players see the hint arrive and the turn advance normally.
+**Variation — reconnect during voting:**
+- Player C disconnects during the hint phase, their turn is skipped (if not their turn) or the game stalls (if their turn)
+- Voting opens while Player C is still disconnected
+- Player C reconnects during the voting phase
+- Confirm Player C sees the board, their role, all submitted hints, and the vote buttons
+
+**Variation — reconnect during morp guess (morp is Player C):**
+- The morp disconnects mid-round and is accused by the group
+- The morp reconnects while the guess prompt is active
+- Confirm the morp sees the board, all hints, and the guess input with the remaining timer
+
+**Expected:** A player who reconnects at any point during a round is fully restored to the current phase. They see the board, role, all hints submitted so far, and the appropriate UI for the current phase (hint input, vote buttons, or guess prompt).
 
 ---
 
@@ -112,8 +125,9 @@ Mark each as ✅ Pass / ❌ Fail / ⚠️ Partial, and note any unexpected behav
 **Steps:**
 1. Player C disconnects on their turn
 2. Observe how the game behaves with no timer
+3. When the round eventually ends, note that Player C is purged from the lobby at the start of the next round
 
-**Expected (current behaviour, known limitation):** Game stalls waiting for Player C. This is acceptable for now — a skip timer is planned for a future stage. Note how long before the stall becomes unplayable and record observations.
+**Expected (current behaviour, known limitation):** Game stalls waiting for Player C. This is acceptable for now — a skip timer is planned for a future stage. Note how long before the stall becomes unplayable and record observations. If the round does end, Player C will not appear in subsequent rounds.
 
 ---
 
