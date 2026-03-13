@@ -53,9 +53,12 @@ class GameEngine:
     # ── Game start / round management ─────────────────────────────────────────
 
     def start_game(self, seed: int) -> None:
-        active = self.lobby.active_players()
-        if len(active) < 3:
-            raise ValueError("Need at least 3 players to start.")
+        # Permanently remove players who weren't connected at start time
+        for pid in [pid for pid, p in self.lobby.players.items() if not p.is_connected]:
+            del self.lobby.players[pid]
+        self._reassign_host_if_needed()
+        if len(self.lobby.active_players()) < 3:
+            raise ValueError("Need at least 3 connected players to start.")
         self.lobby.started = True
         self._start_round(seed=seed)
 

@@ -86,8 +86,8 @@ async def join_lobby(lobby_id: str, body: JoinRequest):
     if existing:
         # Don't mark connected yet — wait for WebSocket to actually establish
         return {"player_id": existing.id}
-    # Block new players from joining a game that has already started
-    if engine.lobby.started:
+    # Block new players from joining an active game, but allow joins after game over
+    if engine.lobby.started and engine.state.phase != GamePhase.GAME_OVER:
         raise HTTPException(status_code=403, detail="Game already in progress.")
     # New player — reject if name is already taken
     player_id = secrets.token_hex(8)
@@ -321,18 +321,22 @@ async def _handle_start_game(lobby_id: str, player_id: str, engine: GameEngine):
         raise ValueError("Only the host can start the game.")
     seed = _new_seed()
     engine.start_game(seed=seed)
+    # Broadcast updated player list so any removed (pre-start disconnected) players
+    # disappear from clients before they see role assignments.
+    await manager.broadcast(lobby_id, _lobby_update(engine))
     await _broadcast_round_start(lobby_id, engine, seed)
 
 
 async def _broadcast_round_start(lobby_id: str, engine: GameEngine, seed: int):
     rs = engine.state.round_state
-    for player in engine.lobby.active_players():
+    participants = [p for p in engine.lobby.active_players() if p.role is not None]
+    for player in participants:
         role_msg: dict = {"type": "role_assigned", "role": player.role.value}
         if player.role == Role.MORP:
             role_msg["half_board"] = engine.get_half_board_for_morp(seed=seed)
         await manager.send(lobby_id, player.id, role_msg)
 
-    for player in engine.lobby.active_players():
+    for player in participants:
         round_msg: dict = {
             "type": "round_start",
             "round_number": rs.round_number,

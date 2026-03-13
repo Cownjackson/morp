@@ -17,8 +17,30 @@ def test_cannot_start_with_fewer_than_3_players():
     engine = GameEngine(lobby_id="x", num_morps=1)
     engine.add_player("p0", "Alice")
     engine.add_player("p1", "Bob")
-    with pytest.raises(ValueError, match="3 players"):
+    with pytest.raises(ValueError, match="3 connected players"):
         engine.start_game(seed=1)
+
+
+def test_cannot_start_with_fewer_than_3_connected_players():
+    """3 players in lobby but one disconnected — must not start."""
+    engine = GameEngine(lobby_id="x", num_morps=1)
+    engine.add_player("p0", "Alice")
+    engine.add_player("p1", "Bob")
+    engine.add_player("p2", "Carol")
+    engine.lobby.players["p2"].is_connected = False
+    with pytest.raises(ValueError, match="3 connected players"):
+        engine.start_game(seed=1)
+
+
+def test_can_start_with_3_connected_and_1_disconnected():
+    """4 players in lobby, 1 disconnected — should still start with the 3 connected."""
+    engine = GameEngine(lobby_id="x", num_morps=1)
+    for i in range(4):
+        engine.add_player(f"p{i}", f"Player{i}")
+    engine.lobby.players["p3"].is_connected = False
+    engine.start_game(seed=1)
+    assert engine.state.phase == GamePhase.HINT
+    assert "p3" not in engine.state.round_state.turn_order
 
 
 def test_can_start_with_3_players():
@@ -217,11 +239,12 @@ def test_can_start_new_game_after_reset():
 
 # --- Disconnect / turn-order filtering ---
 
-def test_disconnected_player_excluded_from_turn_order_at_start():
-    """Player who disconnects before game start must not appear in turn_order."""
+def test_disconnected_player_removed_from_lobby_at_start():
+    """Player who disconnects before game start is purged from the lobby entirely."""
     engine = make_engine(num_players=4)
     engine.lobby.players["p1"].is_connected = False
     engine.start_game(seed=7)
+    assert "p1" not in engine.lobby.players
     assert "p1" not in engine.state.round_state.turn_order
 
 
@@ -351,6 +374,30 @@ def test_ghost_player_cannot_become_host():
     engine.on_player_disconnect("p0")
     # Host must be p2 (not ghost p1)
     assert engine.lobby.host_id == "p2"
+
+
+# --- voting: pre-start disconnect player is gone, voting completes normally ---
+
+def test_voting_completes_after_pre_start_disconnect():
+    """With a disconnected player purged at start, remaining players can complete voting."""
+    engine = make_engine(num_players=4)
+    engine.lobby.players["p3"].is_connected = False
+    engine.start_game(seed=1)
+
+    # p3 is gone — only p0, p1, p2 remain
+    assert "p3" not in engine.lobby.players
+
+    rs = engine.state.round_state
+    for pid in rs.turn_order:
+        engine.submit_hint(pid, "hint")
+    assert engine.state.phase == GamePhase.VOTING
+
+    remaining = list(engine.lobby.players.keys())
+    for voter in remaining:
+        target = next(pid for pid in remaining if pid != voter)
+        engine.submit_votes(voter, [target])
+
+    assert engine.state.phase == GamePhase.ACCUSATION
 
 
 # --- get_half_board_for_morp edge case ---

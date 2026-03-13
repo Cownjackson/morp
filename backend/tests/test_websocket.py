@@ -6,7 +6,17 @@ import json
 import pytest
 from starlette.testclient import TestClient
 
-from backend.main import app
+from backend.main import app, _engines, _timer_tasks
+import backend.main as _main_module
+
+
+@pytest.fixture(autouse=True)
+def reset_global_state():
+    """Clear module-level game state before each test to prevent cross-test pollution."""
+    _engines.clear()
+    _timer_tasks.clear()
+    _main_module.manager._connections.clear()
+    yield
 
 
 @pytest.fixture
@@ -455,6 +465,26 @@ def test_join_started_game_as_new_player_returns_403(client):
                 pass
 
 
+def test_join_allowed_during_game_over(client):
+    """New players must be able to join once the game reaches GAME_OVER, before host resets."""
+    from backend.main import _engines
+    from backend.models.game import GamePhase
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
+        for ws in (ws0, ws1, ws2):
+            drain_until(ws, "lobby_update")
+        ws0.send_json({"type": "start_game"})
+        for ws in (ws0, ws1, ws2):
+            drain_until(ws, "role_assigned")
+            drain_until(ws, "round_start")
+        # Force the engine into GAME_OVER without playing through
+        _engines[lobby_id].state.phase = GamePhase.GAME_OVER
+        resp = client.post(f"/lobby/{lobby_id}/join", json={"name": "Newcomer"})
+        assert resp.status_code == 200
+
+
 def test_reconnect_by_name_returns_original_player_id(client):
     """Rejoining with a disconnected player's name gives back their original player_id."""
     lobby_id = client.post("/lobby/create").json()["lobby_id"]
@@ -672,3 +702,32 @@ def test_ghost_does_not_receive_role_assigned_on_endgame_start(client):
         # The ghost must NOT receive role_assigned — the frontend must clear halfBoard itself.
         assert "role_assigned" not in msg_types
         assert msg_types[-1] == "endgame_round_start"
+
+
+def test_game_starts_cleanly_with_pre_start_disconnect(client):
+    """Game must start without crashing when a lobby player never connected (role=None).
+
+    Regression test for: _broadcast_round_start iterating active_players() and calling
+    player.role.value on a disconnected player whose role was cleared to None.
+    """
+    lobby_id, player_ids = _setup_lobby(client, num_players=4)
+    # player_ids[3] joins via REST but never connects a WebSocket → is_connected=False, role=None
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
+
+        wss = [ws0, ws1, ws2]
+        for ws in wss:
+            drain_until(ws, "lobby_update")
+
+        ws0.send_json({"type": "start_game"})
+
+        # All three connected players must receive role_assigned and round_start
+        for ws in wss:
+            role_msg = drain_until(ws, "role_assigned")
+            assert role_msg["role"] in ("safe", "morp")
+
+        for ws in wss:
+            round_msg = drain_until(ws, "round_start")
+            # Disconnected player must be excluded from the turn order
+            assert player_ids[3] not in round_msg["turn_order"]
