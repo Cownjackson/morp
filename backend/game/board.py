@@ -34,6 +34,10 @@ class BoardManager:
     def add_board(self, board: Board) -> None:
         self.boards.append(board)
 
+    def set_custom_boards(self, boards: list[Board]) -> None:
+        """Replace the entire board pool with the provided boards."""
+        self.boards = boards[:]
+
     def select_round(self, seed: int) -> tuple[Board, str]:
         """Deterministically select a board and target word for a round."""
         rng = random.Random(seed)

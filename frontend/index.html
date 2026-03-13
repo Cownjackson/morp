@@ -290,6 +290,16 @@
           <input type="checkbox" id="timers-toggle" checked>
           <label for="timers-toggle">Timers enabled (30 s morp guess / endgame guess)</label>
         </div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:0.85em;color:#888;margin-bottom:4px">
+            Custom boards (JSON array) — leave blank to use defaults:
+          </div>
+          <textarea id="custom-boards-input" rows="4" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:0.8em;background:#1a1a1a;color:#ccc;border:1px solid #444;border-radius:4px;padding:6px;resize:vertical" placeholder='[{"board_hint":"Theme…","words":["word1","word2"]}]'></textarea>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+            <button onclick="setCustomBoards()">Set Boards</button>
+            <span id="custom-boards-status" style="font-size:0.82em;color:#888">using defaults</span>
+          </div>
+        </div>
         <button id="btn-start" onclick="startGame()" disabled>Start Game</button>
       </div>
       <p id="lobby-waiting" style="color:#444;font-size:0.88em">Waiting for players…</p>
@@ -527,6 +537,43 @@ async function createLobby() {
   } catch (e) {
     log(`Create lobby failed: ${e}`, 'error');
     _setConnectBusy(false);
+  }
+}
+
+async function setCustomBoards() {
+  const raw = document.getElementById('custom-boards-input').value.trim();
+  const statusEl = document.getElementById('custom-boards-status');
+  if (!raw) {
+    statusEl.textContent = 'using defaults';
+    statusEl.style.color = '#888';
+    return;
+  }
+  let boards;
+  try {
+    boards = JSON.parse(raw);
+    if (!Array.isArray(boards)) throw new Error('Expected a JSON array.');
+  } catch (e) {
+    statusEl.textContent = `Invalid JSON: ${e.message}`;
+    statusEl.style.color = '#f77';
+    return;
+  }
+  try {
+    const r = await fetch(`${httpBase()}/lobby/${state.lobbyId}/boards`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_id: state.playerId, boards }),
+    });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      statusEl.textContent = body.detail || `Error ${r.status}`;
+      statusEl.style.color = '#f77';
+      return;
+    }
+    statusEl.textContent = `${body.boards_set} custom board${body.boards_set === 1 ? '' : 's'} set`;
+    statusEl.style.color = '#7f7';
+  } catch (e) {
+    statusEl.textContent = `Request failed: ${e}`;
+    statusEl.style.color = '#f77';
   }
 }
 

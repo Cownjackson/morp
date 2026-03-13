@@ -67,6 +67,38 @@ def test_half_board_differs_with_different_seeds():
     assert board.half(seed=1, must_include="word0") != board.half(seed=2, must_include="word0")
 
 
+def test_set_custom_boards_replaces_pool():
+    bm = BoardManager()
+    custom = make_board(["a", "b", "c"], hint="custom")
+    bm.set_custom_boards([custom])
+    assert bm.boards == [custom]
+
+
+def test_set_custom_boards_multiple():
+    bm = BoardManager()
+    b1 = make_board(["a", "b"], hint="one")
+    b2 = make_board(["c", "d"], hint="two")
+    bm.set_custom_boards([b1, b2])
+    assert len(bm.boards) == 2
+    assert b1 in bm.boards and b2 in bm.boards
+
+
+def test_set_custom_boards_removes_defaults():
+    bm = BoardManager()
+    assert len(bm.boards) == 3  # defaults loaded
+    bm.set_custom_boards([make_board(["x", "y"], hint="new")])
+    assert len(bm.boards) == 1
+
+
+def test_set_custom_boards_select_round_uses_custom():
+    bm = BoardManager()
+    custom = make_board(["alpha", "beta", "gamma"], hint="my theme")
+    bm.set_custom_boards([custom])
+    board, target = bm.select_round(seed=1)
+    assert board.board_hint == "my theme"
+    assert target in ["alpha", "beta", "gamma"]
+
+
 def test_add_custom_board():
     bm = BoardManager()
     custom = make_board(["a", "b", "c", "d", "e"], hint="custom")

@@ -12,6 +12,7 @@ from pydantic import BaseModel
 _FRONTEND = pathlib.Path(__file__).parent.parent / "frontend" / "index.html"
 
 from backend.connection_manager import ConnectionManager
+from backend.game.board import validate_custom_board
 from backend.game.engine import GameEngine
 from backend.models.game import GamePhase
 from backend.models.player import Role
@@ -69,6 +70,16 @@ class JoinRequest(BaseModel):
     name: str
 
 
+class CustomBoardEntry(BaseModel):
+    board_hint: str
+    words: list[str]
+
+
+class SetBoardsRequest(BaseModel):
+    player_id: str
+    boards: list[CustomBoardEntry]
+
+
 @app.post("/lobby/create")
 async def create_lobby():
     lobby_id = _lobby_code()
@@ -98,6 +109,25 @@ async def join_lobby(lobby_id: str, body: JoinRequest):
     # Mark not connected until the WebSocket handshake completes
     engine.lobby.players[player_id].is_connected = False
     return {"player_id": player_id}
+
+
+@app.post("/lobby/{lobby_id}/boards")
+async def set_custom_boards(lobby_id: str, body: SetBoardsRequest):
+    engine = _get_engine(lobby_id)
+    if body.player_id != engine.lobby.host_id:
+        raise HTTPException(status_code=403, detail="Only the host can set custom boards.")
+    if engine.lobby.started:
+        raise HTTPException(status_code=409, detail="Cannot change boards after the game has started.")
+    if not body.boards:
+        raise HTTPException(status_code=422, detail="Must provide at least one board.")
+    validated = []
+    for i, b in enumerate(body.boards):
+        try:
+            validated.append(validate_custom_board(b.model_dump()))
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=f"Board {i + 1}: {e}")
+    engine.board_manager.set_custom_boards(validated)
+    return {"boards_set": len(validated)}
 
 
 @app.get("/lobby/{lobby_id}")

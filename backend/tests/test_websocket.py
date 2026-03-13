@@ -374,6 +374,83 @@ def test_finalists_receive_morp_role_on_endgame_start(client):
             assert rm["role"] == "morp"
 
 
+# --- Custom board upload ---
+
+_VALID_BOARD = {"board_hint": "Test Theme", "words": [f"word{i}" for i in range(10)]}
+
+
+def test_host_can_set_custom_boards(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=1)
+    host_id = player_ids[0]
+    r = client.post(f"/lobby/{lobby_id}/boards", json={"player_id": host_id, "boards": [_VALID_BOARD]})
+    assert r.status_code == 200
+    assert r.json()["boards_set"] == 1
+
+
+def test_non_host_cannot_set_custom_boards(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=2)
+    non_host_id = player_ids[1]
+    r = client.post(f"/lobby/{lobby_id}/boards", json={"player_id": non_host_id, "boards": [_VALID_BOARD]})
+    assert r.status_code == 403
+
+
+def test_set_custom_boards_blocked_after_game_starts(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+    host_id = player_ids[0]
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
+        for ws in (ws0, ws1, ws2):
+            drain_until(ws, "lobby_update")
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
+        for ws in (ws0, ws1, ws2):
+            drain_until(ws, "role_assigned")
+            drain_until(ws, "round_start")
+        r = client.post(f"/lobby/{lobby_id}/boards", json={"player_id": host_id, "boards": [_VALID_BOARD]})
+        assert r.status_code == 409
+
+
+def test_set_custom_boards_empty_list_rejected(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=1)
+    r = client.post(f"/lobby/{lobby_id}/boards", json={"player_id": player_ids[0], "boards": []})
+    assert r.status_code == 422
+
+
+def test_set_custom_boards_invalid_board_rejected(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=1)
+    bad_board = {"board_hint": "", "words": ["a", "b"]}
+    r = client.post(f"/lobby/{lobby_id}/boards", json={"player_id": player_ids[0], "boards": [bad_board]})
+    assert r.status_code == 422
+    assert "Board 1" in r.json()["detail"]
+
+
+def test_set_multiple_custom_boards(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=1)
+    boards = [_VALID_BOARD, {"board_hint": "Second Theme", "words": ["a", "b", "c"]}]
+    r = client.post(f"/lobby/{lobby_id}/boards", json={"player_id": player_ids[0], "boards": boards})
+    assert r.status_code == 200
+    assert r.json()["boards_set"] == 2
+
+
+def test_custom_boards_used_in_game(client):
+    """round_start board_hint must match the custom board when one is set."""
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+    host_id = player_ids[0]
+    custom = {"board_hint": "Unique Custom Theme XYZ", "words": [f"w{i}" for i in range(10)]}
+    client.post(f"/lobby/{lobby_id}/boards", json={"player_id": host_id, "boards": [custom]})
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
+        for ws in (ws0, ws1, ws2):
+            drain_until(ws, "lobby_update")
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
+        for ws in (ws0, ws1, ws2):
+            drain_until(ws, "role_assigned")
+        round_msg = drain_until(ws0, "round_start")
+        assert round_msg["board_hint"] == "Unique Custom Theme XYZ"
+
+
 # --- Name uniqueness / reconnect (REST) ---
 
 def test_lobby_deleted_when_all_players_disconnect(client):
