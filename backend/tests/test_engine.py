@@ -400,6 +400,33 @@ def test_voting_completes_after_pre_start_disconnect():
     assert engine.state.phase == GamePhase.ACCUSATION
 
 
+# --- New round purge ---
+
+def test_disconnected_player_removed_from_lobby_at_new_round_start():
+    """A player who disconnects mid-round is purged when the next round begins."""
+    engine = make_engine(num_players=4)
+    engine.start_game(seed=1)
+    # Simulate mid-round disconnect
+    engine.lobby.players["p1"].is_connected = False
+    # Force engine to ROUND_END as if a round just finished
+    engine.state.phase = GamePhase.ROUND_END
+    engine.start_new_round(seed=2)
+    assert "p1" not in engine.lobby.players
+    assert "p1" not in engine.state.round_state.turn_order
+
+
+def test_new_round_retains_connected_players():
+    """Connected players survive into the next round."""
+    engine = make_engine(num_players=4)
+    engine.start_game(seed=1)
+    engine.lobby.players["p1"].is_connected = False
+    engine.state.phase = GamePhase.ROUND_END
+    engine.start_new_round(seed=2)
+    for pid in ("p0", "p2", "p3"):
+        assert pid in engine.lobby.players
+        assert pid in engine.state.round_state.turn_order
+
+
 # --- get_half_board_for_morp edge case ---
 
 def test_half_board_returns_none_when_turn_order_empty():

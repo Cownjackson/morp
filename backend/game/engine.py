@@ -52,11 +52,14 @@ class GameEngine:
 
     # ── Game start / round management ─────────────────────────────────────────
 
-    def start_game(self, seed: int) -> None:
-        # Permanently remove players who weren't connected at start time
+    def _purge_disconnected_players(self) -> None:
+        """Permanently remove all disconnected players from the lobby."""
         for pid in [pid for pid, p in self.lobby.players.items() if not p.is_connected]:
             del self.lobby.players[pid]
         self._reassign_host_if_needed()
+
+    def start_game(self, seed: int) -> None:
+        self._purge_disconnected_players()
         if len(self.lobby.active_players()) < 3:
             raise ValueError("Need at least 3 connected players to start.")
         self.lobby.started = True
@@ -65,6 +68,7 @@ class GameEngine:
     def start_new_round(self, seed: int) -> None:
         if self.state.phase != GamePhase.ROUND_END:
             raise ValueError("Can only start a new round from ROUND_END phase.")
+        self._purge_disconnected_players()
         self._start_round(seed=seed)
 
     def _start_round(self, seed: int) -> None:

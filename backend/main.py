@@ -215,6 +215,7 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
             if engine.state.phase == GamePhase.ROUND_END:
                 seed = _new_seed()
                 engine.start_new_round(seed=seed)
+                await manager.broadcast(lobby_id, _lobby_update(engine))
                 await _broadcast_round_start(lobby_id, engine, seed)
             elif engine.state.phase == GamePhase.ENDGAME_ROUND_END:
                 seed = _new_seed()
