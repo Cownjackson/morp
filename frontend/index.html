@@ -504,11 +504,25 @@ async function createLobby() {
   const name = document.getElementById('player-name').value.trim() || 'Player';
   const base = httpBase();
   try {
-    const { lobby_id } = await fetch(`${base}/lobby/create`, { method: 'POST' }).then(r => r.json());
-    const { player_id } = await fetch(`${base}/lobby/${lobby_id}/join`, {
+    const createRes = await fetch(`${base}/lobby/create`, { method: 'POST' });
+    if (!createRes.ok) {
+      const body = await createRes.json().catch(() => ({}));
+      log(`Create lobby failed: ${body.detail || createRes.status}`, 'error');
+      _setConnectBusy(false);
+      return;
+    }
+    const { lobby_id } = await createRes.json();
+    const joinRes = await fetch(`${base}/lobby/${lobby_id}/join`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
-    }).then(r => r.json());
+    });
+    if (!joinRes.ok) {
+      const body = await joinRes.json().catch(() => ({}));
+      log(`Join failed: ${body.detail || joinRes.status}`, 'error');
+      _setConnectBusy(false);
+      return;
+    }
+    const { player_id } = await joinRes.json();
     connectWS(lobby_id, player_id, name);
   } catch (e) {
     log(`Create lobby failed: ${e}`, 'error');

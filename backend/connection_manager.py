@@ -1,5 +1,8 @@
 import asyncio
+import logging
 from fastapi import WebSocket
+
+log = logging.getLogger(__name__)
 
 
 class ConnectionManager:
@@ -21,8 +24,8 @@ class ConnectionManager:
         if ws:
             try:
                 await ws.send_json(message)
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning("send failed lobby=%s player=%s: %s", lobby_id, player_id, exc)
 
     async def broadcast(self, lobby_id: str, message: dict) -> None:
         tasks = [
@@ -30,4 +33,7 @@ class ConnectionManager:
             for ws in self._connections.get(lobby_id, {}).values()
         ]
         if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for exc in results:
+                if isinstance(exc, Exception):
+                    log.warning("broadcast failed lobby=%s: %s", lobby_id, exc)

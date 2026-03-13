@@ -143,7 +143,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
         await manager.send(lobby_id, player_id, {
             "type": "accusation_result",
             "accused_ids": rs.accused_ids,
-            "roles_revealed": {pid: player_roles[pid] for pid in rs.accused_ids},
+            "roles_revealed": {pid: player_roles.get(pid, "unknown") for pid in rs.accused_ids},
         })
         accused_morps = [pid for pid in rs.accused_ids if engine.lobby.players[pid].role == Role.MORP]
         await manager.send(lobby_id, player_id, {
@@ -391,7 +391,7 @@ async def _handle_accusation(lobby_id: str, engine: GameEngine):
     await manager.broadcast(lobby_id, {
         "type": "accusation_result",
         "accused_ids": rs.accused_ids,
-        "roles_revealed": {pid: player_roles[pid] for pid in rs.accused_ids},
+        "roles_revealed": {pid: player_roles.get(pid, "unknown") for pid in rs.accused_ids},
     })
 
     result = engine.resolve_accusation()

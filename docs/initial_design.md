@@ -37,9 +37,9 @@ Morp is a real-time multiplayer web game for 3 or more players, blending mechani
 
 ### Lobby
 1. A host creates a lobby with a lobby code.
-2. Players join via the code. Minimum 3 players required to start.
+2. Players join via the code. Minimum 3 **connected** players required to start.
 3. Host configures: number of morps (default 1), lobby size.
-4. Host starts the game.
+4. Host starts the game. Any player who is not connected at the moment the game starts is permanently removed from the lobby.
 
 ### Round Start
 1. A new board and target word are randomly selected.
@@ -98,12 +98,21 @@ Both remaining players are assigned as morps — neither can see the target word
 ## 5. Turn Order & Disconnects
 
 - Turn order is **randomized at the start of each round** (not fixed for the entire game).
-- If a player disconnects mid-round:
-  - Their turn is skipped.
-  - They are treated as submitting an empty hint for voting purposes.
-  - If they reconnect before voting ends, they may still vote.
-  - If disconnected for a full round with no reconnect, the host may kick them; their slot is removed.
-- Persistent disconnect handling (grace period, reconnect token) is a **Stage 2+ concern**.
+
+### Pre-game disconnect
+- Any player not connected at the moment the host starts the game is **permanently removed from the lobby**. They are not assigned a role and do not appear in the turn order.
+- A new game cannot start unless at least 3 players are connected at that moment.
+
+### New-round disconnect
+- When the host starts a new round, any player still disconnected is **permanently purged** from the lobby before the round begins. They do not receive a role or appear in the new turn order.
+
+### Mid-round disconnect
+- If a player disconnects during the hint phase, the game stalls at their turn until they reconnect and submit. A **hint timer** is planned for a future stage — when it fires, a blank hint is submitted on behalf of whoever has not answered in time, whether they are disconnected or simply idle. This is the same behaviour for all players and is not disconnect-specific.
+- Disconnected players remain in the lobby for the duration of the current round and can still be voted for.
+- If a disconnected player reconnects during the same round, they are fully restored to the current phase:
+  - **Hint phase:** they see their role, the board, and all hints submitted so far.
+  - **Voting phase:** they see all hints and the vote UI.
+  - **Morp guess phase:** the accused morp sees the board, all hints, and the guess input.
 
 ---
 
@@ -217,11 +226,16 @@ Both remaining players are assigned as morps — neither can see the target word
 - [x] Non-host cannot trigger a reset
 
 ### Disconnect
-- [x] Disconnected player's turn is skipped
+- [x] Player not connected at game start is permanently removed from the lobby
+- [x] Player still disconnected when a new round begins is permanently purged from the lobby
+- [x] Game requires at least 3 connected players to start
+- [x] Disconnected player's hint turn stalls the game until they reconnect (hint timer planned)
 - [x] Disconnected player's vote is skipped (voting resolves without them)
 - [x] Host reassigned if host disconnects
 - [x] Lobby cleaned up when all players disconnect
-- [ ] Reconnect before vote end allows player to vote (not yet implemented)
+- [x] Reconnecting during the hint phase restores board, role, and all submitted hints
+- [x] Reconnecting during the voting phase restores full hint history and vote UI
+- [x] Reconnecting during the morp guess phase restores board, hints, and guess input
 
 ### Board
 - [x] Default 3 boards load correctly
@@ -262,3 +276,7 @@ The following are noted to avoid architectural decisions that would block them, 
 - **Custom board validation:** Boards must have between **1 and 100 words** (capped at 10×10 grid). Minimum 1 word; layout is derived from word count (up to the configured grid size).
 - **Host timer toggle:** The host can disable timers (morp guess + endgame guess) before starting, useful for testing and casual play. Toggle defaults to enabled.
 - **Game reset:** After a game ends, the host can reset the lobby. Player list is preserved but all HP, roles, and ghost status are restored. A new game can be started immediately.
+- **Disconnect at start/round boundary:** Players who are not connected when the game starts, or when a new round begins, are permanently removed from the lobby. They cannot rejoin while the game is in progress.
+- **Mid-round reconnect:** A player who disconnects during a round and reconnects before the round ends is fully restored to the current phase with all game context (board, role, hints, phase-appropriate UI). They may still vote, or submit a morp guess if they were accused while disconnected.
+- **Hint timer (planned):** A per-turn timer will be added in a future stage. When it expires, a blank hint is submitted for whoever has not answered — regardless of whether they are disconnected or idle. This is not a disconnect-specific mechanic.
+- **Post-game joins:** New players may join a lobby after a game ends (GAME_OVER phase) even though `started` remains true internally. The host reset restores the lobby to a clean pre-game state for everyone.

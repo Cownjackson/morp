@@ -731,3 +731,45 @@ def test_game_starts_cleanly_with_pre_start_disconnect(client):
             round_msg = drain_until(ws, "round_start")
             # Disconnected player must be excluded from the turn order
             assert player_ids[3] not in round_msg["turn_order"]
+
+
+# --- accusation_result roles_revealed integrity ---
+
+def test_accusation_result_roles_revealed_contains_string_values(client):
+    """accusation_result.roles_revealed must map each accused id to a string role."""
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
+
+        wss = [ws0, ws1, ws2]
+        wss_by_id = dict(zip(player_ids, wss))
+
+        for ws in wss:
+            drain_until(ws, "lobby_update")
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
+
+        role_msgs = {pid: drain_until(wss_by_id[pid], "role_assigned") for pid in player_ids}
+        turn_order = drain_until(ws0, "round_start")["turn_order"]
+        for pid in player_ids[1:]:
+            drain_until(wss_by_id[pid], "round_start")
+
+        for pid in turn_order:
+            wss_by_id[pid].send_json({"type": "submit_hint", "text": "hint"})
+            for ws in wss:
+                drain_until(ws, "hint_received")
+        for ws in wss:
+            drain_until(ws, "voting_open")
+
+        # All vote for the same player
+        target = player_ids[0]
+        for pid in player_ids:
+            vote_target = player_ids[1] if pid == player_ids[0] else target
+            wss_by_id[pid].send_json({"type": "submit_votes", "accused_ids": [vote_target]})
+
+        accusation = drain_until(ws0, "accusation_result")
+        assert "roles_revealed" in accusation
+        for pid, role in accusation["roles_revealed"].items():
+            assert isinstance(role, str), f"role for {pid} was {role!r}, expected a string"
+            assert role in ("safe", "morp", "unknown")
