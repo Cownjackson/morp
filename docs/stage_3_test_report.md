@@ -2,183 +2,137 @@
 
 **Date:** 2026-03-13
 **Suite:** `backend/tests/`
-**Result:** 155 passed, 0 failed (3.53s)
+**Result:** 159 passed, 0 failed (4.02s)
 
 ---
 
 ## Summary
 
-All 155 tests pass. The suite has solid coverage of the board, connection manager, lobby management, WebSocket API, and most engine validation paths. However, a recurring pattern across `test_voting.py`, `test_round_flow.py`, and `test_engine.py` short-circuits the game flow by directly manipulating internal state — bypassing the very mechanics those tests are supposed to verify. These tests pass, but they don't catch bugs in the transitions they skip.
+All 159 tests pass. A full audit was performed across the suite covering both intermittent hang issues and state-manipulation shortcuts. The hang issues and most state-injection problems have been resolved. Two lower-priority issues remain open.
 
 | File | Tests | Status |
 |---|---|---|
-| test_board.py | 20 | Clean |
+| test_board.py | 21 | Clean |
 | test_connection_manager.py | 5 | Clean |
-| test_engine.py | 55 | Mostly clean — 3 issues |
-| test_round_flow.py | 24 | Issues in helpers and endgame section |
-| test_voting.py | 19 | Issues in `resolve_accusation` block |
-| test_websocket.py | 32 | Clean |
+| test_engine.py | 48 | Clean |
+| test_round_flow.py | 22 | Clean |
+| test_voting.py | 18 | Clean |
+| test_websocket.py | 45 | Clean |
 
 ---
 
-## Issues
+## Resolved Issues
 
-### Issue 1 — `accused_ids` injected directly instead of going through voting
+### ✅ Issue 1 — `accused_ids` injected directly instead of going through voting
 
-**Severity: High**
+**Was: High severity**
 **Affected files:** `test_voting.py`, `test_round_flow.py`
 
-Thirteen tests skip the vote-submission flow entirely and reach the accusation phase by directly writing into `rs.accused_ids` and forcing `engine.state.phase = GamePhase.ACCUSATION`:
+Thirteen tests were skipping the vote-submission flow by directly writing `rs.accused_ids` and forcing `engine.state.phase = GamePhase.ACCUSATION`. The `accuse_safe_player()` and `accuse_morp()` helpers in `test_round_flow.py` codified this shortcut.
 
-```python
-# test_voting.py – repeated pattern across lines 124, 135, 148, 160, 173, 189, 205, 222, 239
-rs.accused_ids = [safe_ids[0]]
-engine.state.phase = GamePhase.ACCUSATION
-result = engine.resolve_accusation()
-```
-
-The same shortcut is codified in two shared helpers in `test_round_flow.py` (lines 35–52):
-
-```python
-def accuse_safe_player(engine):
-    rs = engine.state.round_state
-    safe_ids = [p.id for p in engine.lobby.players.values() if p.role == Role.SAFE]
-    rs.accused_ids = [safe_ids[0]]           # ← direct write
-    engine.state.phase = GamePhase.ACCUSATION # ← direct write
-    return engine.resolve_accusation(), safe_ids
-
-def accuse_morp(engine):
-    ...
-    rs.accused_ids = [morp_id]
-    engine.state.phase = GamePhase.ACCUSATION
-```
-
-These helpers are used by `test_damage_phase_transitions_to_round_end_when_all_morps_done`, `test_morp_guess_correct_transitions_to_round_end`, `test_morp_guess_wrong_transitions_to_round_end`, `test_start_new_round_increments_round_number`, `test_new_round_assigns_new_roles`, and `test_multi_morp_damage_all_must_deal_before_round_end` — in addition to being duplicated inline in `test_elimination_during_damage_can_trigger_endgame` (lines 150–151).
-
-**What this misses:** Any bug in `tally_votes → submit_votes → accused_ids population` would not surface in these tests. A regression where `accused_ids` is populated incorrectly (wrong player, wrong count, stale state from prior round) would be invisible.
-
-**Fix:** Replace the direct writes with the existing `make_engine_at_voting()` + `submit_votes()` pattern that already works cleanly in the voting integration tests (lines 65–113 in `test_voting.py`). The helpers `run_through_hints()` and `run_through_votes()` in `test_round_flow.py` already show the right approach — they just aren't used consistently.
+**Fix applied:** All direct writes replaced with real `submit_votes()` calls. A `vote_all_for(engine, target_id)` helper added to `test_voting.py`. The `accuse_safe_player()` and `accuse_morp()` helpers in `test_round_flow.py` rewritten to drive the full voting flow. The multi-morp (2 votes per player) case handled separately inline.
 
 ---
 
-### Issue 2 — `make_endgame_engine()` fabricates 2P endgame state
+### ✅ Issue 2 — `_pending_damage_morps` poked directly
 
-**Severity: High**
-**Affected file:** `test_round_flow.py`, lines 162–171
-**Tests affected:** All 16 endgame tests (lines 174–349)
+**Was: Medium severity**
+**Affected line:** `test_engine.py:354`
 
-The helper constructs a 4-player engine, then manually sets two players as ghosts and forces the phase:
+`engine._pending_damage_morps` was written directly, bypassing `resolve_accusation()`. The test verified the error guard in `morp_deal_damage()` but not the population logic.
 
-```python
-def make_endgame_engine():
-    engine = make_engine(num_players=4)
-    players = list(engine.lobby.players.values())
-    players[0].is_ghost = True      # ← bypasses HP/elimination logic
-    players[1].is_ghost = True
-    engine.state.phase = GamePhase.ENDGAME_2P  # ← bypasses transition trigger
-    engine.start_endgame_round(seed=42)
-    return engine, players
-```
-
-In the real game, `is_ghost` is set only when a player's HP reaches 0 through `morp_deal_damage()`, and `ENDGAME_2P` is only entered when exactly two active players remain after elimination. This helper skips all of that — including the round that causes the eliminations.
-
-The endgame logic itself (ghost hints, guessing, damage on wrong guess) is tested thoroughly and correctly. What is not tested is the transition from normal play into endgame: specifically, whether the engine correctly detects the 2-player condition, sets the right players as ghosts, and calls `start_endgame_round()` through the normal code path.
-
-**Fix:** Add a small integration test that plays through enough normal rounds to trigger a real endgame transition. The `make_endgame_engine()` helper can stay for unit-testing endgame mechanics in isolation, but the entry condition needs a separate test.
+**Fix applied:** `test_morp_deal_damage_not_in_pending_raises` now reaches the state via full hint submission → voting → `resolve_accusation()` before attempting the unauthorized damage call.
 
 ---
 
-### Issue 3 — HP set directly to engineer elimination
+### ✅ Issue 3 — Hardcoded HP value in endgame assertion
 
-**Severity: Medium**
-**Affected lines:** `test_voting.py:220`, `test_voting.py:237`, `test_round_flow.py:155`
-
-```python
-# test_voting.py:220
-target.hp = 1  # one hit from elimination
-
-# test_voting.py:237
-engine.lobby.players[safe_ids[0]].hp = 1
-
-# test_round_flow.py:155
-engine.lobby.players[safe_ids[1]].hp = 1
-```
-
-All three tests want to verify that dealing damage to a player at 1 HP triggers elimination and/or the endgame transition. Directly setting HP works, but it bypasses `morp_deal_damage()` as the source of truth for HP changes and doesn't verify that a player who has taken real damage across rounds will behave correctly when HP reaches 0.
-
-**Fix:** Call `morp_deal_damage()` the appropriate number of times in a prior round (or use a multi-round helper) to legitimately reduce HP, rather than reaching into the model directly. Alternatively, if starting HP is the intended invariant, document it as a constant and reference that in the setup rather than the hardcoded value `1`.
-
----
-
-### Issue 4 — Hardcoded HP value in endgame assertion
-
-**Severity: Low**
+**Was: Low severity**
 **Affected line:** `test_round_flow.py:250`
 
 ```python
 assert active[1].hp == 2  # took 1 damage
 ```
 
-This assumes starting HP is 3. If starting HP ever changes, this assertion fails with a confusing number rather than a clear message. The line above already stores `hp_before` for the winner — the same pattern should be used here:
-
-```python
-assert active[1].hp == hp_before - 1
-```
+**Fix applied:** Changed to `assert active[1].hp == hp_before - 1`, capturing HP before the action.
 
 ---
 
-### Issue 5 — `_pending_damage_morps` poked directly
+### ✅ Issue 4 — Tautological tie-break test
 
-**Severity: Medium**
-**Affected line:** `test_engine.py:354`
-
-```python
-engine.state.phase = GamePhase.ACCUSATION
-engine._pending_damage_morps = ["p1"]
-with pytest.raises(ValueError, match="not authorized"):
-    engine.morp_deal_damage("p0", "p2")
-```
-
-`_pending_damage_morps` is a private field populated by `resolve_accusation()`. Writing it directly tests the error guard in `morp_deal_damage()` but skips verifying that `resolve_accusation()` populates it correctly. If the population logic had a bug (e.g. wrong player IDs entered the pending list), this test would not catch it.
-
-**Fix:** Drive to this state by calling `resolve_accusation()` after a real accusation, then attempt the unauthorized damage call.
-
----
-
-### Issue 6 — Tautological tie-break test
-
-**Severity: Low**
+**Was: Low severity**
 **Affected lines:** `test_voting.py:40–42`
 
+A test called `tally_votes()` twice with the same seed and asserted the results matched — always true by definition.
+
+**Fix applied:** Test removed. The meaningful companion test `test_tie_broken_differently_with_different_seeds` remains.
+
+---
+
+### ✅ Issue 5 — Intermittent test hangs
+
+**Was: High severity**
+**Affected file:** `test_websocket.py`
+
+Three root causes:
+
+1. **`_timer_tasks.clear()` without cancelling tasks** — dict clear removes references but leaves tasks running. Fixed by iterating and calling `task.cancel()` before clearing in the `reset_global_state` fixture.
+2. **Multiple `websocket_connect()` calls creating separate event loops** — `asyncio.gather()` in `broadcast()` crossed event loop boundaries unsafely. Fixed by using `with TestClient(app) as c:` (shared portal via `TestClient.__enter__()`).
+3. **Disconnect race condition** — `WebSocketTestSession.__exit__()` cancels the ASGI task's scope before the disconnect handler finishes broadcasting. Fixed by calling `ws.close()` while the context is still open, draining expected messages, then letting `__exit__` clean up.
+
+**Supporting fixes:** `pytest-timeout = 10` added to `pyproject.toml` to surface hangs as failures rather than indefinite blocks. All `start_game` calls now pass `timers_enabled: False` to prevent timer tasks from running during tests.
+
+---
+
+## Remaining Issues
+
+### Issue A — `make_endgame_engine()` fabricates 2P endgame state
+
+**Severity: Medium**
+**Affected file:** `test_round_flow.py`
+
+The helper constructs a 4-player engine then manually sets two players as ghosts and forces the phase:
+
 ```python
-result_a = tally_votes(votes, num_morps=1, seed=42)
-result_b = tally_votes(votes, num_morps=1, seed=42)
-assert result_a == result_b
+def make_endgame_engine():
+    engine = make_engine(num_players=4)
+    players = list(engine.lobby.players.values())
+    players[0].is_ghost = True      # bypasses HP/elimination logic
+    players[1].is_ghost = True
+    engine.state.phase = GamePhase.ENDGAME_2P  # bypasses transition trigger
+    engine.start_endgame_round(seed=42)
+    return engine, players
 ```
 
-Calling a deterministic function twice with the same inputs and asserting the outputs match is always true — it doesn't test that the seed actually breaks ties, only that the function is deterministic (which all pure functions are). The companion test `test_tie_broken_differently_with_different_seeds` (line 45) is the meaningful one: it confirms different seeds produce different outcomes. The tautology test can be removed or replaced with an assertion that the tie was actually broken (i.e. more than one player had equal vote counts).
+In the real game, `is_ghost` is set only when a player's HP reaches 0 through `morp_deal_damage()`, and `ENDGAME_2P` is only entered when exactly two active players remain after elimination. The endgame mechanics themselves (ghost hints, guessing, damage on wrong guess) are tested thoroughly. What is not tested is the transition from normal play into endgame — whether the engine correctly detects the 2-player condition, sets the right players as ghosts, and calls `start_endgame_round()` through the real code path.
+
+**Recommended fix:** Add an integration test that plays through enough normal rounds to trigger a real endgame transition. The `make_endgame_engine()` helper can stay for unit-testing endgame mechanics in isolation.
+
+---
+
+### Issue B — HP set directly to engineer elimination
+
+**Severity: Low**
+**Affected lines:** `test_voting.py` (2 occurrences), `test_round_flow.py` (1 occurrence)
+
+```python
+engine.lobby.players[safe_ids[0]].hp = 1  # one hit from elimination
+```
+
+All three tests want to verify that dealing damage to a player at 1 HP triggers elimination. Directly setting HP works for this purpose, but bypasses `morp_deal_damage()` as the source of truth and doesn't verify that real accumulated damage across rounds behaves correctly at the boundary.
+
+**Recommended fix:** Call `morp_deal_damage()` the appropriate number of times across proper rounds to legitimately reduce HP, rather than reaching into the model directly.
 
 ---
 
 ## What's Well-Covered
 
-- **Board logic:** 20 tests covering load, selection, determinism, half-board subset/containment, custom board validation — all go through public APIs correctly.
+- **Board logic:** Tests covering load, selection, determinism, half-board subset/containment, custom board validation — all through public APIs.
 - **Connection manager:** Error handling and partial-failure broadcast tested with real mock sockets.
-- **WebSocket API:** 32 integration tests drive real HTTP and WebSocket calls end-to-end through the Starlette test client. This is the most realistic coverage in the suite.
+- **WebSocket API:** 45 integration tests drive real HTTP and WebSocket calls end-to-end through the Starlette test client. This is the most realistic coverage in the suite.
 - **Lobby/start path:** Player limits, disconnected player pruning, duplicate names, reconnection, host reassignment — all tested cleanly through engine methods.
-- **Voting validation:** Wrong vote count, self-vote, nonexistent target, transition to ACCUSATION — all tested via the proper `submit_votes()` path using `make_engine_at_voting()`.
+- **Voting flow:** Wrong vote count, self-vote, nonexistent target, transition to ACCUSATION, tie-breaking — all now tested via the proper `submit_votes()` path.
+- **Accusation resolution:** Both morp-accused and safe-accused paths now exercised through real voting.
+- **Damage authorization:** `_pending_damage_morps` guard now exercised via real `resolve_accusation()`.
 - **Hint turn enforcement:** Out-of-turn hints, mid-game disconnect skip — tested cleanly.
 - **Reset/new game:** Full reset and new-game lifecycle tested end-to-end.
-
----
-
-## Recommended Fix Priority
-
-| Priority | Issue | Effort |
-|---|---|---|
-| 1 | Replace `accuse_safe_player()` / `accuse_morp()` with real vote flow | Medium |
-| 2 | Add integration test for the normal-play → endgame transition | Medium |
-| 3 | Replace direct HP assignment with real damage calls | Low |
-| 4 | Replace `_pending_damage_morps` direct write with `resolve_accusation()` call | Low |
-| 5 | Fix hardcoded `hp == 2` assertion | Trivial |
-| 6 | Remove tautological tie-break test | Trivial |

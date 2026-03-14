@@ -349,11 +349,21 @@ def test_morp_deal_damage_outside_accusation_raises():
 def test_morp_deal_damage_not_in_pending_raises():
     engine = make_engine(num_players=3)
     engine.start_game(seed=1)
-    from backend.models.game import GamePhase
-    engine.state.phase = GamePhase.ACCUSATION
-    engine._pending_damage_morps = ["p1"]
+    rs = engine.state.round_state
+    # Reach ACCUSATION with morp in _pending_damage_morps via proper flow
+    for pid in rs.turn_order:
+        engine.submit_hint(pid, f"hint-{pid}")
+    morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
+    safe_ids = [p.id for p in engine.lobby.players.values() if p.role == Role.SAFE]
+    # All players vote for a safe player — morp does not get accused
+    active = engine.lobby.active_players()
+    for p in active:
+        vote_for = safe_ids[0] if p.id != safe_ids[0] else safe_ids[1]
+        engine.submit_votes(p.id, [vote_for])
+    engine.resolve_accusation()
+    # safe_ids[1] is not in _pending_damage_morps (only morp_id is) — must be rejected
     with pytest.raises(ValueError, match="not authorized"):
-        engine.morp_deal_damage("p0", "p2")  # p0 not in pending
+        engine.morp_deal_damage(safe_ids[1], safe_ids[0])
 
 
 # --- kick player ---

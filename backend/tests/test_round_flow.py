@@ -33,21 +33,24 @@ def run_through_votes(engine, seed=1, accuse=None):
 
 
 def accuse_safe_player(engine):
-    """Force accusation of a safe player so morp gets to deal damage."""
-    rs = engine.state.round_state
+    """Vote to accuse a safe player so the morp gets to deal damage."""
     safe_ids = [p.id for p in engine.lobby.players.values() if p.role == Role.SAFE]
-    rs.accused_ids = [safe_ids[0]]
-    engine.state.phase = GamePhase.ACCUSATION
+    active = engine.lobby.active_players()
+    target = safe_ids[0]
+    fallback = next(p.id for p in active if p.id != target)
+    for p in active:
+        engine.submit_votes(p.id, [target if p.id != target else fallback])
     result = engine.resolve_accusation()
     return result, safe_ids
 
 
 def accuse_morp(engine):
-    """Force accusation of the morp."""
-    rs = engine.state.round_state
+    """Vote to accuse the morp."""
     morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
-    rs.accused_ids = [morp_id]
-    engine.state.phase = GamePhase.ACCUSATION
+    active = engine.lobby.active_players()
+    fallback = next(p.id for p in active if p.id != morp_id)
+    for p in active:
+        engine.submit_votes(p.id, [morp_id if p.id != morp_id else fallback])
     result = engine.resolve_accusation()
     return result, morp_id
 
@@ -122,11 +125,13 @@ def test_new_round_assigns_new_roles():
 def test_multi_morp_damage_all_must_deal_before_round_end():
     engine = make_engine(num_players=5, num_morps=2)
     run_through_hints(engine)
-    rs = engine.state.round_state
     morp_ids = [p.id for p in engine.lobby.players.values() if p.role == Role.MORP]
     safe_ids = [p.id for p in engine.lobby.players.values() if p.role == Role.SAFE]
-    rs.accused_ids = [safe_ids[0]]
-    engine.state.phase = GamePhase.ACCUSATION
+    active = engine.lobby.active_players()
+    # Each player votes for 2 safe players (no self-votes), keeping morps un-accused
+    for p in active:
+        picks = [sid for sid in safe_ids if sid != p.id][:2]
+        engine.submit_votes(p.id, picks)
     engine.resolve_accusation()
 
     # First morp deals damage — not done yet
@@ -143,12 +148,12 @@ def test_multi_morp_damage_all_must_deal_before_round_end():
 def test_elimination_during_damage_can_trigger_endgame():
     engine = make_engine(num_players=3)
     run_through_hints(engine)
-    rs = engine.state.round_state
     morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
     safe_ids = [p.id for p in engine.lobby.players.values() if p.role == Role.SAFE]
-
-    rs.accused_ids = [safe_ids[0]]
-    engine.state.phase = GamePhase.ACCUSATION
+    active = engine.lobby.active_players()
+    fallback = next(p.id for p in active if p.id != safe_ids[0])
+    for p in active:
+        engine.submit_votes(p.id, [safe_ids[0] if p.id != safe_ids[0] else fallback])
     engine.resolve_accusation()
 
     # Set last safe player to 1 HP so damage kills them
@@ -245,9 +250,10 @@ def test_endgame_loser_takes_damage_after_correct_guess():
         engine.endgame_submit_ghost_hint(g.id, f"hint {i}")
 
     active = engine.lobby.active_players()
+    hp_before = active[1].hp
     target = engine.state.endgame_state.target_word
     engine.endgame_submit_guess(active[0].id, target)
-    assert active[1].hp == 2  # took 1 damage
+    assert active[1].hp == hp_before - 1
 
 
 def test_endgame_wrong_guess_does_not_block_opponent():

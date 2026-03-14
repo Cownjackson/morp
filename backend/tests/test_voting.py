@@ -29,18 +29,6 @@ def test_accused_count_equals_num_morps():
     assert len(accused) == 1
 
 
-def test_tie_broken_deterministically():
-    # All players receive equal votes — tie break must be seeded
-    votes = {
-        "p0": ["p1"],
-        "p1": ["p2"],
-        "p2": ["p3"],
-        "p3": ["p0"],
-    }
-    result_a = tally_votes(votes, num_morps=1, seed=42)
-    result_b = tally_votes(votes, num_morps=1, seed=42)
-    assert result_a == result_b
-
 
 def test_tie_broken_differently_with_different_seeds():
     votes = {
@@ -72,6 +60,14 @@ def make_engine_at_voting(num_players=4, num_morps=1, seed=1):
         engine.submit_hint(pid, f"hint-{pid}")
     assert engine.state.phase == GamePhase.VOTING
     return engine
+
+
+def vote_all_for(engine, target_id):
+    """Have every active player vote for target_id (target votes for someone else)."""
+    active = engine.lobby.active_players()
+    fallback = next(p.id for p in active if p.id != target_id)
+    for p in active:
+        engine.submit_votes(p.id, [target_id if p.id != target_id else fallback])
 
 
 def test_player_cannot_vote_for_themselves():
@@ -116,24 +112,18 @@ def test_accused_ids_populated_after_voting():
 
 def test_no_morp_accused_returns_morp_damage_phase():
     engine = make_engine_at_voting(num_players=4, num_morps=1, seed=1)
-    rs = engine.state.round_state
-    morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
     safe_ids = [p.id for p in engine.lobby.players.values() if p.role == Role.SAFE]
 
-    # Force accusation of a safe player only
-    rs.accused_ids = [safe_ids[0]]
-    engine.state.phase = GamePhase.ACCUSATION
+    vote_all_for(engine, safe_ids[0])
     result = engine.resolve_accusation()
     assert result["morp_gets_to_damage"] is True
 
 
 def test_morp_accused_returns_morp_guess_phase():
     engine = make_engine_at_voting(num_players=4, num_morps=1, seed=1)
-    rs = engine.state.round_state
     morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
 
-    rs.accused_ids = [morp_id]
-    engine.state.phase = GamePhase.ACCUSATION
+    vote_all_for(engine, morp_id)
     result = engine.resolve_accusation()
     assert result["morp_must_guess"] is True
     assert engine.state.phase == GamePhase.MORP_GUESS
@@ -145,8 +135,7 @@ def test_non_accused_player_cannot_submit_guess():
     morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
     safe_ids = [p.id for p in engine.lobby.players.values() if p.role == Role.SAFE]
 
-    rs.accused_ids = [morp_id]
-    engine.state.phase = GamePhase.ACCUSATION
+    vote_all_for(engine, morp_id)
     engine.resolve_accusation()
 
     with pytest.raises(ValueError, match="accused morp"):
@@ -157,8 +146,8 @@ def test_morp_correct_guess_takes_no_damage():
     engine = make_engine_at_voting(num_players=4, num_morps=1, seed=1)
     rs = engine.state.round_state
     morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
-    rs.accused_ids = [morp_id]
-    engine.state.phase = GamePhase.ACCUSATION
+
+    vote_all_for(engine, morp_id)
     engine.resolve_accusation()
 
     hp_before = engine.lobby.players[morp_id].hp
@@ -170,8 +159,8 @@ def test_morp_wrong_guess_takes_damage():
     engine = make_engine_at_voting(num_players=4, num_morps=1, seed=1)
     rs = engine.state.round_state
     morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
-    rs.accused_ids = [morp_id]
-    engine.state.phase = GamePhase.ACCUSATION
+
+    vote_all_for(engine, morp_id)
     engine.resolve_accusation()
 
     hp_before = engine.lobby.players[morp_id].hp
@@ -182,12 +171,10 @@ def test_morp_wrong_guess_takes_damage():
 
 def test_no_morp_accused_morp_deals_damage():
     engine = make_engine_at_voting(num_players=4, num_morps=1, seed=1)
-    rs = engine.state.round_state
     morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
     safe_ids = [p.id for p in engine.lobby.players.values() if p.role == Role.SAFE]
 
-    rs.accused_ids = [safe_ids[0]]
-    engine.state.phase = GamePhase.ACCUSATION
+    vote_all_for(engine, safe_ids[0])
     engine.resolve_accusation()
 
     target_id = safe_ids[1]
@@ -198,12 +185,10 @@ def test_no_morp_accused_morp_deals_damage():
 
 def test_morp_cannot_damage_self():
     engine = make_engine_at_voting(num_players=4, num_morps=1, seed=1)
-    rs = engine.state.round_state
     morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
     safe_ids = [p.id for p in engine.lobby.players.values() if p.role == Role.SAFE]
 
-    rs.accused_ids = [safe_ids[0]]
-    engine.state.phase = GamePhase.ACCUSATION
+    vote_all_for(engine, safe_ids[0])
     engine.resolve_accusation()
 
     with pytest.raises(ValueError, match="yourself"):
@@ -212,15 +197,12 @@ def test_morp_cannot_damage_self():
 
 def test_player_eliminated_becomes_ghost():
     engine = make_engine_at_voting(num_players=4, num_morps=1, seed=1)
-    rs = engine.state.round_state
     morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
     safe_ids = [p.id for p in engine.lobby.players.values() if p.role == Role.SAFE]
 
-    target = engine.lobby.players[safe_ids[0]]
-    target.hp = 1  # one hit from elimination
+    engine.lobby.players[safe_ids[0]].hp = 1  # one hit from elimination
 
-    rs.accused_ids = [safe_ids[1]]
-    engine.state.phase = GamePhase.ACCUSATION
+    vote_all_for(engine, safe_ids[1])
     engine.resolve_accusation()
     engine.morp_deal_damage(morp_id, safe_ids[0])
 
@@ -229,15 +211,13 @@ def test_player_eliminated_becomes_ghost():
 
 def test_two_active_players_triggers_endgame():
     engine = make_engine_at_voting(num_players=3, num_morps=1, seed=1)
-    rs = engine.state.round_state
     morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
     safe_ids = [p.id for p in engine.lobby.players.values() if p.role == Role.SAFE]
 
-    # Eliminate one safe player manually so only 2 active remain after damage
+    # Set safe_ids[0] to 1 HP so damage kills them, leaving only 2 active
     engine.lobby.players[safe_ids[0]].hp = 1
 
-    rs.accused_ids = [safe_ids[1]]  # accuse a safe player (wrong accusation)
-    engine.state.phase = GamePhase.ACCUSATION
+    vote_all_for(engine, safe_ids[1])  # accuse a safe player (wrong accusation)
     engine.resolve_accusation()
     engine.morp_deal_damage(morp_id, safe_ids[0])
 
