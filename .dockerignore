@@ -1,0 +1,10 @@
+.venv
+.git
+.claude
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+docs
+prompt.md
+pyproject.toml
