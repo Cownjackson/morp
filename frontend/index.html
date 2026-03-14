@@ -186,6 +186,33 @@
       border: 5px solid transparent; border-top-color: #4a4a4a;
     }
     .speech-bubble.skipped { color: #444; font-style: italic; }
+    .speech-bubble.drawing-bubble { width: 120px; padding: 4px; }
+    .speech-bubble.drawing-bubble canvas { width: 100%; border-radius: 3px; display: block; }
+
+    /* ── Drawing toolbar ── */
+    .draw-toolbar {
+      display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+      padding: 6px 8px; margin-bottom: 6px;
+      background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px;
+    }
+    .draw-sep { width: 1px; height: 18px; background: #333; flex-shrink: 0; }
+    .color-swatch {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid transparent; cursor: pointer; padding: 0;
+      flex-shrink: 0; transition: border-color 0.1s;
+    }
+    .color-swatch.active { border-color: #fff !important; }
+    .color-swatch:hover:not(.active) { border-color: #666; }
+    .size-btn {
+      background: #1e1e1e; color: #aaa; border: 1px solid #3a3a3a;
+      padding: 2px 7px; font-size: 0.78em; cursor: pointer; border-radius: 3px;
+    }
+    .size-btn.active { background: #1e3a1e; color: #8ef; border-color: #3a6a3a; }
+    .tool-btn {
+      background: #1e1e1e; color: #aaa; border: 1px solid #3a3a3a;
+      padding: 2px 8px; font-size: 0.78em; cursor: pointer; border-radius: 3px;
+    }
+    .tool-btn.active { background: #3a1e1e; color: #faa; border-color: #7a3a3a; }
 
     .avatar-circle {
       width: 54px; height: 54px; border-radius: 50%;
@@ -286,9 +313,13 @@
     <!-- LOBBY -->
     <div id="act-lobby" class="action-section">
       <div id="host-controls" class="hidden">
-        <div class="toggle-row" style="margin-bottom:10px">
+        <div class="toggle-row" style="margin-bottom:6px">
           <input type="checkbox" id="timers-toggle" checked>
           <label for="timers-toggle">Timers enabled (30 s morp guess / endgame guess)</label>
+        </div>
+        <div class="toggle-row" style="margin-bottom:10px">
+          <input type="checkbox" id="drawing-hints-toggle">
+          <label for="drawing-hints-toggle">Drawing hints (players draw instead of type)</label>
         </div>
         <div style="margin-bottom:10px">
           <div style="font-size:0.85em;color:#888;margin-bottom:4px">
@@ -309,9 +340,35 @@
     <div id="act-hint" class="action-section hidden">
       <div id="turn-indicator" style="margin-bottom:8px;font-size:0.88em"></div>
       <div id="your-turn-block" class="hidden">
-        <div class="row">
+        <!-- Text mode -->
+        <div id="hint-text-block" class="row">
           <input type="text" id="hint-input" placeholder="Your hint…" style="width:260px" maxlength="30">
           <button onclick="submitHint()">Submit</button>
+        </div>
+        <!-- Drawing mode -->
+        <div id="hint-drawing-block" class="hidden">
+          <div class="draw-toolbar" id="hint-toolbar">
+            <button class="color-swatch active" data-color="#ffffff" style="background:#fff" title="White" onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#ffeb3b" style="background:#ffeb3b" title="Yellow" onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#f44336" style="background:#f44336" title="Red" onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#ff9800" style="background:#ff9800" title="Orange" onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#4caf50" style="background:#4caf50" title="Green" onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#00bcd4" style="background:#00bcd4" title="Cyan" onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#2196f3" style="background:#2196f3" title="Blue" onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#9c27b0" style="background:#9c27b0" title="Purple" onclick="setDrawColor('hint',this)"></button>
+            <div class="draw-sep"></div>
+            <button class="size-btn active" data-size="3" onclick="setDrawSize('hint',this)">S</button>
+            <button class="size-btn" data-size="7" onclick="setDrawSize('hint',this)">M</button>
+            <button class="size-btn" data-size="14" onclick="setDrawSize('hint',this)">L</button>
+            <div class="draw-sep"></div>
+            <button class="tool-btn" id="hint-eraser-btn" onclick="toggleEraser('hint',this)">Eraser</button>
+            <button class="tool-btn" onclick="undoStroke('hint-canvas')">Undo</button>
+            <button class="tool-btn" onclick="clearCanvas('hint-canvas')">Clear</button>
+          </div>
+          <canvas id="hint-canvas" width="560" height="360"
+            style="background:#111;border:1px solid #444;border-radius:4px;cursor:crosshair;touch-action:none;display:block;max-width:100%">
+          </canvas>
+          <button onclick="submitHint()" style="margin-top:6px">Submit Drawing</button>
         </div>
       </div>
     </div>
@@ -319,6 +376,9 @@
     <!-- VOTING -->
     <div id="act-vote" class="action-section hidden">
       <h3>Vote — pick <span id="vote-count-label"></span> suspect(s)</h3>
+      <div id="drawing-hints-review" class="hidden"
+        style="max-height:220px;overflow-y:auto;margin-bottom:10px;padding:8px;background:#111;border:1px solid #2a2a2a;border-radius:4px">
+      </div>
       <div id="vote-buttons" style="margin-bottom:8px"></div>
       <button id="btn-submit-votes" onclick="submitVotes()" disabled>Submit Votes</button>
       <span id="vote-waiting" style="display:none;margin-left:12px;color:#555;font-size:0.88em">Votes submitted — waiting…</span>
@@ -363,9 +423,35 @@
       </div>
       <div id="endgame-ghost-input-block" class="hidden">
         <p style="color:#777;font-size:0.85em;margin-bottom:6px">You are a ghost — submit a hint for the finalists:</p>
-        <div class="row">
+        <!-- Text mode -->
+        <div id="endgame-ghost-text-block" class="row">
           <input type="text" id="endgame-ghost-hint-input" placeholder="Your hint…" style="width:260px" maxlength="30">
           <button onclick="submitEndgameGhostHint()">Submit</button>
+        </div>
+        <!-- Drawing mode -->
+        <div id="endgame-ghost-drawing-block" class="hidden">
+          <div class="draw-toolbar" id="endgame-ghost-toolbar">
+            <button class="color-swatch active" data-color="#ffffff" style="background:#fff" title="White" onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#ffeb3b" style="background:#ffeb3b" title="Yellow" onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#f44336" style="background:#f44336" title="Red" onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#ff9800" style="background:#ff9800" title="Orange" onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#4caf50" style="background:#4caf50" title="Green" onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#00bcd4" style="background:#00bcd4" title="Cyan" onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#2196f3" style="background:#2196f3" title="Blue" onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#9c27b0" style="background:#9c27b0" title="Purple" onclick="setDrawColor('endgame',this)"></button>
+            <div class="draw-sep"></div>
+            <button class="size-btn active" data-size="3" onclick="setDrawSize('endgame',this)">S</button>
+            <button class="size-btn" data-size="7" onclick="setDrawSize('endgame',this)">M</button>
+            <button class="size-btn" data-size="14" onclick="setDrawSize('endgame',this)">L</button>
+            <div class="draw-sep"></div>
+            <button class="tool-btn" id="endgame-eraser-btn" onclick="toggleEraser('endgame',this)">Eraser</button>
+            <button class="tool-btn" onclick="undoStroke('endgame-ghost-canvas')">Undo</button>
+            <button class="tool-btn" onclick="clearCanvas('endgame-ghost-canvas')">Clear</button>
+          </div>
+          <canvas id="endgame-ghost-canvas" width="560" height="360"
+            style="background:#111;border:1px solid #444;border-radius:4px;cursor:crosshair;touch-action:none;display:block;max-width:100%">
+          </canvas>
+          <button onclick="submitEndgameGhostHint()" style="margin-top:6px">Submit Drawing</button>
         </div>
       </div>
       <p id="endgame-ghost-waiting"  style="display:none;color:#555;font-size:0.88em">Hint submitted — waiting for others…</p>
@@ -450,6 +536,7 @@ const state = {
   selectedVotes: [], numVotes: 1,
   _accusedMorpIds: [],
   isGhost: false, endgameTargetWord: null,
+  drawingHints: false,
 };
 
 const _colorMap = {};
@@ -689,10 +776,11 @@ function handleMessage(msg) {
     }
 
     case 'lobby_update': {
-      state.players = Object.fromEntries(msg.players.map(p => [p.id, p]));
-      state.hostId  = msg.host_id;
-      state.isHost  = msg.host_id === state.playerId;
-      state.isGhost = state.players[state.playerId]?.is_ghost ?? false;
+      state.players     = Object.fromEntries(msg.players.map(p => [p.id, p]));
+      state.hostId      = msg.host_id;
+      state.isHost      = msg.host_id === state.playerId;
+      state.isGhost     = state.players[state.playerId]?.is_ghost ?? false;
+      state.drawingHints = msg.drawing_hints ?? false;
       renderPlayerRow();
       document.getElementById('host-controls').classList.toggle('hidden', !state.isHost);
       document.getElementById('lobby-waiting').style.display = state.isHost ? 'none' : 'block';
@@ -731,11 +819,14 @@ function handleMessage(msg) {
       break;
 
     case 'hint_received':
-      state.hints.push({ player_id: msg.player_id, text: msg.text });
-      state.speechBubbles[msg.player_id] = { text: msg.text, skipped: !msg.text };
+      state.hints.push({ player_id: msg.player_id, text: msg.text, is_drawing: msg.is_drawing, drawing_data: msg.drawing_data });
+      state.speechBubbles[msg.player_id] = {
+        text: msg.text, skipped: !msg.text && !msg.is_drawing,
+        is_drawing: msg.is_drawing || false, drawing_data: msg.drawing_data || null,
+      };
       renderPlayerRow();
       checkYourTurn();
-      log(`Hint from ${playerName(msg.player_id)}: "${msg.text || '(skipped)'}"`, '');
+      log(msg.is_drawing ? `Drawing hint from ${playerName(msg.player_id)}` : `Hint from ${playerName(msg.player_id)}: "${msg.text || '(skipped)'}"`, '');
       break;
 
     case 'voting_open':
@@ -744,7 +835,10 @@ function handleMessage(msg) {
       state.selectedVotes = [];
       // Populate bubbles from server-supplied hints (covers reconnect case)
       for (const h of msg.hints) {
-        state.speechBubbles[h.player_id] = { text: h.text, skipped: !h.text };
+        state.speechBubbles[h.player_id] = {
+          text: h.text, skipped: !h.text && !h.is_drawing,
+          is_drawing: h.is_drawing || false, drawing_data: h.drawing_data || null,
+        };
       }
       renderPlayerRow();
       if (!state.isGhost) {
@@ -845,6 +939,11 @@ function handleMessage(msg) {
       document.getElementById('board-area').classList.remove('hidden');
       const isGhost = (msg.ghost_ids || []).includes(state.playerId);
       document.getElementById('endgame-ghost-input-block').classList.toggle('hidden', !isGhost);
+      if (isGhost) {
+        document.getElementById('endgame-ghost-text-block').classList.toggle('hidden', state.drawingHints);
+        document.getElementById('endgame-ghost-drawing-block').classList.toggle('hidden', !state.drawingHints);
+        if (state.drawingHints) clearCanvas('endgame-ghost-canvas');
+      }
       document.getElementById('endgame-ghost-waiting').style.display     = 'none';
       document.getElementById('endgame-finalist-waiting').style.display  = isGhost ? 'none' : 'block';
       document.getElementById('endgame-ghost-hint-input').disabled       = false;
@@ -855,8 +954,11 @@ function handleMessage(msg) {
     }
 
     case 'endgame_hint_received':
-      if (msg.text) {
-        state.speechBubbles[msg.player_id] = { text: msg.text, skipped: false };
+      if (msg.text || msg.is_drawing) {
+        state.speechBubbles[msg.player_id] = {
+          text: msg.text || '', skipped: false,
+          is_drawing: msg.is_drawing || false, drawing_data: msg.drawing_data || null,
+        };
         renderPlayerRow();
       }
       if (msg.player_id === state.playerId) {
@@ -1019,8 +1121,19 @@ function renderPlayerRow() {
     const bubble = state.speechBubbles[p.id];
     if (bubble !== undefined) {
       const bel = document.createElement('div');
-      bel.className = 'speech-bubble' + (bubble.skipped ? ' skipped' : '');
-      bel.textContent = bubble.skipped ? '(skipped)' : bubble.text;
+      if (bubble.skipped) {
+        bel.className = 'speech-bubble skipped';
+        bel.textContent = '(skipped)';
+      } else if (bubble.is_drawing && bubble.drawing_data) {
+        bel.className = 'speech-bubble drawing-bubble';
+        const cv = document.createElement('canvas');
+        cv.width = 112; cv.height = 72;
+        renderStrokesToCanvas(cv, bubble.drawing_data);
+        bel.appendChild(cv);
+      } else {
+        bel.className = 'speech-bubble';
+        bel.textContent = bubble.text;
+      }
       wrap.appendChild(bel);
     }
 
@@ -1077,6 +1190,11 @@ function checkYourTurn() {
   const currentPid = state.turnOrder[state.hints.length];
   const isMyTurn   = currentPid === state.playerId;
   document.getElementById('your-turn-block').classList.toggle('hidden', !isMyTurn);
+  if (isMyTurn) {
+    document.getElementById('hint-text-block').classList.toggle('hidden', state.drawingHints);
+    document.getElementById('hint-drawing-block').classList.toggle('hidden', !state.drawingHints);
+    if (state.drawingHints) clearCanvas('hint-canvas');
+  }
   const indicator = document.getElementById('turn-indicator');
   if (!currentPid) {
     indicator.textContent = ''; indicator.style.color = '';
@@ -1095,6 +1213,31 @@ function renderVoteButtons() {
   el.innerHTML = '';
   document.getElementById('vote-count-label').textContent = state.numVotes;
   document.getElementById('vote-waiting').style.display = 'none';
+
+  // Drawing hints review panel
+  const reviewEl = document.getElementById('drawing-hints-review');
+  if (state.drawingHints) {
+    reviewEl.classList.remove('hidden');
+    reviewEl.innerHTML = '';
+    for (const h of state.hints) {
+      if (!h.is_drawing || !h.drawing_data) continue;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:8px';
+      const label = document.createElement('span');
+      label.style.cssText = 'font-size:0.8em;color:#aaa;width:70px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      label.textContent = playerName(h.player_id);
+      const cv = document.createElement('canvas');
+      cv.width = 224; cv.height = 144;
+      cv.style.cssText = 'border-radius:4px;border:1px solid #333;flex-shrink:0;max-width:224px';
+      renderStrokesToCanvas(cv, h.drawing_data);
+      row.appendChild(label);
+      row.appendChild(cv);
+      reviewEl.appendChild(row);
+    }
+  } else {
+    reviewEl.classList.add('hidden');
+  }
+
   for (const p of Object.values(state.players)) {
     if (p.is_ghost || p.id === state.playerId) continue;
     const btn = document.createElement('button');
@@ -1171,17 +1314,27 @@ function clearTimer(elId) {
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
 function startGame() {
-  send({ type: 'start_game', timers_enabled: document.getElementById('timers-toggle').checked });
+  send({
+    type: 'start_game',
+    timers_enabled: document.getElementById('timers-toggle').checked,
+    drawing_hints: document.getElementById('drawing-hints-toggle').checked,
+  });
 }
 
 function nextRound() { send({ type: 'next_round' }); }
 
 function submitHint() {
-  const input = document.getElementById('hint-input');
-  const text = input.value.trim();
-  if (!text) return;
-  send({ type: 'submit_hint', text });
-  input.value = '';
+  if (state.drawingHints) {
+    const strokes = _drawState['hint-canvas']?.strokes ?? [];
+    send({ type: 'submit_hint', drawing_data: strokes });
+    clearCanvas('hint-canvas');
+  } else {
+    const input = document.getElementById('hint-input');
+    const text = input.value.trim();
+    if (!text) return;
+    send({ type: 'submit_hint', text });
+    input.value = '';
+  }
 }
 
 function submitVotes() {
@@ -1201,11 +1354,18 @@ function submitMorpGuess() {
 }
 
 function submitEndgameGhostHint() {
-  const input = document.getElementById('endgame-ghost-hint-input');
-  const text = input.value.trim();
-  if (!text) return;
-  send({ type: 'endgame_submit_ghost_hint', text });
-  input.disabled = true;
+  if (state.drawingHints) {
+    const strokes = _drawState['endgame-ghost-canvas']?.strokes ?? [];
+    send({ type: 'endgame_submit_ghost_hint', drawing_data: strokes });
+    clearCanvas('endgame-ghost-canvas');
+    document.getElementById('endgame-ghost-drawing-block').classList.add('hidden');
+  } else {
+    const input = document.getElementById('endgame-ghost-hint-input');
+    const text = input.value.trim();
+    if (!text) return;
+    send({ type: 'endgame_submit_ghost_hint', text });
+    input.disabled = true;
+  }
 }
 
 function submitEndgameGuess() {
@@ -1223,6 +1383,7 @@ function _localResetToLobby() {
     board: null, turnOrder: [], hints: [],
     speechBubbles: {}, selectedVotes: [], numVotes: 1,
     isGhost: false, endgameTargetWord: null, hostId: null,
+    drawingHints: false,
   });
   Object.keys(_timers).forEach(clearTimer);
   renderRoleBanner();
@@ -1237,6 +1398,212 @@ function resetToLobby() {
   if (state.isHost && state.ws) send({ type: 'reset_game' });
 }
 
+// ─── Drawing engine ───────────────────────────────────────────────────────────
+
+// Per-canvas state: strokes accumulated, current in-flight stroke, drawing flag
+const _drawState = {};
+
+// Per-tool-key settings: hint canvas vs endgame ghost canvas
+const _drawTools = {
+  hint:    { color: '#ffffff', size: 3, eraser: false },
+  endgame: { color: '#ffffff', size: 3, eraser: false },
+};
+
+function _fillBg(ctx, canvas) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+function initCanvas(canvasId, toolKey) {
+  _drawState[canvasId] = { strokes: [], drawing: false, lastPos: null };
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  _fillBg(ctx, canvas);
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return {
+      x: (src.clientX - rect.left) * (canvas.width / rect.width),
+      y: (src.clientY - rect.top)  * (canvas.height / rect.height),
+    };
+  }
+
+  function applyToolStyle() {
+    const t = _drawTools[toolKey];
+    if (t.eraser) {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+      ctx.fillStyle   = 'rgba(0,0,0,1)';
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = t.color;
+      ctx.fillStyle   = t.color;
+    }
+    ctx.lineWidth = t.size;
+    ctx.lineCap   = 'round';
+    ctx.lineJoin  = 'round';
+  }
+
+  function startDraw(e) {
+    const ds = _drawState[canvasId];
+    const t  = _drawTools[toolKey];
+    ds.drawing  = true;
+    ds.lastPos  = getPos(e);
+    ds.currentStroke = {
+      color: t.eraser ? null : t.color,
+      size: t.size,
+      eraser: t.eraser,
+      points: [{ ...ds.lastPos }],
+    };
+    applyToolStyle();
+    // Draw a dot in case it's a single tap/click
+    ctx.beginPath();
+    ctx.arc(ds.lastPos.x, ds.lastPos.y, t.size / 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function moveDraw(e) {
+    const ds = _drawState[canvasId];
+    if (!ds.drawing) return;
+    const pos = getPos(e);
+    applyToolStyle();
+    ctx.beginPath();
+    ctx.moveTo(ds.lastPos.x, ds.lastPos.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    ds.lastPos = pos;
+    ds.currentStroke.points.push({ ...pos });
+  }
+
+  function endDraw() {
+    const ds = _drawState[canvasId];
+    if (!ds.drawing) return;
+    ds.drawing = false;
+    ctx.globalCompositeOperation = 'source-over';
+    if (ds.currentStroke && ds.currentStroke.points.length > 0) {
+      ds.strokes.push(ds.currentStroke);
+    }
+    ds.currentStroke = null;
+  }
+
+  canvas.addEventListener('mousedown',  e => { e.preventDefault(); startDraw(e); });
+  canvas.addEventListener('mousemove',  e => { if (e.buttons === 1) moveDraw(e); });
+  canvas.addEventListener('mouseup',    endDraw);
+  canvas.addEventListener('mouseleave', endDraw);
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); startDraw(e); }, { passive: false });
+  canvas.addEventListener('touchmove',  e => { e.preventDefault(); moveDraw(e); },  { passive: false });
+  canvas.addEventListener('touchend',   endDraw);
+}
+
+function clearCanvas(canvasId) {
+  const ds = _drawState[canvasId];
+  if (!ds) return;
+  ds.strokes = []; ds.drawing = false; ds.currentStroke = null;
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.globalCompositeOperation = 'source-over';
+  _fillBg(ctx, canvas);
+}
+
+function undoStroke(canvasId) {
+  const ds = _drawState[canvasId];
+  if (!ds || ds.strokes.length === 0) return;
+  ds.strokes.pop();
+  _replayCanvas(canvasId);
+}
+
+function _replayCanvas(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.globalCompositeOperation = 'source-over';
+  _fillBg(ctx, canvas);
+  for (const stroke of _drawState[canvasId].strokes) {
+    _drawStrokeOnCtx(ctx, stroke, 1, 1);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+function _drawStrokeOnCtx(ctx, stroke, scaleX, scaleY) {
+  if (!stroke.points || stroke.points.length === 0) return;
+  const sz = stroke.size * Math.min(scaleX, scaleY);
+  ctx.save();
+  if (stroke.eraser) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.strokeStyle = 'rgba(0,0,0,1)';
+    ctx.fillStyle   = 'rgba(0,0,0,1)';
+  } else {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = stroke.color;
+    ctx.fillStyle   = stroke.color;
+  }
+  ctx.lineWidth = sz;
+  ctx.lineCap   = 'round';
+  ctx.lineJoin  = 'round';
+  if (stroke.points.length === 1) {
+    ctx.beginPath();
+    ctx.arc(stroke.points[0].x * scaleX, stroke.points[0].y * scaleY, sz / 2, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(stroke.points[0].x * scaleX, stroke.points[0].y * scaleY);
+    for (let i = 1; i < stroke.points.length; i++) {
+      ctx.lineTo(stroke.points[i].x * scaleX, stroke.points[i].y * scaleY);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Render strokes received from the server onto any display canvas
+// Source canvas size is always 560×360 (hint-canvas / endgame-ghost-canvas dimensions)
+const _SRC_W = 560, _SRC_H = 360;
+function renderStrokesToCanvas(canvas, strokes) {
+  if (!strokes || !strokes.length) return;
+  const ctx = canvas.getContext('2d');
+  ctx.globalCompositeOperation = 'source-over';
+  _fillBg(ctx, canvas);
+  const sx = canvas.width  / _SRC_W;
+  const sy = canvas.height / _SRC_H;
+  for (const stroke of strokes) _drawStrokeOnCtx(ctx, stroke, sx, sy);
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+// ─── Drawing tool controls ─────────────────────────────────────────────────────
+
+function setDrawColor(toolKey, el) {
+  const t = _drawTools[toolKey];
+  t.color  = el.dataset.color;
+  t.eraser = false;
+  const toolbar = el.closest('.draw-toolbar');
+  toolbar.querySelectorAll('.color-swatch').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const eraserBtn = toolbar.querySelector('.tool-btn');
+  if (eraserBtn) eraserBtn.classList.remove('active');
+}
+
+function setDrawSize(toolKey, el) {
+  _drawTools[toolKey].size = parseInt(el.dataset.size, 10);
+  const toolbar = el.closest('.draw-toolbar');
+  toolbar.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function toggleEraser(toolKey, el) {
+  const t = _drawTools[toolKey];
+  t.eraser = !t.eraser;
+  el.classList.toggle('active', t.eraser);
+  // Deselect color swatches visually when eraser is on
+  const toolbar = el.closest('.draw-toolbar');
+  toolbar.querySelectorAll('.color-swatch').forEach(b => b.classList.toggle('active', !t.eraser && b.dataset.color === t.color));
+}
+
 // ─── Enter key shortcuts ──────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
@@ -1247,6 +1614,10 @@ document.addEventListener('keydown', e => {
   if (id === 'endgame-guess-input')      submitEndgameGuess();
   if (id === 'join-code')                joinLobby();
 });
+
+// ─── Init ──────────────────────────────────────────────────────────────────────
+initCanvas('hint-canvas',         'hint');
+initCanvas('endgame-ghost-canvas', 'endgame');
 </script>
 </body>
 </html>

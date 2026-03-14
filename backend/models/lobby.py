@@ -6,6 +6,7 @@ class LobbyConfig(BaseModel):
     num_morps: int = 1
     max_players: int = 10
     timers_enabled: bool = True
+    drawing_hints: bool = False
 
 
 class Lobby(BaseModel):

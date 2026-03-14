@@ -141,11 +141,7 @@ async def kick_player(lobby_id: str, body: KickRequest):
 
     if phase_before == GamePhase.HINT and rs:
         for h in rs.hints[hints_before:]:
-            await manager.broadcast(lobby_id, {
-                "type": "hint_received",
-                "player_id": h.player_id,
-                "text": h.text,
-            })
+            await manager.broadcast(lobby_id, {"type": "hint_received", **_hint_payload(h)})
 
     if phase_before == GamePhase.HINT and phase_after == GamePhase.VOTING:
         await _broadcast_voting_open(lobby_id, engine)
@@ -207,7 +203,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
         rs = engine.state.round_state
         await manager.send(lobby_id, player_id, {
             "type": "voting_open",
-            "hints": [{"player_id": h.player_id, "text": h.text} for h in rs.hints],
+            "hints": [_hint_payload(h) for h in rs.hints],
             "num_votes": engine.lobby.config.num_morps,
         })
     elif _phase == GamePhase.MORP_GUESS:
@@ -245,8 +241,8 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
         for h in es.ghost_hints:
             await manager.send(lobby_id, player_id, {
                 "type": "endgame_hint_received",
-                "player_id": h.player_id,
-                "text": h.text,
+                "all_in": False,
+                **_hint_payload(h),
             })
 
     try:
@@ -272,11 +268,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
         # Broadcast hint_received for every hint that was auto-skipped on disconnect
         if phase_before == GamePhase.HINT and rs:
             for h in rs.hints[hints_before:]:
-                await manager.broadcast(lobby_id, {
-                    "type": "hint_received",
-                    "player_id": h.player_id,
-                    "text": h.text,
-                })
+                await manager.broadcast(lobby_id, {"type": "hint_received", **_hint_payload(h)})
 
         if phase_before == GamePhase.HINT and phase_after == GamePhase.VOTING:
             await _broadcast_voting_open(lobby_id, engine)
@@ -314,11 +306,7 @@ async def _send_hint_phase_rejoin(lobby_id: str, player_id: str, engine: GameEng
 
     # Replay hints already submitted so speech bubbles are up to date
     for h in rs.hints:
-        await manager.send(lobby_id, player_id, {
-            "type": "hint_received",
-            "player_id": h.player_id,
-            "text": h.text,
-        })
+        await manager.send(lobby_id, player_id, {"type": "hint_received", **_hint_payload(h)})
 
 
 # ── Message handler ───────────────────────────────────────────────────────────
@@ -328,8 +316,8 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
 
     try:
         if msg_type == "start_game":
-            timers = data.get("timers_enabled", True)
-            engine.lobby.config.timers_enabled = timers
+            engine.lobby.config.timers_enabled = data.get("timers_enabled", True)
+            engine.lobby.config.drawing_hints = data.get("drawing_hints", False)
             await _handle_start_game(lobby_id, player_id, engine)
 
         elif msg_type == "next_round":
@@ -349,13 +337,13 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
                 raise ValueError("Not waiting to start a new round.")
 
         elif msg_type == "submit_hint":
-            engine.submit_hint(player_id, data.get("text", ""))
-            stored_text = engine.state.round_state.hints[-1].text
-            await manager.broadcast(lobby_id, {
-                "type": "hint_received",
-                "player_id": player_id,
-                "text": stored_text,
-            })
+            engine.submit_hint(
+                player_id,
+                text=data.get("text", ""),
+                drawing_data=data.get("drawing_data"),
+            )
+            stored = engine.state.round_state.hints[-1]
+            await manager.broadcast(lobby_id, {"type": "hint_received", **_hint_payload(stored)})
             if engine.state.phase == GamePhase.VOTING:
                 await _broadcast_voting_open(lobby_id, engine)
 
@@ -403,13 +391,17 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
             await manager.broadcast(lobby_id, _lobby_update(engine))
 
         elif msg_type == "endgame_submit_ghost_hint":
-            all_in = engine.endgame_submit_ghost_hint(player_id, data.get("text", ""))
+            all_in = engine.endgame_submit_ghost_hint(
+                player_id,
+                text=data.get("text", ""),
+                drawing_data=data.get("drawing_data"),
+            )
             es = engine.state.endgame_state
+            stored = next(h for h in es.ghost_hints if h.player_id == player_id)
             await manager.broadcast(lobby_id, {
                 "type": "endgame_hint_received",
-                "player_id": player_id,
-                "text": data.get("text", ""),
                 "all_in": all_in,
+                **_hint_payload(stored),
             })
             if all_in:
                 await _broadcast_endgame_hints_revealed(lobby_id, engine)
@@ -478,7 +470,7 @@ async def _broadcast_voting_open(lobby_id: str, engine: GameEngine):
     rs = engine.state.round_state
     await manager.broadcast(lobby_id, {
         "type": "voting_open",
-        "hints": [{"player_id": h.player_id, "text": h.text} for h in rs.hints],
+        "hints": [_hint_payload(h) for h in rs.hints],
         "num_votes": engine.lobby.config.num_morps,
     })
 
@@ -559,7 +551,7 @@ async def _broadcast_endgame_hints_revealed(lobby_id: str, engine: GameEngine):
     deadline = time.time() + _TIMER_SECONDS
     await manager.broadcast(lobby_id, {
         "type": "endgame_hints_revealed",
-        "hints": [{"player_id": h.player_id, "text": h.text} for h in es.ghost_hints],
+        "hints": [_hint_payload(h) for h in es.ghost_hints],
         "deadline": deadline,
         "timers_enabled": engine.lobby.config.timers_enabled,
     })
@@ -642,11 +634,19 @@ def _schedule_endgame_timeout(lobby_id: str, engine: GameEngine, deadline: float
 
 # ── Broadcast helpers ─────────────────────────────────────────────────────────
 
+def _hint_payload(h) -> dict:
+    """Serialize a Hint for WebSocket broadcast — handles both text and drawing hints."""
+    if h.is_drawing:
+        return {"player_id": h.player_id, "is_drawing": True, "drawing_data": h.drawing_data}
+    return {"player_id": h.player_id, "is_drawing": False, "text": h.text}
+
+
 def _lobby_update(engine: GameEngine) -> dict:
     return {
         "type": "lobby_update",
         "host_id": engine.lobby.host_id,
         "started": engine.lobby.started,
+        "drawing_hints": engine.lobby.config.drawing_hints,
         "players": [
             {
                 "id": p.id,

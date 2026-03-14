@@ -41,7 +41,8 @@ These must be resolved before implementation begins. Fill in as decisions are ma
 - _TBD_ — carries over from prototype or redesigned?
 
 ### 3.4 Speech Bubbles / Hint Display
-- _TBD_
+- **⚠️ Key layout constraint (drawing hints):** When drawing hints are enabled, players submit vector stroke drawings instead of text. The test client displays these as small thumbnails in speech bubbles above orbs and as a labeled scrollable list in the voting panel. Neither approach scales well to a polished UI with many players. Stage 5 will need a dedicated solution — options include a modal/drawer gallery, a split-panel layout with a hint review pane, or thumbnail cards with tap-to-expand. This is a first-class layout problem and should be resolved before designing the voting and hint-phase screens.
+- The drawing canvas in the test client is 560×360 pixels. Stroke coordinates are stored at that resolution and scaled at render time. Stage 5 should pick a canonical source resolution and document it so display canvases everywhere scale consistently.
 
 ---
 

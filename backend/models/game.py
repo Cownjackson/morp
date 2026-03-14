@@ -36,7 +36,9 @@ class Board(BaseModel):
 
 class Hint(BaseModel):
     player_id: str
-    text: str
+    text: str = ""
+    is_drawing: bool = False
+    drawing_data: list | None = None
 
 
 class RoundState(BaseModel):

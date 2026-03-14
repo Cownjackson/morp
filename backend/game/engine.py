@@ -1,6 +1,30 @@
 import random
 
 MAX_HINT_LENGTH = 30
+MAX_DRAWING_POINTS = 5000
+
+
+def _cap_drawing_points(drawing_data: list, max_points: int) -> list:
+    """Trim strokes so the total point count doesn't exceed max_points."""
+    result = []
+    total = 0
+    for stroke in drawing_data:
+        if not isinstance(stroke, dict):
+            continue
+        pts = stroke.get("points", [])
+        if not isinstance(pts, list):
+            continue
+        remaining = max_points - total
+        if remaining <= 0:
+            break
+        if len(pts) > remaining:
+            trimmed = dict(stroke)
+            trimmed["points"] = pts[:remaining]
+            result.append(trimmed)
+            break
+        result.append(stroke)
+        total += len(pts)
+    return result
 
 from backend.game.board import BoardManager
 from backend.game.voting import tally_votes, resolve_accusation as _resolve
@@ -116,13 +140,20 @@ class GameEngine:
 
     # ── Hint phase ────────────────────────────────────────────────────────────
 
-    def submit_hint(self, player_id: str, text: str) -> None:
+    def submit_hint(self, player_id: str, text: str = "", drawing_data: list | None = None) -> None:
         rs = self.state.round_state
         if rs is None or self.state.phase != GamePhase.HINT:
             raise ValueError("Not in hint phase.")
         if rs.current_player_id() != player_id:
             raise ValueError("It is not your turn.")
-        rs.hints.append(Hint(player_id=player_id, text=text[:MAX_HINT_LENGTH]))
+        if drawing_data is not None:
+            if not self.lobby.config.drawing_hints:
+                raise ValueError("Drawing hints are not enabled for this game.")
+            capped = _cap_drawing_points(drawing_data, MAX_DRAWING_POINTS)
+            hint = Hint(player_id=player_id, is_drawing=True, drawing_data=capped)
+        else:
+            hint = Hint(player_id=player_id, text=text[:MAX_HINT_LENGTH])
+        rs.hints.append(hint)
         rs.current_turn_index += 1
         if rs.all_hints_submitted():
             self.state.phase = GamePhase.VOTING
@@ -217,7 +248,7 @@ class GameEngine:
             p.role = Role.MORP
         self.state.phase = GamePhase.ENDGAME_GHOST_HINTS
 
-    def endgame_submit_ghost_hint(self, player_id: str, text: str) -> bool:
+    def endgame_submit_ghost_hint(self, player_id: str, text: str = "", drawing_data: list | None = None) -> bool:
         """Ghost submits a hint. Returns True when all ghosts have submitted."""
         player = self.lobby.players.get(player_id)
         if not player or not player.is_ghost:
@@ -228,7 +259,14 @@ class GameEngine:
         # Avoid duplicate submissions
         if any(h.player_id == player_id for h in es.ghost_hints):
             return False
-        es.ghost_hints.append(Hint(player_id=player_id, text=text[:MAX_HINT_LENGTH]))
+        if drawing_data is not None:
+            if not self.lobby.config.drawing_hints:
+                raise ValueError("Drawing hints are not enabled for this game.")
+            capped = _cap_drawing_points(drawing_data, MAX_DRAWING_POINTS)
+            hint = Hint(player_id=player_id, is_drawing=True, drawing_data=capped)
+        else:
+            hint = Hint(player_id=player_id, text=text[:MAX_HINT_LENGTH])
+        es.ghost_hints.append(hint)
         all_in = self._all_ghost_hints_in()
         if all_in:
             self.state.phase = GamePhase.ENDGAME_GUESSING
