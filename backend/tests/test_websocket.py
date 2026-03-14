@@ -14,6 +14,8 @@ import backend.main as _main_module
 def reset_global_state():
     """Clear module-level game state before each test to prevent cross-test pollution."""
     _engines.clear()
+    for task in _timer_tasks.values():
+        task.cancel()
     _timer_tasks.clear()
     _main_module.manager._connections.clear()
     yield
@@ -21,7 +23,8 @@ def reset_global_state():
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    with TestClient(app) as c:
+        yield c
 
 
 def drain_until(ws, target_type: str) -> dict:
@@ -128,7 +131,7 @@ def test_start_game_broadcasts_round_start(client):
             drain_until(ws, "lobby_update")
 
         # Host starts game
-        ws0.send_json({"type": "start_game"})
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
 
         # Each player receives role_assigned then round_start
         for ws in (ws0, ws1, ws2):
@@ -150,7 +153,7 @@ def test_morp_does_not_receive_target_word_in_round_start(client):
 
         for ws in (ws0, ws1, ws2):
             drain_until(ws, "lobby_update")
-        ws0.send_json({"type": "start_game"})
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
 
         wss = [ws0, ws1, ws2]
         role_msgs = [drain_until(ws, "role_assigned") for ws in wss]
@@ -190,7 +193,7 @@ def test_hint_phase_enforces_turn_order(client):
 
         for ws in (ws0, ws1, ws2):
             drain_until(ws, "lobby_update")
-        ws0.send_json({"type": "start_game"})
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
 
         for ws in (ws0, ws1, ws2):
             drain_until(ws, "role_assigned")
@@ -223,7 +226,7 @@ def test_voting_opens_after_all_hints(client):
 
         for ws in (ws0, ws1, ws2):
             drain_until(ws, "lobby_update")
-        ws0.send_json({"type": "start_game"})
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
 
         for ws in (ws0, ws1, ws2):
             drain_until(ws, "role_assigned")
@@ -248,7 +251,7 @@ def _start_game(wss, ws0):
     """Helper: drain lobby_updates, start game, drain role_assigned + round_start for all."""
     for ws in wss:
         drain_until(ws, "lobby_update")
-    ws0.send_json({"type": "start_game"})
+    ws0.send_json({"type": "start_game", "timers_enabled": False})
     for ws in wss:
         drain_until(ws, "role_assigned")
         drain_until(ws, "round_start")
@@ -302,7 +305,7 @@ def test_new_game_starts_successfully_after_reset(client):
             drain_until(ws, "lobby_update")
 
         # Second game starts cleanly
-        ws0.send_json({"type": "start_game"})
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
         for ws in wss:
             role_msg = drain_until(ws, "role_assigned")
             assert role_msg["role"] in ("safe", "morp")
@@ -529,7 +532,7 @@ def test_hint_truncated_to_max_length(client):
         wss = {player_ids[0]: ws0, player_ids[1]: ws1, player_ids[2]: ws2}
         for ws in (ws0, ws1, ws2):
             drain_until(ws, "lobby_update")
-        ws0.send_json({"type": "start_game"})
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
         for ws in (ws0, ws1, ws2):
             drain_until(ws, "role_assigned")
         round_msg = drain_until(ws0, "round_start")
@@ -585,7 +588,7 @@ def test_join_started_game_as_new_player_returns_403(client):
     try:
         for ws in opened:
             drain_until(ws, "lobby_update")
-        opened[0].send_json({"type": "start_game"})
+        opened[0].send_json({"type": "start_game", "timers_enabled": False})
         for ws in opened:
             drain_until(ws, "role_assigned")
             drain_until(ws, "round_start")
@@ -609,7 +612,7 @@ def test_join_allowed_during_game_over(client):
          client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
         for ws in (ws0, ws1, ws2):
             drain_until(ws, "lobby_update")
-        ws0.send_json({"type": "start_game"})
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
         for ws in (ws0, ws1, ws2):
             drain_until(ws, "role_assigned")
             drain_until(ws, "round_start")
@@ -643,8 +646,9 @@ def test_reconnect_by_name_returns_original_player_id(client):
         with client.websocket_connect(f"/ws/{lobby_id}/{p0}") as ws_alice:
             drain_until(ws_alice, "lobby_update")
             drain_until(ws_bob, "lobby_update")
-        # Alice's WS closed; Bob still open → lobby alive
-        drain_until(ws_bob, "lobby_update")  # disconnect broadcast
+            # Close before context exits so the handler broadcasts before cancel fires.
+            ws_alice.close()
+            drain_until(ws_bob, "lobby_update")  # disconnect broadcast
 
         reconnect_id = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
         assert reconnect_id == p0
@@ -664,8 +668,10 @@ def test_reconnect_preserves_player_hp(client):
             drain_until(ws_bob, "lobby_update")
             # Damage Alice while she's connected
             _engines[lobby_id].lobby.players[p0].hp = 1
-        # Alice disconnects; Bob's WS keeps the lobby alive
-        drain_until(ws_bob, "lobby_update")
+            # Send disconnect now so the handler broadcasts before the cancel scope fires.
+            # Drain Bob's lobby_update here while Alice's context is still alive.
+            ws_alice.close()
+            drain_until(ws_bob, "lobby_update")
 
         reconnect_id = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
         assert reconnect_id == p0
@@ -709,7 +715,7 @@ def test_skipped_hint_broadcast_on_disconnect(client):
     try:
         for ws in opened:
             drain_until(ws, "lobby_update")
-        opened[0].send_json({"type": "start_game"})
+        opened[0].send_json({"type": "start_game", "timers_enabled": False})
         for ws in opened:
             drain_until(ws, "role_assigned")
             drain_until(ws, "round_start")
@@ -718,8 +724,10 @@ def test_skipped_hint_broadcast_on_disconnect(client):
         first_pid = engine.state.round_state.turn_order[0]
         others = [pid for pid in player_ids if pid != first_pid]
 
-        # Disconnect the first-turn player by closing their WS
-        wss_by_id[first_pid].__exit__(None, None, None)
+        # Send disconnect message first so the server's handler can broadcast
+        # before the cancel scope fires. Draining from others forces the event
+        # loop to process the disconnect before __exit__ cancels the task.
+        wss_by_id[first_pid].close()
 
         # Remaining players should each receive a hint_received for the disconnected player
         for pid in others:
@@ -728,11 +736,10 @@ def test_skipped_hint_broadcast_on_disconnect(client):
             assert hint_msg["text"] == ""
     finally:
         for pid, ws in list(wss_by_id.items()):
-            if pid != first_pid:
-                try:
-                    ws.__exit__(None, None, None)
-                except Exception:
-                    pass
+            try:
+                ws.__exit__(None, None, None)
+            except Exception:
+                pass
 
 
 def test_turn_advances_after_disconnect_skip(client):
@@ -747,7 +754,7 @@ def test_turn_advances_after_disconnect_skip(client):
     try:
         for ws in opened:
             drain_until(ws, "lobby_update")
-        opened[0].send_json({"type": "start_game"})
+        opened[0].send_json({"type": "start_game", "timers_enabled": False})
         for ws in opened:
             drain_until(ws, "role_assigned")
             drain_until(ws, "round_start")
@@ -757,8 +764,8 @@ def test_turn_advances_after_disconnect_skip(client):
         first_pid  = turn_order[0]
         second_pid = turn_order[1]
 
-        # Disconnect the first player
-        wss_by_id[first_pid].__exit__(None, None, None)
+        # Send disconnect first so the handler broadcasts before the cancel scope fires.
+        wss_by_id[first_pid].close()
 
         # Drain the skip broadcast on one of the remaining clients
         remaining_pid = next(pid for pid in player_ids if pid != first_pid)
@@ -768,11 +775,10 @@ def test_turn_advances_after_disconnect_skip(client):
         assert engine.state.round_state.current_player_id() == second_pid
     finally:
         for pid, ws in list(wss_by_id.items()):
-            if pid != first_pid:
-                try:
-                    ws.__exit__(None, None, None)
-                except Exception:
-                    pass
+            try:
+                ws.__exit__(None, None, None)
+            except Exception:
+                pass
 
 
 def test_ghost_does_not_receive_role_assigned_on_endgame_start(client):
@@ -854,7 +860,7 @@ def test_game_starts_cleanly_with_pre_start_disconnect(client):
         for ws in wss:
             drain_until(ws, "lobby_update")
 
-        ws0.send_json({"type": "start_game"})
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
 
         # All three connected players must receive role_assigned and round_start
         for ws in wss:
