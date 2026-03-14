@@ -540,6 +540,22 @@ async function createLobby() {
   }
 }
 
+async function kickPlayer(targetId) {
+  try {
+    const r = await fetch(`${httpBase()}/lobby/${state.lobbyId}/kick`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_id: state.playerId, target_id: targetId }),
+    });
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({}));
+      log(`Kick failed: ${body.detail || r.status}`, 'error');
+    }
+  } catch (e) {
+    log(`Kick failed: ${e}`, 'error');
+  }
+}
+
 async function setCustomBoards() {
   const raw = document.getElementById('custom-boards-input').value.trim();
   const statusEl = document.getElementById('custom-boards-status');
@@ -617,7 +633,19 @@ function connectWS(lobbyId, playerId, name) {
     showAction('lobby');
   };
   state.ws.onmessage = e => handleMessage(JSON.parse(e.data));
-  state.ws.onclose = () => log('WebSocket closed.', 'warn');
+  state.ws.onclose = e => {
+    if (e.code === 4403) {
+      log('You have been kicked from the lobby.', 'error');
+      document.getElementById('game-layout').classList.add('hidden');
+      document.getElementById('lobby-code-display').classList.add('hidden');
+      document.getElementById('role-banner').className = '';
+      document.getElementById('role-banner').textContent = '';
+      document.getElementById('panel-connect').classList.remove('hidden');
+      _setConnectBusy(false);
+    } else {
+      log('WebSocket closed.', 'warn');
+    }
+  };
   state.ws.onerror = () => log('WebSocket error.', 'error');
 }
 
@@ -994,6 +1022,16 @@ function renderPlayerRow() {
       const pip = document.createElement('div');
       pip.className = 'hp-pip' + (i >= p.hp ? ' empty' : '');
       hpEl.appendChild(pip);
+    }
+
+    // Kick button (host only, not for self)
+    if (state.isHost && p.id !== state.playerId) {
+      const kickBtn = document.createElement('button');
+      kickBtn.textContent = '✕';
+      kickBtn.title = `Kick ${p.name}`;
+      kickBtn.style.cssText = 'font-size:0.7em;padding:1px 5px;margin-top:2px;background:#4a1a1a;border-color:#933;color:#f88';
+      kickBtn.onclick = () => kickPlayer(p.id);
+      wrap.appendChild(kickBtn);
     }
 
     wrap.appendChild(circle);

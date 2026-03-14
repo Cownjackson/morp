@@ -356,6 +356,72 @@ def test_morp_deal_damage_not_in_pending_raises():
         engine.morp_deal_damage("p0", "p2")  # p0 not in pending
 
 
+# --- kick player ---
+
+def test_kick_in_lobby_removes_player():
+    engine = make_engine(num_players=3)
+    host = engine.lobby.host_id
+    target = next(pid for pid in engine.lobby.players if pid != host)
+    engine.kick_player(host, target)
+    assert target not in engine.lobby.players
+
+
+def test_kick_in_lobby_returns_true():
+    engine = make_engine(num_players=3)
+    host = engine.lobby.host_id
+    target = next(pid for pid in engine.lobby.players if pid != host)
+    assert engine.kick_player(host, target) is True
+
+
+def test_kick_mid_game_returns_false():
+    engine = make_engine(num_players=3)
+    engine.start_game(seed=1)
+    host = engine.lobby.host_id
+    target = next(pid for pid in engine.lobby.players if pid != host)
+    assert engine.kick_player(host, target) is False
+
+
+def test_kick_mid_game_marks_disconnected():
+    engine = make_engine(num_players=3)
+    engine.start_game(seed=1)
+    host = engine.lobby.host_id
+    target = next(pid for pid in engine.lobby.players if pid != host)
+    engine.kick_player(host, target)
+    assert engine.lobby.players[target].is_connected is False
+
+
+def test_kick_mid_game_player_stays_in_lobby():
+    engine = make_engine(num_players=3)
+    engine.start_game(seed=1)
+    host = engine.lobby.host_id
+    target = next(pid for pid in engine.lobby.players if pid != host)
+    engine.kick_player(host, target)
+    assert target in engine.lobby.players
+
+
+def test_non_host_cannot_kick():
+    engine = make_engine(num_players=3)
+    host = engine.lobby.host_id
+    non_host = next(pid for pid in engine.lobby.players if pid != host)
+    third = next(pid for pid in engine.lobby.players if pid not in (host, non_host))
+    with pytest.raises(ValueError, match="Only the host"):
+        engine.kick_player(non_host, third)
+
+
+def test_host_cannot_kick_themselves():
+    engine = make_engine(num_players=3)
+    host = engine.lobby.host_id
+    with pytest.raises(ValueError, match="Cannot kick yourself"):
+        engine.kick_player(host, host)
+
+
+def test_kick_unknown_player_raises():
+    engine = make_engine(num_players=3)
+    host = engine.lobby.host_id
+    with pytest.raises(ValueError, match="Player not found"):
+        engine.kick_player(host, "nonexistent")
+
+
 # --- host reassignment ---
 
 def test_host_reassigned_when_host_disconnects():

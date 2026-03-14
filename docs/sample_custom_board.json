@@ -1,0 +1,14 @@
+[
+      {
+        "board_hint": "Things you find in a kitchen",
+        "words": ["spatula", "colander", "whisk", "ladle", "grater", "tongs", "skillet", "strainer", "peeler", "mortar"]
+      },
+      {
+        "board_hint": "Things at a beach",
+        "words": ["sunscreen", "umbrella", "sandcastle", "seashell", "lifeguard", "surfboard", "cooler", "towel", "jellyfish", "driftwood"]
+      },
+      {
+        "board_hint": "Things in a haunted house",
+        "words": ["cobweb", "candelabra", "portrait", "trapdoor", "dungeon", "gargoyle", "crypt", "cauldron", "phantom", "séance"]
+      }
+    ]

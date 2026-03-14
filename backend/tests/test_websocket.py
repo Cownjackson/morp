@@ -374,6 +374,63 @@ def test_finalists_receive_morp_role_on_endgame_start(client):
             assert rm["role"] == "morp"
 
 
+# --- Kick player ---
+
+def test_kick_in_lobby_removes_player(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+    host_id, target_id = player_ids[0], player_ids[1]
+    r = client.post(f"/lobby/{lobby_id}/kick", json={"player_id": host_id, "target_id": target_id})
+    assert r.status_code == 200
+    engine = _engines[lobby_id]
+    assert target_id not in engine.lobby.players
+
+
+def test_kick_non_host_rejected(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+    non_host, target = player_ids[1], player_ids[2]
+    r = client.post(f"/lobby/{lobby_id}/kick", json={"player_id": non_host, "target_id": target})
+    assert r.status_code == 403
+
+
+def test_kick_self_rejected(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+    host_id = player_ids[0]
+    r = client.post(f"/lobby/{lobby_id}/kick", json={"player_id": host_id, "target_id": host_id})
+    assert r.status_code == 403
+
+
+def test_kick_mid_game_marks_player_disconnected(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+    host_id, target_id = player_ids[0], player_ids[1]
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
+        for ws in (ws0, ws1, ws2):
+            drain_until(ws, "lobby_update")
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
+        for ws in (ws0, ws1, ws2):
+            drain_until(ws, "role_assigned")
+            drain_until(ws, "round_start")
+
+        client.post(f"/lobby/{lobby_id}/kick", json={"player_id": host_id, "target_id": target_id})
+
+        engine = _engines[lobby_id]
+        assert target_id in engine.lobby.players
+        assert engine.lobby.players[target_id].is_connected is False
+
+
+def test_kick_in_lobby_broadcasts_lobby_update(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+    host_id, target_id = player_ids[0], player_ids[2]
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0:
+        drain_until(ws0, "lobby_update")
+        client.post(f"/lobby/{lobby_id}/kick", json={"player_id": host_id, "target_id": target_id})
+        update = drain_until(ws0, "lobby_update")
+        assert not any(p["id"] == target_id for p in update["players"])
+
+
 # --- Custom board upload ---
 
 _VALID_BOARD = {"board_hint": "Test Theme", "words": [f"word{i}" for i in range(10)]}

@@ -209,6 +209,7 @@ class GameEngine:
     # ── 2-Player Endgame ─────────────────────────────────────────────────────
 
     def start_endgame_round(self, seed: int) -> None:
+        self._purge_disconnected_players()
         board, target = self.board_manager.select_round(seed=seed)
         self.state.endgame_state = EndgameRoundState(board=board, target_word=target)
         # Both finalists become morps
@@ -228,11 +229,21 @@ class GameEngine:
         if any(h.player_id == player_id for h in es.ghost_hints):
             return False
         es.ghost_hints.append(Hint(player_id=player_id, text=text[:MAX_HINT_LENGTH]))
-        ghost_ids = {p.id for p in self.lobby.ghost_players()}
-        all_in = {h.player_id for h in es.ghost_hints} >= ghost_ids
+        all_in = self._all_ghost_hints_in()
         if all_in:
             self.state.phase = GamePhase.ENDGAME_GUESSING
         return all_in
+
+    def _all_ghost_hints_in(self) -> bool:
+        """True when every connected ghost has submitted a hint (disconnected ghosts are skipped)."""
+        es = self.state.endgame_state
+        if es is None:
+            return False
+        submitted = {h.player_id for h in es.ghost_hints}
+        return all(
+            p.id in submitted or not p.is_connected
+            for p in self.lobby.ghost_players()
+        )
 
     def endgame_submit_guess(self, player_id: str, guess: str) -> dict:
         """A finalist submits a guess. Returns result dict."""
@@ -276,6 +287,7 @@ class GameEngine:
         """Start the next sudden-death endgame round. Called by main.py after ENDGAME_ROUND_END."""
         if self.state.phase != GamePhase.ENDGAME_ROUND_END:
             raise ValueError("Can only start next endgame round from ENDGAME_ROUND_END phase.")
+        self._purge_disconnected_players()
         board, target = self.board_manager.select_round(seed=seed)
         self.state.endgame_state = EndgameRoundState(board=board, target_word=target)
         self.state.phase = GamePhase.ENDGAME_GHOST_HINTS
@@ -302,7 +314,25 @@ class GameEngine:
 
     # ── Disconnect handling ───────────────────────────────────────────────────
 
+    def kick_player(self, kicker_id: str, target_id: str) -> bool:
+        """Kick a player. Returns True if fully removed (lobby), False if treated as disconnect (mid-game)."""
+        if kicker_id != self.lobby.host_id:
+            raise ValueError("Only the host can kick players.")
+        if target_id == kicker_id:
+            raise ValueError("Cannot kick yourself.")
+        if target_id not in self.lobby.players:
+            raise ValueError("Player not found.")
+        if not self.lobby.started:
+            del self.lobby.players[target_id]
+            self._reassign_host_if_needed()
+            return True
+        else:
+            self.on_player_disconnect(target_id)
+            return False
+
     def on_player_disconnect(self, player_id: str) -> None:
+        if player_id not in self.lobby.players:
+            return  # already removed (e.g., kicked from lobby)
         self.lobby.players[player_id].is_connected = False
         self._reassign_host_if_needed()
         phase = self.state.phase
@@ -310,6 +340,9 @@ class GameEngine:
             self._skip_disconnected_hints()
         elif phase == GamePhase.VOTING:
             self._check_voting_complete()
+        elif phase == GamePhase.ENDGAME_GHOST_HINTS:
+            if self._all_ghost_hints_in():
+                self.state.phase = GamePhase.ENDGAME_GUESSING
 
     def _reassign_host_if_needed(self) -> None:
         current_host = self.lobby.players.get(self.lobby.host_id)

@@ -70,6 +70,11 @@ class JoinRequest(BaseModel):
     name: str
 
 
+class KickRequest(BaseModel):
+    player_id: str
+    target_id: str
+
+
 class CustomBoardEntry(BaseModel):
     board_hint: str
     words: list[str]
@@ -109,6 +114,44 @@ async def join_lobby(lobby_id: str, body: JoinRequest):
     # Mark not connected until the WebSocket handshake completes
     engine.lobby.players[player_id].is_connected = False
     return {"player_id": player_id}
+
+
+@app.post("/lobby/{lobby_id}/kick")
+async def kick_player(lobby_id: str, body: KickRequest):
+    engine = _get_engine(lobby_id)
+    try:
+        phase_before = engine.state.phase
+        rs = engine.state.round_state
+        hints_before = len(rs.hints) if rs and phase_before == GamePhase.HINT else 0
+
+        # Mutate engine state first so the disconnect handler sees correct state
+        engine.kick_player(body.player_id, body.target_id)
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+    # Close the target's WebSocket after state is updated
+    ws = manager._connections.get(lobby_id, {}).get(body.target_id)
+    if ws:
+        await ws.close(code=4403)
+        manager.disconnect(lobby_id, body.target_id)
+
+    await manager.broadcast(lobby_id, _lobby_update(engine))
+    phase_after = engine.state.phase
+
+    if phase_before == GamePhase.HINT and rs:
+        for h in rs.hints[hints_before:]:
+            await manager.broadcast(lobby_id, {
+                "type": "hint_received",
+                "player_id": h.player_id,
+                "text": h.text,
+            })
+
+    if phase_before == GamePhase.HINT and phase_after == GamePhase.VOTING:
+        await _broadcast_voting_open(lobby_id, engine)
+    elif phase_before == GamePhase.VOTING and phase_after == GamePhase.ACCUSATION:
+        await _handle_accusation(lobby_id, engine)
+
+    return {"ok": True}
 
 
 @app.post("/lobby/{lobby_id}/boards")
@@ -182,6 +225,28 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
             "deadline": engine.state.morp_guess_deadline,
             "timers_enabled": engine.lobby.config.timers_enabled,
         })
+    elif _phase == GamePhase.ENDGAME_GHOST_HINTS:
+        es = engine.state.endgame_state
+        active = engine.lobby.active_players()
+        ghosts = engine.lobby.ghost_players()
+        msg: dict = {
+            "type": "endgame_round_start",
+            "board_hint": es.board.board_hint,
+            "words": es.board.words,
+            "finalist_ids": [p.id for p in active],
+            "ghost_ids": [p.id for p in ghosts],
+        }
+        player = engine.lobby.players[player_id]
+        if player.is_ghost:
+            msg["target_word"] = es.target_word
+        await manager.send(lobby_id, player_id, msg)
+        # Replay hints already submitted so the ghost sees what others have given
+        for h in es.ghost_hints:
+            await manager.send(lobby_id, player_id, {
+                "type": "endgame_hint_received",
+                "player_id": h.player_id,
+                "text": h.text,
+            })
 
     try:
         while True:
@@ -216,6 +281,8 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
             await _broadcast_voting_open(lobby_id, engine)
         elif phase_before == GamePhase.VOTING and phase_after == GamePhase.ACCUSATION:
             await _handle_accusation(lobby_id, engine)
+        elif phase_before == GamePhase.ENDGAME_GHOST_HINTS and phase_after == GamePhase.ENDGAME_GUESSING:
+            await _broadcast_endgame_hints_revealed(lobby_id, engine)
 
 
 # ── Hint-phase rejoin ─────────────────────────────────────────────────────────
@@ -275,6 +342,7 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
             elif engine.state.phase == GamePhase.ENDGAME_ROUND_END:
                 seed = _new_seed()
                 engine.start_next_endgame_round(seed=seed)
+                await manager.broadcast(lobby_id, _lobby_update(engine))
                 await _broadcast_endgame_round_start(lobby_id, engine)
             else:
                 raise ValueError("Not waiting to start a new round.")
@@ -452,6 +520,7 @@ async def _check_round_end(lobby_id: str, engine: GameEngine):
     elif phase == GamePhase.ENDGAME_2P:
         seed = _new_seed()
         engine.start_endgame_round(seed=seed)
+        await manager.broadcast(lobby_id, _lobby_update(engine))
         await _broadcast_endgame_round_start(lobby_id, engine)
     elif phase == GamePhase.ROUND_END:
         await manager.broadcast(lobby_id, {
