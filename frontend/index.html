@@ -619,11 +619,21 @@ async function joinLobby() {
 }
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
-function connectWS(lobbyId, playerId, name) {
+let _wsRetries = 0;
+let _wsOpened = false;
+let _wsKicked = false;
+const _WS_MAX_RETRIES = 4;
+const _WS_RETRY_BASE_MS = 1500;
+
+function connectWS(lobbyId, playerId, name, isRetry) {
   state.lobbyId = lobbyId; state.playerId = playerId; state.playerName = name;
+  if (!isRetry) { _wsRetries = 0; _wsOpened = false; _wsKicked = false; }
+
   state.ws = new WebSocket(`${document.getElementById('server-url').value}/ws/${lobbyId}/${playerId}`);
 
   state.ws.onopen = () => {
+    _wsOpened = true;
+    _wsRetries = 0;
     log(`Connected to lobby ${lobbyId} as ${name}`, 'ok');
     const codeEl = document.getElementById('lobby-code-display');
     codeEl.textContent = lobbyId;
@@ -632,9 +642,11 @@ function connectWS(lobbyId, playerId, name) {
     document.getElementById('game-layout').classList.remove('hidden');
     showAction('lobby');
   };
+
   state.ws.onmessage = e => handleMessage(JSON.parse(e.data));
+
   state.ws.onclose = e => {
-    if (e.code === 4403) {
+    if (e.code === 4403 || _wsKicked) {
       log('You have been kicked from the lobby.', 'error');
       document.getElementById('game-layout').classList.add('hidden');
       document.getElementById('lobby-code-display').classList.add('hidden');
@@ -642,10 +654,24 @@ function connectWS(lobbyId, playerId, name) {
       document.getElementById('role-banner').textContent = '';
       document.getElementById('panel-connect').classList.remove('hidden');
       _setConnectBusy(false);
+      return;
+    }
+    if (e.code === 4004) {
+      log('Lobby not found.', 'error');
+      _setConnectBusy(false);
+      return;
+    }
+    if (_wsRetries < _WS_MAX_RETRIES) {
+      _wsRetries++;
+      const delay = _wsRetries * _WS_RETRY_BASE_MS;
+      log(`WebSocket closed. Retrying in ${delay / 1000}s\u2026 (${_wsRetries}/${_WS_MAX_RETRIES})`, 'warn');
+      setTimeout(() => connectWS(lobbyId, playerId, name, true), delay);
     } else {
-      log('WebSocket closed.', 'warn');
+      log('WebSocket closed. Could not reconnect.', 'warn');
+      if (!_wsOpened) _setConnectBusy(false);
     }
   };
+
   state.ws.onerror = () => log('WebSocket error.', 'error');
 }
 
@@ -656,6 +682,11 @@ function handleMessage(msg) {
   log(`← ${msg.type}`, 'info');
 
   switch (msg.type) {
+
+    case 'kicked': {
+      _wsKicked = true;
+      break;
+    }
 
     case 'lobby_update': {
       state.players = Object.fromEntries(msg.players.map(p => [p.id, p]));

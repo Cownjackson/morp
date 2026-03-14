@@ -132,6 +132,7 @@ async def kick_player(lobby_id: str, body: KickRequest):
     # Close the target's WebSocket after state is updated
     ws = manager._connections.get(lobby_id, {}).get(body.target_id)
     if ws:
+        await ws.send_json({"type": "kicked"})
         await ws.close(code=4403)
         manager.disconnect(lobby_id, body.target_id)
 
