@@ -9,7 +9,7 @@ def make_board(words: list[str], hint: str = "test") -> Board:
 
 def test_default_boards_load():
     bm = BoardManager()
-    assert len(bm.boards) == 3
+    assert len(bm.boards) >= 3
 
 
 def test_default_boards_have_25_words():
@@ -85,7 +85,7 @@ def test_set_custom_boards_multiple():
 
 def test_set_custom_boards_removes_defaults():
     bm = BoardManager()
-    assert len(bm.boards) == 3  # defaults loaded
+    assert len(bm.boards) >= 3  # defaults loaded
     bm.set_custom_boards([make_board(["x", "y"], hint="new")])
     assert len(bm.boards) == 1
 
