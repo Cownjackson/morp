@@ -189,7 +189,7 @@
       width: 100%;
       height: 560px;
       overflow: visible;
-      margin-top: 16px;
+      margin-top: 150px;
     }
 
     .avatar-wrap {
@@ -229,7 +229,7 @@
       border-bottom-color: #4a4a4a;
     }
     .speech-bubble.skipped { color: #444; font-style: italic; }
-    .speech-bubble.drawing-bubble { width: 546px; padding: 4px; }
+    .speech-bubble.drawing-bubble { width: 364px; padding: 4px; }
     .speech-bubble.drawing-bubble canvas { max-width: 100%; border-radius: 3px; display: block; }
 
     /* ── Drawing toolbar ── */
@@ -567,7 +567,10 @@
   </div><!-- /action-area -->
 
   <!-- Player avatar row -->
-  <div id="player-row"></div>
+  <div id="player-row">
+    <img id="poker-table-img" src="/assets/poker-table-texas-hold-em-online-poker-poker-Photoroom.png"
+      style="position:absolute;pointer-events:none;opacity:0.18;transform:translate(-50%,-50%);display:none">
+  </div>
 
 </div><!-- /game-layout -->
 
@@ -1238,7 +1241,7 @@ function renderPlayerRow() {
       } else if (bubble.is_drawing && bubble.drawing_data) {
         bel.className = 'speech-bubble drawing-bubble' + dirClass;
         const cv = document.createElement('canvas');
-        cv.width = 546; cv.height = 351;
+        cv.width = 360; cv.height = 232;
         renderStrokesToCanvas(cv, bubble.drawing_data);
         bel.appendChild(cv);
       } else {
@@ -1293,6 +1296,15 @@ function renderPlayerRow() {
     wrap.appendChild(nameEl);
     wrap.appendChild(hpEl);
     el.appendChild(wrap);
+  }
+
+  // Centre the poker table image on the ellipse
+  const tableImg = document.getElementById('poker-table-img');
+  if (tableImg) {
+    tableImg.style.left   = cx + 'px';
+    tableImg.style.top    = cy + 'px';
+    tableImg.style.width  = (rx * 2 * 0.72) + 'px';
+    tableImg.style.display = '';
   }
 }
 

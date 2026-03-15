@@ -7,9 +7,11 @@ import time
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 _FRONTEND = pathlib.Path(__file__).parent.parent / "frontend" / "index.html"
+_ASSETS   = pathlib.Path(__file__).parent.parent / "assets"
 
 from backend.connection_manager import ConnectionManager
 from backend.game.board import validate_custom_board
@@ -18,6 +20,8 @@ from backend.models.game import GamePhase
 from backend.models.player import Role
 
 app = FastAPI()
+
+app.mount("/assets", StaticFiles(directory=_ASSETS), name="assets")
 
 app.add_middleware(
     CORSMiddleware,
