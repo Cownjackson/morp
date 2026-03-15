@@ -336,6 +336,36 @@
     #log div.ok    { color: #5ab85a; }
     #log div.warn  { color: #d49020; }
     #log div.error { color: #d05050; }
+
+    /* ── Chat ── */
+    #chat-wrap {
+      border-top: 1px solid #1e1e1e;
+      margin-top: 6px; flex-shrink: 0;
+    }
+    #chat-messages {
+      height: 110px; overflow-y: auto;
+      background: #0c0c0c; border: 1px solid #1a1a1a;
+      border-radius: 4px 4px 0 0;
+      padding: 6px 8px; font-size: 0.8em; color: #aaa;
+    }
+    #chat-messages div { margin-bottom: 2px; line-height: 1.4; }
+    #chat-messages .chat-name { font-weight: bold; }
+    #chat-input-row {
+      display: flex;
+      border: 1px solid #1a1a1a; border-top: none;
+      border-radius: 0 0 4px 4px; overflow: hidden;
+    }
+    #chat-input {
+      flex: 1; border: none; border-radius: 0;
+      background: #101010; color: #ccc;
+      padding: 5px 8px; font-family: monospace; font-size: 0.8em;
+    }
+    #chat-input:focus { outline: none; }
+    #btn-chat-send {
+      border: none; border-left: 1px solid #2a3a2a;
+      border-radius: 0; margin: 0; padding: 5px 12px;
+      font-size: 0.78em;
+    }
   </style>
 </head>
 <body>
@@ -612,6 +642,15 @@
 
   <!-- Player avatar row -->
   <div id="player-row"></div>
+
+  <!-- Chat -->
+  <div id="chat-wrap">
+    <div id="chat-messages"></div>
+    <div id="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Chat…" maxlength="150" autocomplete="off">
+      <button id="btn-chat-send" onclick="sendChat()">Send</button>
+    </div>
+  </div>
 
 </div><!-- /game-layout -->
 
@@ -1268,6 +1307,20 @@ function handleMessage(msg) {
       log('Game reset. Back in lobby.', 'ok');
       break;
 
+    case 'chat': {
+      const chatEl = document.getElementById('chat-messages');
+      const d = document.createElement('div');
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'chat-name';
+      nameSpan.style.color = avatarColor(msg.player_id);
+      nameSpan.textContent = msg.name + ': ';
+      d.appendChild(nameSpan);
+      d.appendChild(document.createTextNode(msg.text));
+      chatEl.appendChild(d);
+      chatEl.scrollTop = chatEl.scrollHeight;
+      break;
+    }
+
     case 'error':
       log(`Error: ${msg.message}`, 'error');
       break;
@@ -1626,6 +1679,25 @@ function resetToLobby() {
   if (state.isHost && state.ws) send({ type: 'reset_game' });
 }
 
+let _chatCooldown = false;
+
+function sendChat() {
+  if (_chatCooldown) return;
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  send({ type: 'chat', text });
+  input.value = '';
+  _chatCooldown = true;
+  const btn = document.getElementById('btn-chat-send');
+  btn.disabled = true;
+  setTimeout(() => {
+    _chatCooldown = false;
+    btn.disabled = false;
+    input.focus();
+  }, 1000);
+}
+
 // ─── Drawing engine ───────────────────────────────────────────────────────────
 
 // Per-canvas state: strokes accumulated, current in-flight stroke, drawing flag
@@ -1841,6 +1913,7 @@ document.addEventListener('keydown', e => {
   if (id === 'endgame-ghost-hint-input') submitEndgameGhostHint();
   if (id === 'endgame-guess-input')      submitEndgameGuess();
   if (id === 'join-code')                joinLobby();
+  if (id === 'chat-input')               sendChat();
 });
 
 // ─── Init ──────────────────────────────────────────────────────────────────────

@@ -429,6 +429,17 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
             if all_done:
                 await _check_round_end(lobby_id, engine)
 
+        elif msg_type == "chat":
+            text = data.get("text", "").strip()[:150]
+            if text:
+                player = engine.lobby.players[player_id]
+                await manager.broadcast(lobby_id, {
+                    "type": "chat",
+                    "player_id": player_id,
+                    "name": player.name,
+                    "text": text,
+                })
+
         elif msg_type == "reset_game":
             if player_id != engine.lobby.host_id:
                 raise ValueError("Only the host can reset the game.")
