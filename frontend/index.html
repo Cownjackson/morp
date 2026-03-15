@@ -100,7 +100,7 @@
     #action-area {
       background: #161616; border: 1px solid #252525;
       border-radius: 8px; padding: 14px 16px;
-      min-height: 72px;
+      min-height: 72px; text-align: center;
     }
     .action-section h3 {
       color: #adf; font-size: 0.8em; text-transform: uppercase;
@@ -112,8 +112,10 @@
       background: #1e1e1e; color: #eee;
       border: 1px solid #3a3a3a; border-radius: 4px;
       padding: 7px 10px; font-family: monospace; font-size: 0.9em;
+      text-align: left;
     }
     input:focus { outline: 1px solid #555; }
+    textarea { text-align: left; }
     button {
       background: #1e4d2e; color: #8ef; border: 1px solid #2a6a3e;
       border-radius: 4px; padding: 7px 14px; cursor: pointer;
@@ -126,8 +128,8 @@
     button.primary:hover:not(:disabled) { background: #223060; }
     button.danger  { background: #4a1010; color: #faa; border-color: #7a2020; }
     button.danger:hover:not(:disabled) { background: #601818; }
-    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
-    .toggle-row { display: flex; gap: 8px; align-items: center; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; justify-content: center; }
+    .toggle-row { display: flex; gap: 8px; align-items: center; justify-content: center; }
     .toggle-row label { cursor: pointer; color: #888; font-size: 0.88em; }
 
     /* vote buttons */
@@ -149,18 +151,18 @@
 
     /* ── Player row ── */
     #player-row {
-      display: flex;
-      justify-content: center;
-      align-items: flex-end;
-      gap: 20px;
-      flex-wrap: wrap;
-      padding: 8px 0 2px;
+      position: relative;
+      width: 100%;
+      height: 420px;
+      overflow: visible;
+      margin-top: 16px;
     }
 
     .avatar-wrap {
       display: flex; flex-direction: column;
       align-items: center; gap: 4px;
-      position: relative; min-width: 62px;
+      position: absolute;
+      transform: translate(-50%, -50%);
     }
 
     /* speech bubble */
@@ -175,10 +177,6 @@
       white-space: normal; pointer-events: none;
       z-index: 10; color: #ddd; line-height: 1.3;
     }
-    /* Stagger even-position bubbles higher so adjacent ones don't collide */
-    .avatar-wrap:nth-child(even) .speech-bubble {
-      bottom: calc(100% + 28px);
-    }
     .speech-bubble::after {
       content: '';
       position: absolute; top: 100%; left: 50%;
@@ -186,8 +184,8 @@
       border: 5px solid transparent; border-top-color: #4a4a4a;
     }
     .speech-bubble.skipped { color: #444; font-style: italic; }
-    .speech-bubble.drawing-bubble { width: 120px; padding: 4px; }
-    .speech-bubble.drawing-bubble canvas { width: 100%; border-radius: 3px; display: block; }
+    .speech-bubble.drawing-bubble { width: 236px; padding: 4px; }
+    .speech-bubble.drawing-bubble canvas { max-width: 100%; border-radius: 3px; display: block; }
 
     /* ── Drawing toolbar ── */
     .draw-toolbar {
@@ -318,7 +316,7 @@
           <label for="timers-toggle">Timers enabled (30 s morp guess / endgame guess)</label>
         </div>
         <div class="toggle-row" style="margin-bottom:10px">
-          <input type="checkbox" id="drawing-hints-toggle">
+          <input type="checkbox" id="drawing-hints-toggle" checked>
           <label for="drawing-hints-toggle">Drawing hints (players draw instead of type)</label>
         </div>
         <div style="margin-bottom:10px">
@@ -377,7 +375,7 @@
     <div id="act-vote" class="action-section hidden">
       <h3>Vote — pick <span id="vote-count-label"></span> suspect(s)</h3>
       <div id="drawing-hints-review" class="hidden"
-        style="max-height:220px;overflow-y:auto;margin-bottom:10px;padding:8px;background:#111;border:1px solid #2a2a2a;border-radius:4px">
+        style="max-height:420px;overflow-y:auto;margin-bottom:12px;padding:10px;background:#111;border:1px solid #2a2a2a;border-radius:4px">
       </div>
       <div id="vote-buttons" style="margin-bottom:8px"></div>
       <button id="btn-submit-votes" onclick="submitVotes()" disabled>Submit Votes</button>
@@ -723,7 +721,7 @@ function connectWS(lobbyId, playerId, name, isRetry) {
     _wsRetries = 0;
     log(`Connected to lobby ${lobbyId} as ${name}`, 'ok');
     const codeEl = document.getElementById('lobby-code-display');
-    codeEl.textContent = lobbyId;
+    codeEl.textContent = 'Lobby Code: ' + lobbyId;
     codeEl.classList.remove('hidden');
     document.getElementById('panel-connect').classList.add('hidden');
     document.getElementById('game-layout').classList.remove('hidden');
@@ -1113,9 +1111,30 @@ function renderPlayerRow() {
   el.innerHTML = '';
   const currentTurnPid = state.turnOrder[state.hints.length];
 
-  for (const p of Object.values(state.players)) {
+  const players = Object.values(state.players);
+  const N = players.length;
+  if (N === 0) return;
+
+  // Poker-table ellipse: distribute players around an oval.
+  // Use the container's actual rendered width so it stays responsive.
+  const W = el.clientWidth || 640;
+  const H = 420; // matches CSS height
+  const cx = W * 0.50;
+  const cy = H * 0.70; // push centre down so top-player bubbles clear the action area above
+  const rx = W * 0.42;
+  const ry = H * 0.22;
+
+  for (let idx = 0; idx < N; idx++) {
+    const p = players[idx];
+    // Start at the top (−π/2) and go clockwise
+    const angle = (2 * Math.PI * idx / N) - Math.PI / 2;
+    const x = cx + rx * Math.cos(angle);
+    const y = cy + ry * Math.sin(angle);
+
     const wrap = document.createElement('div');
     wrap.className = 'avatar-wrap';
+    wrap.style.left = x + 'px';
+    wrap.style.top  = y + 'px';
 
     // Speech bubble
     const bubble = state.speechBubbles[p.id];
@@ -1127,7 +1146,7 @@ function renderPlayerRow() {
       } else if (bubble.is_drawing && bubble.drawing_data) {
         bel.className = 'speech-bubble drawing-bubble';
         const cv = document.createElement('canvas');
-        cv.width = 112; cv.height = 72;
+        cv.width = 224; cv.height = 144;
         renderStrokesToCanvas(cv, bubble.drawing_data);
         bel.appendChild(cv);
       } else {
@@ -1222,13 +1241,13 @@ function renderVoteButtons() {
     for (const h of state.hints) {
       if (!h.is_drawing || !h.drawing_data) continue;
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:8px';
-      const label = document.createElement('span');
-      label.style.cssText = 'font-size:0.8em;color:#aaa;width:70px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      row.style.cssText = 'margin-bottom:14px';
+      const label = document.createElement('div');
+      label.style.cssText = 'font-size:0.82em;color:#aaa;margin-bottom:4px';
       label.textContent = playerName(h.player_id);
       const cv = document.createElement('canvas');
-      cv.width = 224; cv.height = 144;
-      cv.style.cssText = 'border-radius:4px;border:1px solid #333;flex-shrink:0;max-width:224px';
+      cv.width = 420; cv.height = 270;
+      cv.style.cssText = 'border-radius:4px;border:1px solid #333;display:block;max-width:100%';
       renderStrokesToCanvas(cv, h.drawing_data);
       row.appendChild(label);
       row.appendChild(cv);
