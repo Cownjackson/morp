@@ -217,16 +217,68 @@
       transform: translateX(-50%);
       border: 5px solid transparent; border-top-color: #4a4a4a;
     }
-    /* bubble appears below the orb for lower-half players */
+    /* ── cardinal directions ── */
     .speech-bubble.bubble-below {
-      bottom: auto;
-      top: calc(100% + 8px);
+      bottom: auto; top: calc(100% + 8px);
     }
     .speech-bubble.bubble-below::after {
-      top: auto;
-      bottom: 100%;
-      border-top-color: transparent;
-      border-bottom-color: #4a4a4a;
+      top: auto; bottom: 100%;
+      border-top-color: transparent; border-bottom-color: #4a4a4a;
+    }
+    .speech-bubble.bubble-right {
+      bottom: auto; top: 50%;
+      left: calc(100% + 8px);
+      transform: translateY(-50%);
+    }
+    .speech-bubble.bubble-right::after {
+      top: 50%; bottom: auto; left: auto; right: 100%;
+      transform: translateY(-50%);
+      border-top-color: transparent; border-right-color: #4a4a4a;
+    }
+    .speech-bubble.bubble-left {
+      bottom: auto; top: 50%;
+      left: auto; right: calc(100% + 8px);
+      transform: translateY(-50%);
+    }
+    .speech-bubble.bubble-left::after {
+      top: 50%; bottom: auto; left: 100%;
+      transform: translateY(-50%);
+      border-top-color: transparent; border-left-color: #4a4a4a;
+    }
+    /* ── diagonal directions — rotated square connector at inner corner ── */
+    .speech-bubble.bubble-above-right {
+      bottom: calc(100% + 4px); left: calc(100% + 4px); transform: none;
+    }
+    .speech-bubble.bubble-above-right::after {
+      top: auto; bottom: -5px; left: 4px;
+      border: none; width: 8px; height: 8px;
+      background: #4a4a4a; transform: rotate(45deg);
+    }
+    .speech-bubble.bubble-below-right {
+      bottom: auto; top: calc(100% + 4px); left: calc(100% + 4px); transform: none;
+    }
+    .speech-bubble.bubble-below-right::after {
+      top: -5px; left: 4px;
+      border: none; width: 8px; height: 8px;
+      background: #4a4a4a; transform: rotate(45deg);
+    }
+    .speech-bubble.bubble-below-left {
+      bottom: auto; top: calc(100% + 4px);
+      left: auto; right: calc(100% + 4px); transform: none;
+    }
+    .speech-bubble.bubble-below-left::after {
+      top: -5px; left: auto; right: 4px;
+      border: none; width: 8px; height: 8px;
+      background: #4a4a4a; transform: rotate(45deg);
+    }
+    .speech-bubble.bubble-above-left {
+      bottom: calc(100% + 4px);
+      left: auto; right: calc(100% + 4px); transform: none;
+    }
+    .speech-bubble.bubble-above-left::after {
+      top: auto; bottom: -5px; left: auto; right: 4px;
+      border: none; width: 8px; height: 8px;
+      background: #4a4a4a; transform: rotate(45deg);
     }
     .speech-bubble.skipped { color: #444; font-style: italic; }
     .speech-bubble.drawing-bubble { width: 364px; padding: 4px; }
@@ -1222,8 +1274,18 @@ function renderPlayerRow() {
     const angle = (2 * Math.PI * idx / N) - Math.PI / 2;
     const x = cx + rx * Math.cos(angle);
     const y = cy + ry * Math.sin(angle);
-    // Players in the lower half of the ellipse get bubbles below their orb
-    const bubbleBelow = Math.sin(angle) > 0.1;
+    // Bubble radiates outward — 8 sectors of 45° each, starting from top
+    // Normalize to [-π, π] first so players with idx near N don't exceed π
+    const _p = Math.PI;
+    const _a = angle > _p ? angle - 2*_p : angle;
+    const bubbleDir = _a > -5*_p/8 && _a <= -3*_p/8 ? 'above'
+                    : _a > -3*_p/8 && _a <= -_p/8   ? 'above-right'
+                    : _a > -_p/8   && _a <=  _p/8   ? 'right'
+                    : _a >  _p/8   && _a <=  3*_p/8 ? 'below-right'
+                    : _a >  3*_p/8 && _a <=  5*_p/8 ? 'below'
+                    : _a >  5*_p/8 && _a <=  7*_p/8 ? 'below-left'
+                    : (_a >  7*_p/8 || _a <= -7*_p/8) ? 'left'
+                    : 'above-left';
 
     const wrap = document.createElement('div');
     wrap.className = 'avatar-wrap';
@@ -1234,7 +1296,7 @@ function renderPlayerRow() {
     const bubble = state.speechBubbles[p.id];
     if (bubble !== undefined) {
       const bel = document.createElement('div');
-      const dirClass = bubbleBelow ? ' bubble-below' : '';
+      const dirClass = bubbleDir !== 'above' ? ` bubble-${bubbleDir}` : '';
       if (bubble.skipped) {
         bel.className = 'speech-bubble skipped' + dirClass;
         bel.textContent = '(skipped)';
