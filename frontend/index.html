@@ -190,6 +190,7 @@
     /* ── Drawing toolbar ── */
     .draw-toolbar {
       display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+      justify-content: center;
       padding: 6px 8px; margin-bottom: 6px;
       background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px;
     }
@@ -346,14 +347,20 @@
         <!-- Drawing mode -->
         <div id="hint-drawing-block" class="hidden">
           <div class="draw-toolbar" id="hint-toolbar">
-            <button class="color-swatch active" data-color="#ffffff" style="background:#fff" title="White" onclick="setDrawColor('hint',this)"></button>
-            <button class="color-swatch" data-color="#ffeb3b" style="background:#ffeb3b" title="Yellow" onclick="setDrawColor('hint',this)"></button>
-            <button class="color-swatch" data-color="#f44336" style="background:#f44336" title="Red" onclick="setDrawColor('hint',this)"></button>
-            <button class="color-swatch" data-color="#ff9800" style="background:#ff9800" title="Orange" onclick="setDrawColor('hint',this)"></button>
-            <button class="color-swatch" data-color="#4caf50" style="background:#4caf50" title="Green" onclick="setDrawColor('hint',this)"></button>
-            <button class="color-swatch" data-color="#00bcd4" style="background:#00bcd4" title="Cyan" onclick="setDrawColor('hint',this)"></button>
-            <button class="color-swatch" data-color="#2196f3" style="background:#2196f3" title="Blue" onclick="setDrawColor('hint',this)"></button>
-            <button class="color-swatch" data-color="#9c27b0" style="background:#9c27b0" title="Purple" onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch active" data-color="#ffffff" style="background:#fff"    title="White"       onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#9e9e9e" style="background:#9e9e9e" title="Grey"        onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#ffeb3b" style="background:#ffeb3b" title="Yellow"      onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#cddc39" style="background:#cddc39" title="Lime"        onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#ff9800" style="background:#ff9800" title="Orange"      onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#ff6d00" style="background:#ff6d00" title="Deep Orange" onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#f44336" style="background:#f44336" title="Red"         onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#e91e63" style="background:#e91e63" title="Pink"        onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#4caf50" style="background:#4caf50" title="Green"       onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#00bcd4" style="background:#00bcd4" title="Cyan"        onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#03a9f4" style="background:#03a9f4" title="Sky Blue"    onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#2196f3" style="background:#2196f3" title="Blue"        onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#9c27b0" style="background:#9c27b0" title="Purple"      onclick="setDrawColor('hint',this)"></button>
+            <button class="color-swatch" data-color="#795548" style="background:#795548" title="Brown"       onclick="setDrawColor('hint',this)"></button>
             <div class="draw-sep"></div>
             <button class="size-btn active" data-size="3" onclick="setDrawSize('hint',this)">S</button>
             <button class="size-btn" data-size="7" onclick="setDrawSize('hint',this)">M</button>
@@ -364,7 +371,7 @@
             <button class="tool-btn" onclick="clearCanvas('hint-canvas')">Clear</button>
           </div>
           <canvas id="hint-canvas" width="560" height="360"
-            style="background:#111;border:1px solid #444;border-radius:4px;cursor:crosshair;touch-action:none;display:block;max-width:100%">
+            style="background:#111;border:1px solid #444;border-radius:4px;cursor:crosshair;touch-action:none;display:block;max-width:100%;margin:0 auto">
           </canvas>
           <button onclick="submitHint()" style="margin-top:6px">Submit Drawing</button>
         </div>
@@ -374,8 +381,11 @@
     <!-- VOTING -->
     <div id="act-vote" class="action-section hidden">
       <h3>Vote — pick <span id="vote-count-label"></span> suspect(s)</h3>
-      <div id="drawing-hints-review" class="hidden"
-        style="max-height:420px;overflow-y:auto;margin-bottom:12px;padding:10px;background:#111;border:1px solid #2a2a2a;border-radius:4px">
+      <div id="drawing-hints-review" class="hidden" style="margin-bottom:16px">
+        <div style="font-size:0.78em;text-transform:uppercase;letter-spacing:2px;color:#666;margin-bottom:8px">Hint Review</div>
+        <div id="drawing-hints-review-cards"
+          style="max-height:560px;overflow-y:scroll;padding:2px 4px 2px 0">
+        </div>
       </div>
       <div id="vote-buttons" style="margin-bottom:8px"></div>
       <button id="btn-submit-votes" onclick="submitVotes()" disabled>Submit Votes</button>
@@ -429,14 +439,20 @@
         <!-- Drawing mode -->
         <div id="endgame-ghost-drawing-block" class="hidden">
           <div class="draw-toolbar" id="endgame-ghost-toolbar">
-            <button class="color-swatch active" data-color="#ffffff" style="background:#fff" title="White" onclick="setDrawColor('endgame',this)"></button>
-            <button class="color-swatch" data-color="#ffeb3b" style="background:#ffeb3b" title="Yellow" onclick="setDrawColor('endgame',this)"></button>
-            <button class="color-swatch" data-color="#f44336" style="background:#f44336" title="Red" onclick="setDrawColor('endgame',this)"></button>
-            <button class="color-swatch" data-color="#ff9800" style="background:#ff9800" title="Orange" onclick="setDrawColor('endgame',this)"></button>
-            <button class="color-swatch" data-color="#4caf50" style="background:#4caf50" title="Green" onclick="setDrawColor('endgame',this)"></button>
-            <button class="color-swatch" data-color="#00bcd4" style="background:#00bcd4" title="Cyan" onclick="setDrawColor('endgame',this)"></button>
-            <button class="color-swatch" data-color="#2196f3" style="background:#2196f3" title="Blue" onclick="setDrawColor('endgame',this)"></button>
-            <button class="color-swatch" data-color="#9c27b0" style="background:#9c27b0" title="Purple" onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch active" data-color="#ffffff" style="background:#fff"    title="White"       onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#9e9e9e" style="background:#9e9e9e" title="Grey"        onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#ffeb3b" style="background:#ffeb3b" title="Yellow"      onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#cddc39" style="background:#cddc39" title="Lime"        onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#ff9800" style="background:#ff9800" title="Orange"      onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#ff6d00" style="background:#ff6d00" title="Deep Orange" onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#f44336" style="background:#f44336" title="Red"         onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#e91e63" style="background:#e91e63" title="Pink"        onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#4caf50" style="background:#4caf50" title="Green"       onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#00bcd4" style="background:#00bcd4" title="Cyan"        onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#03a9f4" style="background:#03a9f4" title="Sky Blue"    onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#2196f3" style="background:#2196f3" title="Blue"        onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#9c27b0" style="background:#9c27b0" title="Purple"      onclick="setDrawColor('endgame',this)"></button>
+            <button class="color-swatch" data-color="#795548" style="background:#795548" title="Brown"       onclick="setDrawColor('endgame',this)"></button>
             <div class="draw-sep"></div>
             <button class="size-btn active" data-size="3" onclick="setDrawSize('endgame',this)">S</button>
             <button class="size-btn" data-size="7" onclick="setDrawSize('endgame',this)">M</button>
@@ -447,7 +463,7 @@
             <button class="tool-btn" onclick="clearCanvas('endgame-ghost-canvas')">Clear</button>
           </div>
           <canvas id="endgame-ghost-canvas" width="560" height="360"
-            style="background:#111;border:1px solid #444;border-radius:4px;cursor:crosshair;touch-action:none;display:block;max-width:100%">
+            style="background:#111;border:1px solid #444;border-radius:4px;cursor:crosshair;touch-action:none;display:block;max-width:100%;margin:0 auto">
           </canvas>
           <button onclick="submitEndgameGhostHint()" style="margin-top:6px">Submit Drawing</button>
         </div>
@@ -1235,23 +1251,48 @@ function renderVoteButtons() {
 
   // Drawing hints review panel
   const reviewEl = document.getElementById('drawing-hints-review');
+  const cardsEl  = document.getElementById('drawing-hints-review-cards');
   if (state.drawingHints) {
     reviewEl.classList.remove('hidden');
-    reviewEl.innerHTML = '';
+    cardsEl.innerHTML = '';
+    let turnIdx = 1;
     for (const h of state.hints) {
       if (!h.is_drawing || !h.drawing_data) continue;
-      const row = document.createElement('div');
-      row.style.cssText = 'margin-bottom:14px';
-      const label = document.createElement('div');
-      label.style.cssText = 'font-size:0.82em;color:#aaa;margin-bottom:4px';
-      label.textContent = playerName(h.player_id);
+      const color = avatarColor(h.player_id);
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#181818;border:1px solid #2e2e2e;border-radius:8px;overflow:hidden;margin-bottom:10px';
+
+      // Card header: avatar + name + turn badge
+      const header = document.createElement('div');
+      header.style.cssText = `display:flex;align-items:center;gap:10px;padding:8px 12px;background:#1f1f1f;border-bottom:1px solid #2e2e2e`;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar-circle';
+      avatar.style.cssText = `width:28px;height:28px;font-size:0.75em;background:${color};border:2px solid transparent;flex-shrink:0`;
+      avatar.textContent = initials(playerName(h.player_id));
+
+      const nameSpan = document.createElement('span');
+      nameSpan.style.cssText = 'font-weight:bold;font-size:0.95em;color:#ddd;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      nameSpan.textContent = playerName(h.player_id);
+
+      const badge = document.createElement('span');
+      badge.style.cssText = `font-size:0.72em;color:${color};border:1px solid ${color};border-radius:10px;padding:1px 7px;letter-spacing:1px;flex-shrink:0;opacity:0.85`;
+      badge.textContent = `#${turnIdx}`;
+
+      header.appendChild(avatar);
+      header.appendChild(nameSpan);
+      header.appendChild(badge);
+
+      // Canvas — fixed pixel size, centered, max-width prevents overflow on narrow screens
       const cv = document.createElement('canvas');
       cv.width = 420; cv.height = 270;
-      cv.style.cssText = 'border-radius:4px;border:1px solid #333;display:block;max-width:100%';
+      cv.style.cssText = 'display:block;width:420px;height:270px;max-width:100%;margin:0 auto';
       renderStrokesToCanvas(cv, h.drawing_data);
-      row.appendChild(label);
-      row.appendChild(cv);
-      reviewEl.appendChild(row);
+
+      card.appendChild(header);
+      card.appendChild(cv);
+      cardsEl.appendChild(card);
+      turnIdx++;
     }
   } else {
     reviewEl.classList.add('hidden');

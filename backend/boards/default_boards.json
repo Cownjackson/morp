@@ -1,32 +1,32 @@
 [
   {
-    "board_hint": "Disney & Pixar movies",
+    "board_hint": "Emotions",
     "words": [
-      "Coco", "Up", "Frozen", "Moana", "Encanto",
-      "Brave", "Ratatouille", "Tangled", "Zootopia", "Mulan",
-      "Aladdin", "Hercules", "Bambi", "Dumbo", "Cinderella",
-      "The Lion King", "Toy Story", "Finding Nemo", "Wall-E", "Cars",
-      "Inside Out", "Soul", "Luca", "Onward", "Peter Pan"
+      "joy", "anger", "fear", "sadness", "surprise",
+      "disgust", "love", "boredom", "anxiety", "excitement",
+      "pride", "guilt", "shame", "envy", "nostalgia",
+      "awe", "frustration", "confusion", "relief", "hope",
+      "loneliness", "jealousy", "embarrassment", "gratitude", "curiosity"
     ]
   },
   {
-    "board_hint": "Cartoon characters",
+    "board_hint": "Popular TV shows",
     "words": [
-      "SpongeBob", "Patrick Star", "Bugs Bunny", "Scooby-Doo", "Bart Simpson",
-      "Homer Simpson", "Garfield", "Mickey Mouse", "Winnie the Pooh", "Tweety Bird",
-      "Yogi Bear", "Fred Flintstone", "Tom", "Jerry", "Goofy",
-      "Daffy Duck", "Johnny Bravo", "Stewie Griffin", "Eric Cartman", "Dora",
-      "Bender", "Dexter", "Elmo", "Big Bird", "Pikachu"
+      "Breaking Bad", "Game of Thrones", "Friends", "The Office", "Stranger Things",
+      "The Simpsons", "South Park", "Seinfeld", "The Wire", "The Sopranos",
+      "Grey's Anatomy", "Lost", "Dexter", "Sherlock", "Black Mirror",
+      "Parks and Recreation", "Better Call Saul", "The Crown", "Succession", "Ted Lasso",
+      "House", "Arrested Development", "It's Always Sunny", "How I Met Your Mother", "Westworld"
     ]
   },
   {
-    "board_hint": "Jungle animals",
+    "board_hint": "Popular websites & apps",
     "words": [
-      "Jaguar", "Toucan", "Gorilla", "Python", "Sloth",
-      "Piranha", "Iguana", "Parrot", "Capybara", "Tarantula",
-      "Macaw", "Tapir", "Caiman", "Anteater", "Armadillo",
-      "Tree frog", "Anaconda", "Howler monkey", "Chameleon", "Orangutan",
-      "Gibbon", "Porcupine", "Pangolin", "Poison dart frog", "Leafcutter ant"
+      "YouTube", "Instagram", "Twitter", "TikTok", "Reddit",
+      "Netflix", "Spotify", "Amazon", "Google", "Facebook",
+      "Pinterest", "Snapchat", "LinkedIn", "Discord", "Twitch",
+      "WhatsApp", "Duolingo", "Airbnb", "Wikipedia", "eBay",
+      "PayPal", "Zoom", "GitHub", "Venmo", "Shazam"
     ]
   },
   {
@@ -40,16 +40,6 @@
     ]
   },
   {
-    "board_hint": "Marvel superheroes",
-    "words": [
-      "Iron Man", "Captain America", "Thor", "Hulk", "Black Widow",
-      "Hawkeye", "Spider-Man", "Doctor Strange", "Black Panther", "Ant-Man",
-      "Scarlet Witch", "Vision", "Falcon", "War Machine", "Wasp",
-      "Captain Marvel", "Groot", "Rocket", "Star-Lord", "Gamora",
-      "Loki", "Nick Fury", "Deadpool", "Wolverine", "Storm"
-    ]
-  },
-  {
     "board_hint": "Things at a carnival",
     "words": [
       "Ferris wheel", "Roller coaster", "Cotton candy", "Popcorn", "Clown",
@@ -60,13 +50,13 @@
     ]
   },
   {
-    "board_hint": "Video game characters",
+    "board_hint": "Popular video games",
     "words": [
-      "Mario", "Luigi", "Link", "Kirby", "Donkey Kong",
-      "Yoshi", "Bowser", "Sonic", "Mega Man", "Pac-Man",
-      "Lara Croft", "Master Chief", "Kratos", "Crash Bandicoot", "Spyro",
-      "Princess Peach", "Cloud Strife", "Samus", "Zelda", "Pikachu",
-      "Ganondorf", "Toad", "Wario", "Knuckles", "Steve"
+      "Minecraft", "Fortnite", "League of Legends", "Grand Theft Auto", "Call of Duty",
+      "Among Us", "Overwatch", "The Sims", "Animal Crossing", "Stardew Valley",
+      "Pokémon", "Mario Kart", "Tetris", "Roblox", "FIFA",
+      "Halo", "Skyrim", "Apex Legends", "Valorant", "Elden Ring",
+      "Zelda", "Fall Guys", "Rocket League", "Candy Crush", "Clash of Clans"
     ]
   },
   {
@@ -76,17 +66,7 @@
       "Hiking boots", "Compass", "Canteen", "Axe", "S'mores",
       "Hammock", "Flashlight", "Bear", "Map", "Firewood",
       "Bug spray", "Cooler", "Fishing rod", "Binoculars", "Trail mix",
-      "Whistle", "Pine tree", "Camp chair", "Dutch oven", "Bonfire"
-    ]
-  },
-  {
-    "board_hint": "World landmarks",
-    "words": [
-      "Eiffel Tower", "Big Ben", "Colosseum", "Statue of Liberty", "Great Wall",
-      "Taj Mahal", "Pyramids", "Stonehenge", "Mount Rushmore", "Sydney Opera House",
-      "Leaning Tower of Pisa", "Acropolis", "Machu Picchu", "Angkor Wat", "Christ the Redeemer",
-      "Burj Khalifa", "Golden Gate Bridge", "Niagara Falls", "Grand Canyon", "Mount Fuji",
-      "Easter Island", "Sagrada Familia", "Parthenon", "Tower of London", "Palace of Versailles"
+      "Whistle", "Pine tree", "Camp chair", "Dutch oven", "Bear spray"
     ]
   },
   {
@@ -140,13 +120,33 @@
     ]
   },
   {
-    "board_hint": "Anime characters",
+    "board_hint": "Popular anime",
     "words": [
-      "Naruto", "Goku", "Luffy", "Eren", "Tanjiro",
-      "Deku", "Light Yagami", "Edward Elric", "Levi", "Saitama",
-      "Ichigo", "Killua", "Todoroki", "All Might", "Kakashi",
-      "Vegeta", "Sasuke", "Nezuko", "Ryuk", "L",
-      "Mikasa", "Gon", "Hinata", "Itadori", "Zenitsu"
+      "Naruto", "Dragon Ball Z", "One Piece", "Attack on Titan", "Demon Slayer",
+      "My Hero Academia", "Death Note", "Fullmetal Alchemist", "Bleach", "Hunter x Hunter",
+      "Tokyo Ghoul", "Jujutsu Kaisen", "One Punch Man", "Fairy Tail", "Sword Art Online",
+      "Spy x Family", "Chainsaw Man", "Mob Psycho 100", "Re:Zero", "Cowboy Bebop",
+      "Steins Gate", "Neon Genesis Evangelion", "Vinland Saga", "Blue Exorcist", "Overlord"
+    ]
+  },
+  {
+    "board_hint": "Popular movies",
+    "words": [
+      "Avatar", "Titanic", "Avengers: Endgame", "Jurassic Park", "Star Wars",
+      "The Dark Knight", "Inception", "Interstellar", "The Godfather", "Pulp Fiction",
+      "Forrest Gump", "The Matrix", "Fight Club", "The Shawshank Redemption", "The Lion King",
+      "Spider-Man", "Jaws", "E.T.", "Home Alone", "Back to the Future",
+      "Toy Story", "Finding Nemo", "Up", "Parasite", "Get Out"
+    ]
+  },
+  {
+    "board_hint": "Outdoor activities",
+    "words": [
+      "Hiking", "Rock climbing", "Cycling", "Skiing", "Snowboarding",
+      "Fishing", "Bird watching", "Picnic", "Kite flying", "Frisbee",
+      "Tennis", "Golf", "Jogging", "Yoga", "Gardening",
+      "Barbecue", "Zip-lining", "Mountain biking", "Paddleboarding", "Horseback riding",
+      "Bungee jumping", "Paragliding", "Whitewater rafting", "Stargazing", "Snorkeling"
     ]
   }
 ]
