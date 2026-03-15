@@ -482,7 +482,7 @@
   </div>
   <div class="row">
     <span style="color:#666;width:54px">Name</span>
-    <input type="text" id="player-name" placeholder="Your name" value="Player" style="width:160px">
+    <input type="text" id="player-name" placeholder="Your name" style="width:160px">
   </div>
   <div class="row" style="margin-top:14px; border-top:1px solid #222; padding-top:14px">
     <button onclick="createLobby()">Create Lobby</button>
@@ -501,7 +501,7 @@
       <span id="board-theme-tag"></span>
     </div>
     <div id="board-grid"></div>
-    <div id="half-board-note">You are morp and went first — highlighted words are your partial view.</div>
+    <div id="half-board-note">You are morp and went first: highlighted words are your partial view.</div>
   </div>
 
   <!-- Action area — one section visible at a time -->
@@ -520,7 +520,7 @@
         </div>
         <div style="margin-bottom:10px">
           <div style="font-size:0.85em;color:#888;margin-bottom:4px">
-            Custom boards (JSON array) — leave blank to use defaults:
+            Custom boards (JSON array). Leave blank to use defaults:
           </div>
           <textarea id="custom-boards-input" rows="4" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:0.8em;background:#1a1a1a;color:#ccc;border:1px solid #444;border-radius:4px;padding:6px;resize:vertical" placeholder='[{"board_hint":"Theme…","words":["word1","word2"]}]'></textarea>
           <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
@@ -837,8 +837,9 @@ function _setConnectBusy(busy) {
 
 async function createLobby() {
   if (!_checkProtocol() || _connecting) return;
+  const name = document.getElementById('player-name').value.trim();
+  if (!name) { log('Enter a name to start a lobby.', 'warn'); return; }
   _setConnectBusy(true);
-  const name = document.getElementById('player-name').value.trim() || 'Player';
   const base = httpBase();
   try {
     const createRes = await fetch(`${base}/lobby/create`, { method: 'POST' });
@@ -944,7 +945,8 @@ async function setCustomBoards() {
 async function joinLobby() {
   if (!_checkProtocol() || _connecting) return;
   const code = document.getElementById('join-code').value.trim().toUpperCase();
-  const name = document.getElementById('player-name').value.trim() || 'Player';
+  const name = document.getElementById('player-name').value.trim();
+  if (!name) { log('Enter a name to join a game.', 'warn'); return; }
   if (!code) { log('Enter a lobby code.', 'warn'); return; }
   _setConnectBusy(true);
   try {
@@ -1295,7 +1297,7 @@ function handleMessage(msg) {
       // Show finalist section for finalists (may already be visible; ensure it's shown)
       if (!state.isGhost) document.getElementById('endgame-finalist-section').classList.remove('hidden');
       setEndgamePhaseLabel('Guess!');
-      log('Hint phase over — guess now!', 'warn');
+      log('Hint phase over: guess now!', 'warn');
       break;
     }
 
