@@ -39,6 +39,40 @@
       margin-left: auto; color: #fa7;
       font-size: 0.8em; letter-spacing: 1px; text-align: right;
     }
+    #help-btn {
+      background: none; border: 1px solid #444; color: #aaa;
+      border-radius: 50%; width: 26px; height: 26px;
+      font-size: 0.85em; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    #help-btn:hover { border-color: #7cf; color: #7cf; }
+
+    /* ── Help modal ── */
+    #help-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75); z-index: 1000;
+      align-items: center; justify-content: center; padding: 16px;
+    }
+    #help-overlay.open { display: flex; }
+    #help-modal {
+      background: #181818; border: 1px solid #333; border-radius: 10px;
+      padding: 28px; max-width: 500px; width: 100%;
+      max-height: 90vh; overflow-y: auto; position: relative;
+    }
+    #help-modal h2 { color: #7cf; font-size: 1.1em; margin-bottom: 18px; letter-spacing: 1px; }
+    #help-modal h3 { color: #fa7; font-size: 0.85em; letter-spacing: 1px; margin: 16px 0 6px; text-transform: uppercase; }
+    #help-modal p, #help-modal li { color: #ccc; font-size: 0.85em; line-height: 1.6; }
+    #help-modal ul { padding-left: 18px; }
+    #help-modal li { margin-bottom: 4px; }
+    #help-modal .role-safe { color: #7f7; font-weight: bold; }
+    #help-modal .role-morp { color: #faa; font-weight: bold; }
+    #help-close {
+      position: absolute; top: 14px; right: 16px;
+      background: none; border: none; color: #666; font-size: 1.3em;
+      cursor: pointer; line-height: 1;
+    }
+    #help-close:hover { color: #eee; }
 
     /* ── Role banner ── */
     #role-banner {
@@ -195,7 +229,7 @@
       border-bottom-color: #4a4a4a;
     }
     .speech-bubble.skipped { color: #444; font-style: italic; }
-    .speech-bubble.drawing-bubble { width: 190px; padding: 4px; }
+    .speech-bubble.drawing-bubble { width: 546px; padding: 4px; }
     .speech-bubble.drawing-bubble canvas { max-width: 100%; border-radius: 3px; display: block; }
 
     /* ── Drawing toolbar ── */
@@ -282,7 +316,33 @@
   <h1>MORP</h1>
   <span id="lobby-code-display" class="hidden"></span>
   <span id="phase-label"></span>
+  <button id="help-btn" title="How to play">?</button>
 </header>
+
+<!-- Help modal -->
+<div id="help-overlay">
+  <div id="help-modal">
+    <button id="help-close">&times;</button>
+    <h2>How to Play</h2>
+
+    <h3>The Basics</h3>
+    <p>Each round, everyone sees a board of words under a theme and one word is secretly highlighted as the target except for one player, the <span class="role-morp">Morp</span>, who sees the board but not which word was picked.</p>
+
+    <h3>Taking Turns</h3>
+    <p><span class="role-safe">Safe players</span> draw something that hints at the target word without giving it away. You want other safe players to know you see the word, but not make it so obvious the Morp can just copy you.</p>
+    <p>The <span class="role-morp">Morp</span> has to wing it. Watch the other drawings, pick up on any patterns, and try to blend in. If you go first, you get to see half the board to help narrow it down.</p>
+
+    <h3>Voting</h3>
+    <p>After everyone draws, players vote on who they think the Morp is. The player with the most votes gets accused and roles are revealed.</p>
+    <ul>
+      <li>Wrong accusation? The <span class="role-morp">Morp</span> deals 1 damage to a player of their choosing.</li>
+      <li>Morp caught? They get one shot at guessing the target word. Miss it and they take 1 damage instead.</li>
+    </ul>
+
+    <h3>Winning</h3>
+    <p>Players start with 3 health. Last one standing wins. When only 2 players remain, the game shifts into a special head-to-head mode.</p>
+  </div>
+</div>
 
 <div id="role-banner"></div>
 
@@ -392,16 +452,6 @@
     <!-- VOTING -->
     <div id="act-vote" class="action-section hidden">
       <h3>Vote — pick <span id="vote-count-label"></span> suspect(s)</h3>
-      <div id="drawing-hints-review" class="hidden" style="margin-bottom:16px">
-        <button onclick="toggleHintReview()" id="btn-hint-review-toggle"
-          style="width:100%;display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#aaa;font-size:0.78em;text-transform:uppercase;letter-spacing:2px;cursor:pointer;margin-bottom:0">
-          <span>Hint Review</span>
-          <span id="hint-review-chevron">▲</span>
-        </button>
-        <div id="drawing-hints-review-cards"
-          style="max-height:560px;overflow-y:scroll;padding:2px 4px 2px 0;margin-top:8px">
-        </div>
-      </div>
       <div id="vote-buttons" style="margin-bottom:8px"></div>
       <button id="btn-submit-votes" onclick="submitVotes()" disabled>Submit Votes</button>
       <span id="vote-waiting" style="display:none;margin-left:12px;color:#555;font-size:0.88em">Votes submitted — waiting…</span>
@@ -528,6 +578,14 @@
 </div>
 
 <script>
+// ── Help modal ──
+(function() {
+  const overlay = document.getElementById('help-overlay');
+  document.getElementById('help-btn').addEventListener('click', () => overlay.classList.add('open'));
+  document.getElementById('help-close').addEventListener('click', () => overlay.classList.remove('open'));
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+})();
+
 // Default the server URL to wherever this page was served from
 document.getElementById('server-url').value =
   (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host;
@@ -1180,7 +1238,7 @@ function renderPlayerRow() {
       } else if (bubble.is_drawing && bubble.drawing_data) {
         bel.className = 'speech-bubble drawing-bubble' + dirClass;
         const cv = document.createElement('canvas');
-        cv.width = 182; cv.height = 117;
+        cv.width = 546; cv.height = 351;
         renderStrokesToCanvas(cv, bubble.drawing_data);
         bel.appendChild(cv);
       } else {
@@ -1261,13 +1319,6 @@ function checkYourTurn() {
 }
 
 // ─── Voting ───────────────────────────────────────────────────────────────────
-function toggleHintReview() {
-  const cards = document.getElementById('drawing-hints-review-cards');
-  const chevron = document.getElementById('hint-review-chevron');
-  const collapsed = cards.style.display === 'none';
-  cards.style.display = collapsed ? '' : 'none';
-  chevron.textContent = collapsed ? '▲' : '▼';
-}
 
 function renderVoteButtons() {
   const el = document.getElementById('vote-buttons');
@@ -1275,54 +1326,6 @@ function renderVoteButtons() {
   document.getElementById('vote-count-label').textContent = state.numVotes;
   document.getElementById('vote-waiting').style.display = 'none';
 
-  // Drawing hints review panel
-  const reviewEl = document.getElementById('drawing-hints-review');
-  const cardsEl  = document.getElementById('drawing-hints-review-cards');
-  if (state.drawingHints) {
-    reviewEl.classList.remove('hidden');
-    cardsEl.innerHTML = '';
-    let turnIdx = 1;
-    for (const h of state.hints) {
-      if (!h.is_drawing || !h.drawing_data) continue;
-      const color = avatarColor(h.player_id);
-      const card = document.createElement('div');
-      card.style.cssText = 'background:#181818;border:1px solid #2e2e2e;border-radius:8px;overflow:hidden;margin-bottom:10px';
-
-      // Card header: avatar + name + turn badge
-      const header = document.createElement('div');
-      header.style.cssText = `display:flex;align-items:center;gap:10px;padding:8px 12px;background:#1f1f1f;border-bottom:1px solid #2e2e2e`;
-
-      const avatar = document.createElement('div');
-      avatar.className = 'avatar-circle';
-      avatar.style.cssText = `width:28px;height:28px;font-size:0.75em;background:${color};border:2px solid transparent;flex-shrink:0`;
-      avatar.textContent = initials(playerName(h.player_id));
-
-      const nameSpan = document.createElement('span');
-      nameSpan.style.cssText = 'font-weight:bold;font-size:0.95em;color:#ddd;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
-      nameSpan.textContent = playerName(h.player_id);
-
-      const badge = document.createElement('span');
-      badge.style.cssText = `font-size:0.72em;color:${color};border:1px solid ${color};border-radius:10px;padding:1px 7px;letter-spacing:1px;flex-shrink:0;opacity:0.85`;
-      badge.textContent = `#${turnIdx}`;
-
-      header.appendChild(avatar);
-      header.appendChild(nameSpan);
-      header.appendChild(badge);
-
-      // Canvas — fixed pixel size, centered, max-width prevents overflow on narrow screens
-      const cv = document.createElement('canvas');
-      cv.width = 420; cv.height = 270;
-      cv.style.cssText = 'display:block;width:420px;height:270px;max-width:100%;margin:0 auto';
-      renderStrokesToCanvas(cv, h.drawing_data);
-
-      card.appendChild(header);
-      card.appendChild(cv);
-      cardsEl.appendChild(card);
-      turnIdx++;
-    }
-  } else {
-    reviewEl.classList.add('hidden');
-  }
 
   for (const p of Object.values(state.players)) {
     if (p.is_ghost || p.id === state.playerId) continue;
