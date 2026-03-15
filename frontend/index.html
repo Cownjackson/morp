@@ -190,6 +190,7 @@
       height: 560px;
       overflow: visible;
       margin-top: 150px;
+      margin-bottom: 160px;
     }
 
     .avatar-wrap {
@@ -211,74 +212,35 @@
       white-space: normal; pointer-events: none;
       z-index: 10; color: #ddd; line-height: 1.3;
     }
-    .speech-bubble::after {
-      content: '';
-      position: absolute; top: 100%; left: 50%;
-      transform: translateX(-50%);
-      border: 5px solid transparent; border-top-color: #4a4a4a;
-    }
+    .speech-bubble::after { content: none; }
     /* ── cardinal directions ── */
     .speech-bubble.bubble-below {
       bottom: auto; top: calc(100% + 8px);
-    }
-    .speech-bubble.bubble-below::after {
-      top: auto; bottom: 100%;
-      border-top-color: transparent; border-bottom-color: #4a4a4a;
     }
     .speech-bubble.bubble-right {
       bottom: auto; top: 50%;
       left: calc(100% + 8px);
       transform: translateY(-50%);
     }
-    .speech-bubble.bubble-right::after {
-      top: 50%; bottom: auto; left: auto; right: 100%;
-      transform: translateY(-50%);
-      border-top-color: transparent; border-right-color: #4a4a4a;
-    }
     .speech-bubble.bubble-left {
       bottom: auto; top: 50%;
       left: auto; right: calc(100% + 8px);
       transform: translateY(-50%);
     }
-    .speech-bubble.bubble-left::after {
-      top: 50%; bottom: auto; left: 100%;
-      transform: translateY(-50%);
-      border-top-color: transparent; border-left-color: #4a4a4a;
-    }
-    /* ── diagonal directions — rotated square connector at inner corner ── */
+    /* ── diagonal directions ── */
     .speech-bubble.bubble-above-right {
       bottom: calc(100% + 4px); left: calc(100% + 4px); transform: none;
     }
-    .speech-bubble.bubble-above-right::after {
-      top: auto; bottom: -5px; left: 4px;
-      border: none; width: 8px; height: 8px;
-      background: #4a4a4a; transform: rotate(45deg);
-    }
     .speech-bubble.bubble-below-right {
       bottom: auto; top: calc(100% + 4px); left: calc(100% + 4px); transform: none;
-    }
-    .speech-bubble.bubble-below-right::after {
-      top: -5px; left: 4px;
-      border: none; width: 8px; height: 8px;
-      background: #4a4a4a; transform: rotate(45deg);
     }
     .speech-bubble.bubble-below-left {
       bottom: auto; top: calc(100% + 4px);
       left: auto; right: calc(100% + 4px); transform: none;
     }
-    .speech-bubble.bubble-below-left::after {
-      top: -5px; left: auto; right: 4px;
-      border: none; width: 8px; height: 8px;
-      background: #4a4a4a; transform: rotate(45deg);
-    }
     .speech-bubble.bubble-above-left {
       bottom: calc(100% + 4px);
       left: auto; right: calc(100% + 4px); transform: none;
-    }
-    .speech-bubble.bubble-above-left::after {
-      top: auto; bottom: -5px; left: auto; right: 4px;
-      border: none; width: 8px; height: 8px;
-      background: #4a4a4a; transform: rotate(45deg);
     }
     .speech-bubble.skipped { color: #444; font-style: italic; }
     .speech-bubble.drawing-bubble { width: 364px; padding: 4px; }
@@ -619,10 +581,7 @@
   </div><!-- /action-area -->
 
   <!-- Player avatar row -->
-  <div id="player-row">
-    <img id="poker-table-img" src="/assets/poker-table-texas-hold-em-online-poker-poker-Photoroom.png"
-      style="position:absolute;pointer-events:none;opacity:0.18;transform:translate(-50%,-50%);display:none">
-  </div>
+  <div id="player-row"></div>
 
 </div><!-- /game-layout -->
 
@@ -1360,14 +1319,12 @@ function renderPlayerRow() {
     el.appendChild(wrap);
   }
 
-  // Centre the poker table image on the ellipse
-  const tableImg = document.getElementById('poker-table-img');
-  if (tableImg) {
-    tableImg.style.left   = cx + 'px';
-    tableImg.style.top    = cy + 'px';
-    tableImg.style.width  = (rx * 2 * 0.72) + 'px';
-    tableImg.style.display = '';
-  }
+  // Centre the poker table image on the ellipse (created fresh — innerHTML clears it each render)
+  const tableImg = document.createElement('img');
+  tableImg.src = '/assets/poker-table-texas-hold-em-online-poker-poker-Photoroom.png';
+  tableImg.style.cssText = `position:absolute;pointer-events:none;opacity:0.22;`
+    + `transform:translate(-50%,-50%);left:${cx}px;top:${cy}px;width:${rx * 2 * 0.72}px`;
+  el.appendChild(tableImg);
 }
 
 // ─── Hint phase ───────────────────────────────────────────────────────────────
