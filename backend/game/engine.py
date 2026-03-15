@@ -246,7 +246,12 @@ class GameEngine:
         # Both finalists become morps
         for p in self.lobby.active_players():
             p.role = Role.MORP
-        self.state.phase = GamePhase.ENDGAME_GUESSING
+        self.state.phase = GamePhase.ENDGAME_GHOST_HINTS
+
+    def endgame_end_hint_phase(self) -> None:
+        """Transition from hint phase to guessing phase (called by server timer)."""
+        if self.state.phase == GamePhase.ENDGAME_GHOST_HINTS:
+            self.state.phase = GamePhase.ENDGAME_GUESSING
 
     def endgame_submit_ghost_hint(self, player_id: str, text: str = "", drawing_data: list | None = None) -> bool:
         """Ghost submits a hint. Returns True when all ghosts have submitted."""
@@ -282,8 +287,8 @@ class GameEngine:
 
     def endgame_submit_guess(self, player_id: str, guess: str) -> dict:
         """A finalist submits a guess. Returns result dict."""
-        if self.state.phase != GamePhase.ENDGAME_GUESSING:
-            raise ValueError("Not in endgame guessing phase.")
+        if self.state.phase not in (GamePhase.ENDGAME_GHOST_HINTS, GamePhase.ENDGAME_GUESSING):
+            raise ValueError("Not in an active endgame round.")
         es = self.state.endgame_state
         if player_id in es.guesses:
             raise ValueError(f"{player_id} has already guessed.")
@@ -311,10 +316,10 @@ class GameEngine:
         return {"correct": False, "round_over": False}
 
     def endgame_timeout(self) -> None:
-        """Called when the guess timer expires. Unguessed players take damage."""
+        """Called when the guess timer expires. Anyone who didn't guess correctly takes damage."""
         es = self.state.endgame_state
         for p in self.lobby.active_players():
-            if p.id not in es.guesses:
+            if p.id != es.safe_player_id:
                 p.take_damage()
         self._resolve_endgame_round()
 
@@ -325,7 +330,7 @@ class GameEngine:
         self._purge_disconnected_players()
         board, target = self.board_manager.select_round(seed=seed)
         self.state.endgame_state = EndgameRoundState(board=board, target_word=target)
-        self.state.phase = GamePhase.ENDGAME_GUESSING
+        self.state.phase = GamePhase.ENDGAME_GHOST_HINTS
 
     def _resolve_endgame_round(self) -> None:
         active = self.lobby.active_players()
@@ -375,8 +380,6 @@ class GameEngine:
             self._skip_disconnected_hints()
         elif phase == GamePhase.VOTING:
             self._check_voting_complete()
-        elif phase == GamePhase.ENDGAME_GUESSING:
-            pass  # hints can still arrive; nothing to auto-advance
 
     def _reassign_host_if_needed(self) -> None:
         current_host = self.lobby.players.get(self.lobby.host_id)

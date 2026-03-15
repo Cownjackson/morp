@@ -395,7 +395,7 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
             await manager.broadcast(lobby_id, _lobby_update(engine))
 
         elif msg_type == "endgame_submit_ghost_hint":
-            engine.endgame_submit_ghost_hint(
+            all_in = engine.endgame_submit_ghost_hint(
                 player_id,
                 text=data.get("text", ""),
                 drawing_data=data.get("drawing_data"),
@@ -406,6 +406,8 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
                 "type": "endgame_hint_received",
                 **_hint_payload(stored),
             })
+            if all_in and engine.state.phase == GamePhase.ENDGAME_GHOST_HINTS:
+                await _start_endgame_guess_phase(lobby_id, engine)
 
         elif msg_type == "endgame_submit_guess":
             result = engine.endgame_submit_guess(player_id, data.get("guess", ""))
@@ -532,14 +534,14 @@ async def _broadcast_endgame_round_start(lobby_id: str, engine: GameEngine):
     for player in active:
         await manager.send(lobby_id, player.id, {"type": "role_assigned", "role": "morp"})
 
-    deadline = time.time() + _TIMER_SECONDS
+    hint_deadline = time.time() + _TIMER_SECONDS
     base_msg = {
         "type": "endgame_round_start",
         "board_hint": es.board.board_hint,
         "words": es.board.words,
         "finalist_ids": [p.id for p in active],
         "ghost_ids": [p.id for p in ghosts],
-        "deadline": deadline,
+        "hint_deadline": hint_deadline,
         "timers_enabled": engine.lobby.config.timers_enabled,
     }
 
@@ -550,7 +552,7 @@ async def _broadcast_endgame_round_start(lobby_id: str, engine: GameEngine):
         await manager.send(lobby_id, player.id, msg)
 
     if engine.lobby.config.timers_enabled:
-        _schedule_endgame_timeout(lobby_id, engine, deadline)
+        _schedule_endgame_hint_timeout(lobby_id, engine, hint_deadline)
 
 
 async def _broadcast_endgame_hints_revealed(lobby_id: str, engine: GameEngine):
@@ -602,6 +604,9 @@ def _schedule_morp_guess_timeout(
         rs = engine.state.round_state
         if rs is None:
             return
+        # Pre-pop self from registry so that _check_round_end → _broadcast_endgame_round_start
+        # → _schedule_endgame_hint_timeout → _cancel_timer doesn't cancel this task.
+        _timer_tasks.pop(lobby_id, None)
         for morp_id in accused_morp_ids:
             try:
                 correct = engine.submit_morp_guess(morp_id, "")
@@ -616,6 +621,34 @@ def _schedule_morp_guess_timeout(
                 pass
         await manager.broadcast(lobby_id, _lobby_update(engine))
         await _check_round_end(lobby_id, engine)
+
+    _cancel_timer(lobby_id)
+    _timer_tasks[lobby_id] = asyncio.create_task(_run())
+
+
+async def _start_endgame_guess_phase(lobby_id: str, engine: GameEngine):
+    """Cancel the hint timer, transition engine to guess phase, and start guess timer."""
+    _cancel_timer(lobby_id)
+    engine.endgame_end_hint_phase()
+    guess_deadline = time.time() + _TIMER_SECONDS
+    await manager.broadcast(lobby_id, {
+        "type": "endgame_hint_phase_over",
+        "guess_deadline": guess_deadline,
+        "timers_enabled": engine.lobby.config.timers_enabled,
+    })
+    if engine.lobby.config.timers_enabled:
+        _schedule_endgame_timeout(lobby_id, engine, guess_deadline)
+
+
+def _schedule_endgame_hint_timeout(lobby_id: str, engine: GameEngine, deadline: float):
+    async def _run():
+        await asyncio.sleep(max(0, deadline - time.time()))
+        if engine.state.phase != GamePhase.ENDGAME_GHOST_HINTS:
+            return  # round ended early (correct guess during hint phase)
+        # Remove self from registry before calling _start_endgame_guess_phase so that
+        # its internal _cancel_timer call is a no-op and doesn't cancel this task.
+        _timer_tasks.pop(lobby_id, None)
+        await _start_endgame_guess_phase(lobby_id, engine)
 
     _cancel_timer(lobby_id)
     _timer_tasks[lobby_id] = asyncio.create_task(_run())

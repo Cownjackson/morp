@@ -176,9 +176,9 @@ def make_endgame_engine():
     return engine, players
 
 
-def test_start_endgame_round_sets_phase_to_guessing():
+def test_start_endgame_round_sets_phase_to_ghost_hints():
     engine, _ = make_endgame_engine()
-    assert engine.state.phase == GamePhase.ENDGAME_GUESSING
+    assert engine.state.phase == GamePhase.ENDGAME_GHOST_HINTS
 
 
 def test_start_endgame_round_both_finalists_are_morp():
@@ -206,7 +206,7 @@ def test_all_ghosts_submitted_returns_all_in():
     for i, g in enumerate(ghosts):
         all_in = engine.endgame_submit_ghost_hint(g.id, f"hint {i}")
     assert all_in
-    assert engine.state.phase == GamePhase.ENDGAME_GUESSING
+    assert engine.state.phase == GamePhase.ENDGAME_GHOST_HINTS  # timer drives transition
 
 
 def test_non_ghost_cannot_submit_ghost_hint():
@@ -269,7 +269,7 @@ def test_endgame_wrong_guess_does_not_block_opponent():
     result = engine.endgame_submit_guess(active[0].id, wrong)
     assert result["correct"] is False
     assert result["round_over"] is False
-    assert engine.state.phase == GamePhase.ENDGAME_GUESSING  # still going
+    assert engine.state.phase == GamePhase.ENDGAME_GHOST_HINTS  # still going
 
 
 def test_endgame_wrong_guess_cannot_guess_again():
@@ -336,19 +336,44 @@ def test_start_next_endgame_round_resets_state():
     engine.endgame_submit_guess(active[1].id, wrong2)
 
     engine.start_next_endgame_round(seed=77)
-    assert engine.state.phase == GamePhase.ENDGAME_GUESSING
+    assert engine.state.phase == GamePhase.ENDGAME_GHOST_HINTS
     assert engine.state.endgame_state.ghost_hints == []
     assert engine.state.endgame_state.guesses == {}
 
 
+def test_endgame_end_hint_phase_transitions_to_guessing():
+    engine, _ = make_endgame_engine()
+    assert engine.state.phase == GamePhase.ENDGAME_GHOST_HINTS
+    engine.endgame_end_hint_phase()
+    assert engine.state.phase == GamePhase.ENDGAME_GUESSING
+
+
+def test_endgame_guess_works_during_hint_phase():
+    engine, _ = make_endgame_engine()
+    active = engine.lobby.active_players()
+    target = engine.state.endgame_state.target_word
+    result = engine.endgame_submit_guess(active[0].id, target)
+    assert result["correct"] is True
+    assert result["round_over"] is True
+
+
 def test_endgame_timeout_both_take_damage():
     engine, _ = make_endgame_engine()
-    ghosts = [p for p in engine.lobby.players.values() if p.is_ghost]
-    for i, g in enumerate(ghosts):
-        engine.endgame_submit_ghost_hint(g.id, f"hint {i}")
-
     active = engine.lobby.active_players()
     hp_before = [p.hp for p in active]
     engine.endgame_timeout()
     assert active[0].hp == hp_before[0] - 1
+    assert active[1].hp == hp_before[1] - 1
+
+
+def test_endgame_timeout_damages_player_who_already_guessed_wrong():
+    """Player who guessed wrong should also take damage when the timer expires."""
+    engine, _ = make_endgame_engine()
+    active = engine.lobby.active_players()
+    es = engine.state.endgame_state
+    wrong = next(w for w in es.board.words if w != es.target_word)
+    engine.endgame_submit_guess(active[0].id, wrong)  # active[0] guesses wrong
+    hp_before = [p.hp for p in active]
+    engine.endgame_timeout()  # active[1] never guesses
+    assert active[0].hp == hp_before[0] - 1  # wrong-guesser also takes damage
     assert active[1].hp == hp_before[1] - 1
