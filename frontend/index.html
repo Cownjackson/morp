@@ -1039,17 +1039,36 @@ function handleMessage(msg) {
       renderPlayerRow();
       document.getElementById('board-area').classList.remove('hidden');
       const isGhost = (msg.ghost_ids || []).includes(state.playerId);
-      document.getElementById('endgame-ghost-input-block').classList.toggle('hidden', !isGhost);
       if (isGhost) {
+        document.getElementById('endgame-ghost-input-block').classList.remove('hidden');
         document.getElementById('endgame-ghost-text-block').classList.toggle('hidden', state.drawingHints);
         document.getElementById('endgame-ghost-drawing-block').classList.toggle('hidden', !state.drawingHints);
         if (state.drawingHints) clearCanvas('endgame-ghost-canvas');
+        document.getElementById('endgame-ghost-waiting').style.display = 'none';
+        document.getElementById('endgame-ghost-hint-input').disabled   = false;
+        setEndgamePhaseLabel('Ghost Hints');
+        showAction('endgame-ghost');
+      } else {
+        // Finalists can guess immediately — hints arrive as ghosts submit
+        document.getElementById('endgame-guess-input-block').classList.remove('hidden');
+        document.getElementById('endgame-guess-input').disabled  = false;
+        document.getElementById('btn-endgame-guess').disabled    = false;
+        document.getElementById('endgame-guess-result').textContent = '';
+        const timerEl = document.getElementById('endgame-guess-timer');
+        if (msg.timers_enabled) {
+          timerEl.style.display = 'inline-block';
+          startTimer('endgame-guess-timer', msg.deadline, () => {
+            if (!document.getElementById('endgame-guess-input').disabled) {
+              send({ type: 'endgame_submit_guess', guess: '' });
+              document.getElementById('endgame-guess-input').disabled = true;
+              document.getElementById('btn-endgame-guess').disabled   = true;
+            }
+          });
+        } else {
+          timerEl.style.display = 'none';
+        }
+        showAction('endgame-guess');
       }
-      document.getElementById('endgame-ghost-waiting').style.display     = 'none';
-      document.getElementById('endgame-finalist-waiting').style.display  = isGhost ? 'none' : 'block';
-      document.getElementById('endgame-ghost-hint-input').disabled       = false;
-      setEndgamePhaseLabel('Ghost Hints');
-      showAction('endgame-ghost');
       log(`Endgame! ${msg.finalist_ids.map(playerName).join(' vs ')}`, 'warn');
       break;
     }
@@ -1068,31 +1087,9 @@ function handleMessage(msg) {
       }
       break;
 
-    case 'endgame_hints_revealed': {
-      document.getElementById('endgame-finalist-waiting').style.display = 'none';
-      const isFinalist = !state.isGhost;
-      document.getElementById('endgame-guess-input-block').classList.toggle('hidden', !isFinalist);
-      document.getElementById('endgame-guess-input').disabled    = false;
-      document.getElementById('btn-endgame-guess').disabled      = false;
-      document.getElementById('endgame-guess-result').textContent = '';
-      const timerEl = document.getElementById('endgame-guess-timer');
-      if (msg.timers_enabled) {
-        timerEl.style.display = 'inline-block';
-        startTimer('endgame-guess-timer', msg.deadline, () => {
-          if (isFinalist && !document.getElementById('endgame-guess-input').disabled) {
-            send({ type: 'endgame_submit_guess', guess: '' });
-            document.getElementById('endgame-guess-input').disabled   = true;
-            document.getElementById('btn-endgame-guess').disabled     = true;
-          }
-        });
-      } else {
-        timerEl.style.display = 'none';
-      }
-      setEndgamePhaseLabel('Guessing!');
-      showAction('endgame-guess');
-      log('Ghost hints revealed — guess now!', 'warn');
+    case 'endgame_hints_revealed':
+      // No longer used — finalists receive guess panel on endgame_round_start
       break;
-    }
 
     case 'endgame_guess_result': {
       clearTimer('endgame-guess-timer');

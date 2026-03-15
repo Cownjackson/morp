@@ -176,9 +176,9 @@ def make_endgame_engine():
     return engine, players
 
 
-def test_start_endgame_round_sets_phase_to_ghost_hints():
+def test_start_endgame_round_sets_phase_to_guessing():
     engine, _ = make_endgame_engine()
-    assert engine.state.phase == GamePhase.ENDGAME_GHOST_HINTS
+    assert engine.state.phase == GamePhase.ENDGAME_GUESSING
 
 
 def test_start_endgame_round_both_finalists_are_morp():
@@ -200,7 +200,7 @@ def test_ghost_can_submit_hint():
     assert not all_in  # only 1 of 2 ghosts submitted
 
 
-def test_all_ghosts_submitted_transitions_to_guessing():
+def test_all_ghosts_submitted_returns_all_in():
     engine, players = make_endgame_engine()
     ghosts = [p for p in engine.lobby.players.values() if p.is_ghost]
     for i, g in enumerate(ghosts):
@@ -336,7 +336,7 @@ def test_start_next_endgame_round_resets_state():
     engine.endgame_submit_guess(active[1].id, wrong2)
 
     engine.start_next_endgame_round(seed=77)
-    assert engine.state.phase == GamePhase.ENDGAME_GHOST_HINTS
+    assert engine.state.phase == GamePhase.ENDGAME_GUESSING
     assert engine.state.endgame_state.ghost_hints == []
     assert engine.state.endgame_state.guesses == {}
 

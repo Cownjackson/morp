@@ -395,7 +395,7 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
             await manager.broadcast(lobby_id, _lobby_update(engine))
 
         elif msg_type == "endgame_submit_ghost_hint":
-            all_in = engine.endgame_submit_ghost_hint(
+            engine.endgame_submit_ghost_hint(
                 player_id,
                 text=data.get("text", ""),
                 drawing_data=data.get("drawing_data"),
@@ -404,14 +404,10 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
             stored = next(h for h in es.ghost_hints if h.player_id == player_id)
             await manager.broadcast(lobby_id, {
                 "type": "endgame_hint_received",
-                "all_in": all_in,
                 **_hint_payload(stored),
             })
-            if all_in:
-                await _broadcast_endgame_hints_revealed(lobby_id, engine)
 
         elif msg_type == "endgame_submit_guess":
-            _cancel_timer(lobby_id)
             result = engine.endgame_submit_guess(player_id, data.get("guess", ""))
             es = engine.state.endgame_state
             await manager.broadcast(lobby_id, {
@@ -423,6 +419,7 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
                 "safe_player_id": es.safe_player_id,
             })
             if result["round_over"]:
+                _cancel_timer(lobby_id)
                 await manager.broadcast(lobby_id, _lobby_update(engine))
                 await _check_endgame_round_end(lobby_id, engine)
 
@@ -535,12 +532,15 @@ async def _broadcast_endgame_round_start(lobby_id: str, engine: GameEngine):
     for player in active:
         await manager.send(lobby_id, player.id, {"type": "role_assigned", "role": "morp"})
 
+    deadline = time.time() + _TIMER_SECONDS
     base_msg = {
         "type": "endgame_round_start",
         "board_hint": es.board.board_hint,
         "words": es.board.words,
         "finalist_ids": [p.id for p in active],
         "ghost_ids": [p.id for p in ghosts],
+        "deadline": deadline,
+        "timers_enabled": engine.lobby.config.timers_enabled,
     }
 
     for player in engine.lobby.players.values():
@@ -548,6 +548,9 @@ async def _broadcast_endgame_round_start(lobby_id: str, engine: GameEngine):
         if player.is_ghost:
             msg["target_word"] = es.target_word  # ghosts need this to give useful hints
         await manager.send(lobby_id, player.id, msg)
+
+    if engine.lobby.config.timers_enabled:
+        _schedule_endgame_timeout(lobby_id, engine, deadline)
 
 
 async def _broadcast_endgame_hints_revealed(lobby_id: str, engine: GameEngine):

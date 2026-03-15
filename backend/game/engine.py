@@ -246,7 +246,7 @@ class GameEngine:
         # Both finalists become morps
         for p in self.lobby.active_players():
             p.role = Role.MORP
-        self.state.phase = GamePhase.ENDGAME_GHOST_HINTS
+        self.state.phase = GamePhase.ENDGAME_GUESSING
 
     def endgame_submit_ghost_hint(self, player_id: str, text: str = "", drawing_data: list | None = None) -> bool:
         """Ghost submits a hint. Returns True when all ghosts have submitted."""
@@ -267,10 +267,7 @@ class GameEngine:
         else:
             hint = Hint(player_id=player_id, text=text[:MAX_HINT_LENGTH])
         es.ghost_hints.append(hint)
-        all_in = self._all_ghost_hints_in()
-        if all_in:
-            self.state.phase = GamePhase.ENDGAME_GUESSING
-        return all_in
+        return self._all_ghost_hints_in()
 
     def _all_ghost_hints_in(self) -> bool:
         """True when every connected ghost has submitted a hint (disconnected ghosts are skipped)."""
@@ -328,7 +325,7 @@ class GameEngine:
         self._purge_disconnected_players()
         board, target = self.board_manager.select_round(seed=seed)
         self.state.endgame_state = EndgameRoundState(board=board, target_word=target)
-        self.state.phase = GamePhase.ENDGAME_GHOST_HINTS
+        self.state.phase = GamePhase.ENDGAME_GUESSING
 
     def _resolve_endgame_round(self) -> None:
         active = self.lobby.active_players()
@@ -378,9 +375,8 @@ class GameEngine:
             self._skip_disconnected_hints()
         elif phase == GamePhase.VOTING:
             self._check_voting_complete()
-        elif phase == GamePhase.ENDGAME_GHOST_HINTS:
-            if self._all_ghost_hints_in():
-                self.state.phase = GamePhase.ENDGAME_GUESSING
+        elif phase == GamePhase.ENDGAME_GUESSING:
+            pass  # hints can still arrive; nothing to auto-advance
 
     def _reassign_host_if_needed(self) -> None:
         current_host = self.lobby.players.get(self.lobby.host_id)
