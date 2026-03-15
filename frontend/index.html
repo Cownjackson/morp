@@ -47,6 +47,38 @@
       transition: border-color 0.15s, color 0.15s;
     }
     #help-btn:hover { border-color: #7cf; color: #7cf; }
+    #changelog-btn {
+      background: none; border: 1px solid #444; color: #aaa;
+      border-radius: 50%; width: 26px; height: 26px;
+      font-size: 0.78em; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    #changelog-btn:hover { border-color: #fa7; color: #fa7; }
+
+    /* ── Changelog modal ── */
+    #changelog-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75); z-index: 1000;
+      align-items: center; justify-content: center; padding: 16px;
+    }
+    #changelog-overlay.open { display: flex; }
+    #changelog-modal {
+      background: #181818; border: 1px solid #333; border-radius: 10px;
+      padding: 28px; max-width: 500px; width: 100%;
+      max-height: 90vh; overflow-y: auto; position: relative;
+    }
+    #changelog-modal h2 { color: #fa7; font-size: 1.1em; margin-bottom: 18px; letter-spacing: 1px; }
+    #changelog-modal h3 { color: #7cf; font-size: 0.82em; letter-spacing: 1px; margin: 16px 0 6px; text-transform: uppercase; }
+    #changelog-modal p, #changelog-modal li { color: #ccc; font-size: 0.85em; line-height: 1.6; }
+    #changelog-modal ul { padding-left: 18px; margin: 0; }
+    #changelog-modal li { margin-bottom: 4px; }
+    #changelog-close {
+      position: absolute; top: 14px; right: 16px;
+      background: none; border: none; color: #666; font-size: 1.3em;
+      cursor: pointer; line-height: 1;
+    }
+    #changelog-close:hover { color: #eee; }
 
     /* ── Maintenance modal ── */
     #maintenance-overlay {
@@ -374,8 +406,33 @@
   <h1>YOU ARE PLAYING MORP</h1>
   <span id="lobby-code-display" class="hidden"></span>
   <span id="phase-label"></span>
+  <button id="changelog-btn" title="What's new">★</button>
   <button id="help-btn" title="How to play">?</button>
 </header>
+
+<!-- Changelog modal -->
+<div id="changelog-overlay">
+  <div id="changelog-modal">
+    <button id="changelog-close">&times;</button>
+    <h2>★ What's New</h2>
+
+    <h3>Features</h3>
+    <ul>
+      <li><strong>Lobby chat</strong>: Players can now send up to 150 character messages every 1 second to a shared lobby chat. believe it.</li>
+      <li><strong>Server maintenance popup</strong>: Notifies users if they were kicked from lobbies due to server maintenance.</li>
+      <li><strong>Copy custom word template</strong>: Allows users to more easily create their own word boards by copy and pasting the template.</li>
+      <li><strong>Drawn hints</strong>: Players can now submit drawn hints, set to standard game mode</li>
+      <li><strong>Frontend Improvements</strong>: Layout lobby players around da table.</li>
+    </ul>
+
+    <h3>Bug Fixes</h3>
+    <ul>
+      <li><strong>Timer fixes</strong>: Timer behaviour was really messed up.</li>
+      <li><strong>Improved endgame</strong>: Allowed all eliminated players to share hints at the same time, instead of one by one</li>
+      <li><strong>Host elimination</strong>: If host was eliminated their game would lock up on new round start.</li>
+    </ul>
+  </div>
+</div>
 
 <!-- Maintenance modal -->
 <div id="maintenance-overlay">
@@ -661,6 +718,14 @@
 </div>
 
 <script>
+// ── Changelog modal ──
+(function() {
+  const overlay = document.getElementById('changelog-overlay');
+  document.getElementById('changelog-btn').addEventListener('click', () => overlay.classList.add('open'));
+  document.getElementById('changelog-close').addEventListener('click', () => overlay.classList.remove('open'));
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+})();
+
 // ── Help modal ──
 (function() {
   const overlay = document.getElementById('help-overlay');
