@@ -288,8 +288,25 @@ async def _send_hint_phase_rejoin(lobby_id: str, player_id: str, engine: GameEng
     """Re-send round context to a player who reconnected during the hint phase."""
     rs = engine.state.round_state
     player = engine.lobby.players[player_id]
-    if rs is None or player.role is None:
-        return  # not a participant this round — nothing to restore
+    if rs is None:
+        return
+
+    if player.role is None:
+        # Ghost spectator — send board with target word so they can follow along
+        if not player.is_ghost:
+            return
+        round_msg: dict = {
+            "type": "round_start",
+            "round_number": rs.round_number,
+            "board_hint": rs.board.board_hint,
+            "words": rs.board.words,
+            "turn_order": rs.turn_order,
+            "target_word": rs.target_word,
+        }
+        await manager.send(lobby_id, player_id, round_msg)
+        for h in rs.hints:
+            await manager.send(lobby_id, player_id, {"type": "hint_received", **_hint_payload(h)})
+        return
 
     seed = engine._round_seed
     role_msg: dict = {"type": "role_assigned", "role": player.role.value}
@@ -467,6 +484,19 @@ async def _broadcast_round_start(lobby_id: str, engine: GameEngine, seed: int):
         if player.role == Role.SAFE:
             round_msg["target_word"] = rs.target_word
         await manager.send(lobby_id, player.id, round_msg)
+
+    # Send board info to ghost spectators so they see each new round and hints clear
+    ghost_round_msg: dict = {
+        "type": "round_start",
+        "round_number": rs.round_number,
+        "board_hint": rs.board.board_hint,
+        "words": rs.board.words,
+        "turn_order": rs.turn_order,
+        "target_word": rs.target_word,
+    }
+    for player in engine.lobby.ghost_players():
+        if player.is_connected:
+            await manager.send(lobby_id, player.id, ghost_round_msg)
 
 
 async def _broadcast_voting_open(lobby_id: str, engine: GameEngine):

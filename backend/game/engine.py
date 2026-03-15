@@ -229,6 +229,7 @@ class GameEngine:
 
     def _resolve_round(self) -> None:
         """Set the next phase after a round's damage/guess is fully resolved."""
+        self._reassign_host_if_needed()
         active = self.lobby.active_players()
         if len(active) == 0:
             self.state.phase = GamePhase.GAME_OVER
@@ -383,7 +384,7 @@ class GameEngine:
 
     def _reassign_host_if_needed(self) -> None:
         current_host = self.lobby.players.get(self.lobby.host_id)
-        if current_host and current_host.is_connected:
+        if current_host and current_host.is_connected and not current_host.is_ghost:
             return
         for p in self.lobby.players.values():
             if p.is_connected and not p.is_ghost:
