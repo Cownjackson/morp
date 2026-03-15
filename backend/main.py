@@ -1,6 +1,8 @@
 import asyncio
+import os
 import pathlib
 import secrets
+import signal
 import string
 import time
 
@@ -35,6 +37,25 @@ _engines: dict[str, GameEngine] = {}
 _timer_tasks: dict[str, asyncio.Task] = {}  # lobby_id -> active timer task
 
 _TIMER_SECONDS = 30  # duration for morp-guess and endgame-guess timers
+
+
+@app.on_event("startup")
+async def _setup_shutdown_handler():
+    loop = asyncio.get_running_loop()
+
+    async def _graceful_shutdown():
+        await manager.broadcast_all({"type": "maintenance_shutdown"})
+        await asyncio.sleep(1.0)
+        loop.remove_signal_handler(signal.SIGTERM)
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    def _sigterm_handler():
+        loop.create_task(_graceful_shutdown())
+
+    try:
+        loop.add_signal_handler(signal.SIGTERM, _sigterm_handler)
+    except NotImplementedError:
+        pass  # Windows does not support add_signal_handler; graceful shutdown is Linux/Docker only
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

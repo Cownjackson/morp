@@ -835,12 +835,13 @@ async function joinLobby() {
 let _wsRetries = 0;
 let _wsOpened = false;
 let _wsKicked = false;
+let _wsMaintenance = false;
 const _WS_MAX_RETRIES = 4;
 const _WS_RETRY_BASE_MS = 1500;
 
 function connectWS(lobbyId, playerId, name, isRetry) {
   state.lobbyId = lobbyId; state.playerId = playerId; state.playerName = name;
-  if (!isRetry) { _wsRetries = 0; _wsOpened = false; _wsKicked = false; }
+  if (!isRetry) { _wsRetries = 0; _wsOpened = false; _wsKicked = false; _wsMaintenance = false; }
 
   state.ws = new WebSocket(`${document.getElementById('server-url').value}/ws/${lobbyId}/${playerId}`);
 
@@ -874,6 +875,11 @@ function connectWS(lobbyId, playerId, name, isRetry) {
       _setConnectBusy(false);
       return;
     }
+    if (_wsMaintenance) {
+      log('Server is restarting for maintenance. Please reconnect in a moment.', 'warn');
+      _setConnectBusy(false);
+      return;
+    }
     if (_wsRetries < _WS_MAX_RETRIES) {
       _wsRetries++;
       const delay = _wsRetries * _WS_RETRY_BASE_MS;
@@ -898,6 +904,11 @@ function handleMessage(msg) {
 
     case 'kicked': {
       _wsKicked = true;
+      break;
+    }
+
+    case 'maintenance_shutdown': {
+      _wsMaintenance = true;
       break;
     }
 

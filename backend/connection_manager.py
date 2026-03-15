@@ -37,3 +37,7 @@ class ConnectionManager:
             for exc in results:
                 if isinstance(exc, Exception):
                     log.warning("broadcast failed lobby=%s: %s", lobby_id, exc)
+
+    async def broadcast_all(self, message: dict) -> None:
+        for lobby_id in list(self._connections.keys()):
+            await self.broadcast(lobby_id, message)
