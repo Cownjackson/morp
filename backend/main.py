@@ -43,17 +43,22 @@ _TIMER_SECONDS = 30  # duration for morp-guess and endgame-guess timers
 async def _setup_shutdown_handler():
     loop = asyncio.get_running_loop()
 
-    async def _graceful_shutdown():
-        await manager.broadcast_all({"type": "maintenance_shutdown"})
-        await asyncio.sleep(1.0)
-        loop.remove_signal_handler(signal.SIGTERM)
-        os.kill(os.getpid(), signal.SIGTERM)
+    def _make_handler(signum: int):
+        async def _graceful_shutdown():
+            await manager.broadcast_all({"type": "maintenance_shutdown"})
+            await asyncio.sleep(0.75)
+            loop.remove_signal_handler(signal.SIGTERM)
+            loop.remove_signal_handler(signal.SIGINT)
+            os.kill(os.getpid(), signum)
 
-    def _sigterm_handler():
-        loop.create_task(_graceful_shutdown())
+        def _handler():
+            loop.create_task(_graceful_shutdown())
+
+        return _handler
 
     try:
-        loop.add_signal_handler(signal.SIGTERM, _sigterm_handler)
+        loop.add_signal_handler(signal.SIGTERM, _make_handler(signal.SIGTERM))
+        loop.add_signal_handler(signal.SIGINT, _make_handler(signal.SIGINT))
     except NotImplementedError:
         pass  # Windows does not support add_signal_handler; graceful shutdown is Linux/Docker only
 

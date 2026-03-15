@@ -48,6 +48,20 @@
     }
     #help-btn:hover { border-color: #7cf; color: #7cf; }
 
+    /* ── Maintenance modal ── */
+    #maintenance-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85); z-index: 1100;
+      align-items: center; justify-content: center; padding: 16px;
+    }
+    #maintenance-overlay.open { display: flex; }
+    #maintenance-modal {
+      background: #181818; border: 1px solid #664400; border-radius: 10px;
+      padding: 28px; max-width: 340px; width: 100%; text-align: center;
+    }
+    #maintenance-modal h2 { color: #fa7; font-size: 1.1em; margin-bottom: 12px; letter-spacing: 1px; }
+    #maintenance-modal p { color: #ccc; font-size: 0.88em; line-height: 1.6; margin-bottom: 20px; }
+
     /* ── Help modal ── */
     #help-overlay {
       display: none; position: fixed; inset: 0;
@@ -327,37 +341,46 @@
 <body>
 
 <header>
-  <h1>MORP</h1>
+  <h1>YOU ARE PLAYING MORP</h1>
   <span id="lobby-code-display" class="hidden"></span>
   <span id="phase-label"></span>
   <button id="help-btn" title="How to play">?</button>
 </header>
 
+<!-- Maintenance modal -->
+<div id="maintenance-overlay">
+  <div id="maintenance-modal">
+    <h2>Server Maintenance</h2>
+    <p>The server is restarting for maintenance.<br>This totally deleted that lobby you were in, my b.</p>
+    <button id="maintenance-ok">Back to Menu</button>
+  </div>
+</div>
+
 <!-- Help modal -->
 <div id="help-overlay">
   <div id="help-modal">
     <button id="help-close">&times;</button>
-    <h2>How to Play</h2>
+    <h2>How to Play:</h2>
 
-    <h3>The Basics</h3>
+    <h3>The Basics:</h3>
     <p>Each round, everyone will be provided a board of words following a predetermined theme. One word on the board is designated as the <span class="role-morp">Target Word</span>, visible to all player not designated as <span class="role-morp">Morp</span>, who sees the board but not which word is safe.</p>
 
-    <h3>Taking Turns</h3>
+    <h3>Taking Turns:</h3>
     <p><span class="role-safe">Safe players</span> draw something that hints at the target word without giving it away. You want other safe players to know you see the word, but not make it so obvious the Morp can just copy you.</p>
     <p>The <span class="role-morp">Morp</span> has to wing it. Watch the other drawings, pick up on any patterns, and try to blend in. If you go first, you get to see half the board to help narrow it down.</p>
 
-    <h3>Voting</h3>
+    <h3>Voting:</h3>
     <p>After everyone draws, players vote on who they think the Morp is. The player with the most votes gets accused and roles are revealed.</p>
     <ul>
       <li>Wrong accusation: The <span class="role-morp">Morp</span> deals 1 damage to a player of their choosing.</li>
       <li>Morp caught: They get one shot at guessing the target word. Miss it and they take 1 damage instead.</li>
     </ul>
 
-    <h3>Winning</h3>
+    <h3>Winning:</h3>
     <p>Players start with 3 health. Last one standing wins. When only 2 players remain, the game shifts into a special head-to-head mode. Both players are designated as morp and must race to guess the word while the eliminated players provide hints about the target word.</p>
 
-    <h3>Tip</h3>
-    <p>You aren't limited to just drawing pictures, there are no rules against drawing words do whatever you want.</p>
+    <h3>Tip:</h3>
+    <p>You aren't limited to just drawing pictures, there are no rules against drawing words do whatever you want as long as it conveys some meaningful information.</p>
   </div>
 </div>
 
@@ -606,6 +629,11 @@
   document.getElementById('help-close').addEventListener('click', () => overlay.classList.remove('open'));
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 })();
+
+// ── Maintenance modal ──
+document.getElementById('maintenance-ok').addEventListener('click', () => {
+  document.getElementById('maintenance-overlay').classList.remove('open');
+});
 
 // Default the server URL to wherever this page was served from
 document.getElementById('server-url').value =
@@ -879,7 +907,6 @@ function connectWS(lobbyId, playerId, name, isRetry) {
       return;
     }
     if (_wsMaintenance) {
-      log('Server is restarting for maintenance. Please reconnect in a moment.', 'warn');
       _setConnectBusy(false);
       return;
     }
@@ -912,6 +939,12 @@ function handleMessage(msg) {
 
     case 'maintenance_shutdown': {
       _wsMaintenance = true;
+      document.getElementById('game-layout').classList.add('hidden');
+      document.getElementById('lobby-code-display').classList.add('hidden');
+      document.getElementById('role-banner').className = '';
+      document.getElementById('role-banner').textContent = '';
+      document.getElementById('panel-connect').classList.remove('hidden');
+      document.getElementById('maintenance-overlay').classList.add('open');
       break;
     }
 
