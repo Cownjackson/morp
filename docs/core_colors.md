@@ -1,0 +1,65 @@
+Core Colors:
+Grape: #6528CE
+Raspberry Wine: #500E2F
+Punch: #B21030
+Shreks Toe: #A3AF0A
+Trumskin: #CC6711
+Mustard: #D1912A
+Mint: #87DCAB
+Eggplant: #820D51
+Pinky: #FEAED2
+
+Palette Colors
+Row 1:
+#AE2963
+#B21232
+#F15241
+#FF9287
+#FFCEE5
+#EAFFF3
+
+Row 2:
+#EE60AB
+#D1922C
+#ED9302
+#FFE1B1
+#FEAFD2
+#D4FFe5
+
+Row 3:
+#521223
+#CC6813
+#FF7602
+#FFB271
+#F4D8FF
+#88DCAB
+
+Row 4:
+#530F52
+#2574B4
+#71B2E6
+#C8E7FF
+#FFE5EA
+#A3AF0C
+
+Row 5:
+#5D2F7C
+#682ECD
+#D99EFF
+#D0BBF6
+#FFE891
+#FFCE18
+
+Row 6:
+#312009
+#553910
+#855D3B
+#CE9767
+#FBC99A
+#F3E49D
+
+Black:
+#020202
+
+White:
+#FFFDFD

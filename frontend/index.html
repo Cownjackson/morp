@@ -9,8 +9,8 @@
 
     body {
       font-family: monospace;
-      background: #111;
-      color: #eee;
+      background: #500E2F;
+      color: #FFFDFD;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -27,34 +27,34 @@
       align-items: center;
       gap: 14px;
       padding: 12px 0 10px;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid #1C0E22;
       flex-shrink: 0;
     }
-    header h1 { color: #7cf; font-size: 1.4em; letter-spacing: 2px; }
+    header h1 { color: #87DCAB; font-size: 1.4em; letter-spacing: 2px; }
     #lobby-code-display {
-      color: #7cf; font-weight: bold; font-size: 1.1em;
-      background: #1a2a3a; padding: 2px 10px; border-radius: 4px;
+      color: #87DCAB; font-weight: bold; font-size: 1.1em;
+      background: #18082A; padding: 2px 10px; border-radius: 4px;
     }
     #phase-label {
-      margin-left: auto; color: #fa7;
+      margin-left: auto; color: #D1912A;
       font-size: 0.8em; letter-spacing: 1px; text-align: right;
     }
     #help-btn {
-      background: none; border: 1px solid #444; color: #aaa;
+      background: none; border: 1px solid #3A2848; color: #C09AB8;
       border-radius: 50%; width: 26px; height: 26px;
       font-size: 0.85em; cursor: pointer; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
       transition: border-color 0.15s, color 0.15s;
     }
-    #help-btn:hover { border-color: #7cf; color: #7cf; }
+    #help-btn:hover { border-color: #87DCAB; color: #87DCAB; }
     #changelog-btn {
-      background: none; border: 1px solid #444; color: #aaa;
+      background: none; border: 1px solid #3A2848; color: #C09AB8;
       border-radius: 50%; width: 26px; height: 26px;
       font-size: 0.78em; cursor: pointer; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
       transition: border-color 0.15s, color 0.15s;
     }
-    #changelog-btn:hover { border-color: #fa7; color: #fa7; }
+    #changelog-btn:hover { border-color: #D1912A; color: #D1912A; }
 
     /* ── Changelog modal ── */
     #changelog-overlay {
@@ -64,21 +64,21 @@
     }
     #changelog-overlay.open { display: flex; }
     #changelog-modal {
-      background: #181818; border: 1px solid #333; border-radius: 10px;
+      background: #130A1A; border: 1px solid #2A1835; border-radius: 10px;
       padding: 28px; max-width: 500px; width: 100%;
       max-height: 90vh; overflow-y: auto; position: relative;
     }
-    #changelog-modal h2 { color: #fa7; font-size: 1.1em; margin-bottom: 18px; letter-spacing: 1px; }
-    #changelog-modal h3 { color: #7cf; font-size: 0.82em; letter-spacing: 1px; margin: 16px 0 6px; text-transform: uppercase; }
-    #changelog-modal p, #changelog-modal li { color: #ccc; font-size: 0.85em; line-height: 1.6; }
+    #changelog-modal h2 { color: #D1912A; font-size: 1.1em; margin-bottom: 18px; letter-spacing: 1px; }
+    #changelog-modal h3 { color: #87DCAB; font-size: 0.82em; letter-spacing: 1px; margin: 16px 0 6px; text-transform: uppercase; }
+    #changelog-modal p, #changelog-modal li { color: #E8C8DC; font-size: 0.85em; line-height: 1.6; }
     #changelog-modal ul { padding-left: 18px; margin: 0; }
     #changelog-modal li { margin-bottom: 4px; }
     #changelog-close {
       position: absolute; top: 14px; right: 16px;
-      background: none; border: none; color: #666; font-size: 1.3em;
+      background: none; border: none; color: #705060; font-size: 1.3em;
       cursor: pointer; line-height: 1;
     }
-    #changelog-close:hover { color: #eee; }
+    #changelog-close:hover { color: #FFFDFD; }
 
     /* ── Maintenance modal ── */
     #maintenance-overlay {
@@ -88,11 +88,11 @@
     }
     #maintenance-overlay.open { display: flex; }
     #maintenance-modal {
-      background: #181818; border: 1px solid #664400; border-radius: 10px;
+      background: #130A1A; border: 1px solid #553010; border-radius: 10px;
       padding: 28px; max-width: 340px; width: 100%; text-align: center;
     }
-    #maintenance-modal h2 { color: #fa7; font-size: 1.1em; margin-bottom: 12px; letter-spacing: 1px; }
-    #maintenance-modal p { color: #ccc; font-size: 0.88em; line-height: 1.6; margin-bottom: 20px; }
+    #maintenance-modal h2 { color: #D1912A; font-size: 1.1em; margin-bottom: 12px; letter-spacing: 1px; }
+    #maintenance-modal p { color: #E8C8DC; font-size: 0.88em; line-height: 1.6; margin-bottom: 20px; }
 
     /* ── Help modal ── */
     #help-overlay {
@@ -102,23 +102,23 @@
     }
     #help-overlay.open { display: flex; }
     #help-modal {
-      background: #181818; border: 1px solid #333; border-radius: 10px;
+      background: #130A1A; border: 1px solid #2A1835; border-radius: 10px;
       padding: 28px; max-width: 500px; width: 100%;
       max-height: 90vh; overflow-y: auto; position: relative;
     }
-    #help-modal h2 { color: #7cf; font-size: 1.1em; margin-bottom: 18px; letter-spacing: 1px; }
-    #help-modal h3 { color: #fa7; font-size: 0.85em; letter-spacing: 1px; margin: 16px 0 6px; text-transform: uppercase; }
-    #help-modal p, #help-modal li { color: #ccc; font-size: 0.85em; line-height: 1.6; }
+    #help-modal h2 { color: #87DCAB; font-size: 1.1em; margin-bottom: 18px; letter-spacing: 1px; }
+    #help-modal h3 { color: #D1912A; font-size: 0.85em; letter-spacing: 1px; margin: 16px 0 6px; text-transform: uppercase; }
+    #help-modal p, #help-modal li { color: #E8C8DC; font-size: 0.85em; line-height: 1.6; }
     #help-modal ul { padding-left: 18px; }
     #help-modal li { margin-bottom: 4px; }
-    #help-modal .role-safe { color: #7f7; font-weight: bold; }
-    #help-modal .role-morp { color: #faa; font-weight: bold; }
+    #help-modal .role-safe { color: #87DCAB; font-weight: bold; }
+    #help-modal .role-morp { color: #B21030; font-weight: bold; }
     #help-close {
       position: absolute; top: 14px; right: 16px;
-      background: none; border: none; color: #666; font-size: 1.3em;
+      background: none; border: none; color: #705060; font-size: 1.3em;
       cursor: pointer; line-height: 1;
     }
-    #help-close:hover { color: #eee; }
+    #help-close:hover { color: #FFFDFD; }
 
     /* ── Role banner ── */
     #role-banner {
@@ -128,18 +128,18 @@
       margin: 10px 0 4px; flex-shrink: 0;
       text-align: center;
     }
-    #role-banner.safe  { background: #0d2e0d; border: 1px solid #2a7a2a; color: #7f7; }
-    #role-banner.morp  { background: #2a0a0a; border: 1px solid #8a2a2a; color: #faa; }
-    #role-banner.ghost { background: #1a1a1a; border: 1px solid #444;    color: #777; }
+    #role-banner.safe  { background: #081E14; border: 1px solid #2A6A5A; color: #87DCAB; }
+    #role-banner.morp  { background: #200814; border: 1px solid #7A1050; color: #FEAED2; }
+    #role-banner.ghost { background: #140A18; border: 1px solid #3A2848;    color: #806878; }
 
     /* ── Connect screen ── */
     #panel-connect {
-      background: #181818; border: 1px solid #2a2a2a;
+      background: #130A1A; border: 1px solid #221435;
       border-radius: 8px; padding: 28px; margin: 24px auto;
       max-width: 420px; width: 100%;
     }
     #panel-connect h2 {
-      color: #7cf; font-size: 1.1em; margin-bottom: 18px;
+      color: #87DCAB; font-size: 1.1em; margin-bottom: 18px;
       letter-spacing: 1px;
     }
 
@@ -151,83 +151,83 @@
 
     /* ── Board ── */
     #board-area {
-      background: #161616; border: 1px solid #252525;
+      background: #100815; border: 1px solid #1E1228;
       border-radius: 8px; padding: 12px;
     }
     #board-header {
       display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
     }
     #board-theme-tag {
-      background: #1e2a1e; border: 1px solid #2a4a2a;
-      color: #8c8; font-size: 0.78em; padding: 2px 8px;
+      background: #0A1A18; border: 1px solid #1A4A3A;
+      color: #87DCAB; font-size: 0.78em; padding: 2px 8px;
       border-radius: 12px; letter-spacing: 0.5px;
     }
     #half-board-note {
-      color: #776; font-size: 0.76em; margin-top: 6px; display: none;
+      color: #907878; font-size: 0.76em; margin-top: 6px; display: none;
     }
     #board-grid { display: grid; gap: 5px; }
     .word-cell {
-      background: #1e1e1e; border: 1px solid #333;
+      background: #180D1E; border: 1px solid #2A1835;
       border-radius: 4px; padding: 7px 4px;
       text-align: center; font-size: 0.82em; cursor: default;
       transition: background 0.15s;
     }
-    .word-cell.target     { background: #0d2e0d; border-color: #2a7a2a; color: #7f7; font-weight: bold; }
-    .word-cell.half       { background: #252510; border-color: #665; }
-    .word-cell.hidden-word { background: #141414; border-color: #1e1e1e; color: #2a2a2a; }
+    .word-cell.target     { background: #081E14; border-color: #2A6A5A; color: #87DCAB; font-weight: bold; }
+    .word-cell.half       { background: #1A1018; border-color: #554040; }
+    .word-cell.hidden-word { background: #100810; border-color: #180D1E; color: #221435; }
 
     /* ── Action area ── */
     #action-area {
-      background: #161616; border: 1px solid #252525;
+      background: #100815; border: 1px solid #1E1228;
       border-radius: 8px; padding: 14px 16px;
       min-height: 72px; text-align: center;
     }
     .action-section h3 {
-      color: #adf; font-size: 0.8em; text-transform: uppercase;
+      color: #D0BBF6; font-size: 0.8em; text-transform: uppercase;
       letter-spacing: 1px; margin-bottom: 10px;
     }
 
     /* ── Shared form elements ── */
     input[type="text"], input:not([type]) {
-      background: #1e1e1e; color: #eee;
-      border: 1px solid #3a3a3a; border-radius: 4px;
+      background: #180D1E; color: #FFFDFD;
+      border: 1px solid #2E1A40; border-radius: 4px;
       padding: 7px 10px; font-family: monospace; font-size: 0.9em;
       text-align: left;
     }
-    input:focus { outline: 1px solid #555; }
+    input:focus { outline: 1px solid #453060; }
     textarea { text-align: left; }
     button {
-      background: #1e4d2e; color: #8ef; border: 1px solid #2a6a3e;
+      background: #2B1460; color: #D0BBF6; border: 1px solid #4A22A0;
       border-radius: 4px; padding: 7px 14px; cursor: pointer;
       margin: 3px; font-family: monospace; font-size: 0.88em;
       transition: background 0.12s;
     }
-    button:hover:not(:disabled) { background: #266040; }
-    button:disabled { background: #1e1e1e; color: #444; border-color: #2a2a2a; cursor: not-allowed; }
-    button.primary { background: #1a2a50; color: #aaf; border-color: #2a4080; }
-    button.primary:hover:not(:disabled) { background: #223060; }
-    button.danger  { background: #4a1010; color: #faa; border-color: #7a2020; }
-    button.danger:hover:not(:disabled) { background: #601818; }
+    button:hover:not(:disabled) { background: #3C1880; }
+    button:disabled { background: #180D1E; color: #3A2848; border-color: #221435; cursor: not-allowed; }
+    button.primary { background: #351060; color: #D0BBF6; border-color: #5D2F7C; }
+    button.primary:hover:not(:disabled) { background: #451278; }
+    button.danger  { background: #3A0818; color: #FEAED2; border-color: #6A1040; }
+    button.danger:hover:not(:disabled) { background: #500E2F; }
     .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; justify-content: center; }
     .toggle-row { display: flex; gap: 8px; align-items: center; justify-content: center; }
-    .toggle-row label { cursor: pointer; color: #888; font-size: 0.88em; }
+    .toggle-row label { cursor: pointer; color: #907880; font-size: 0.88em; }
 
     /* vote buttons */
     .vote-btn {
-      background: #1e1e1e; color: #ccc;
-      border: 1px solid #3a3a3a;
+      background: #180D1E; color: #E8C8DC;
+      border: 1px solid #2E1A40;
     }
-    .vote-btn.selected { background: #3a1010; color: #faa; border-color: #7a2020; }
-    .vote-btn:hover:not(.selected):not(:disabled) { background: #2a2a2a; }
+    .vote-btn.selected { background: #280818; color: #FEAED2; border-color: #6A1040; }
+    .vote-btn:hover:not(.selected):not(:disabled) { background: #221435; }
 
     /* timers */
-    .big-timer { font-size: 1.6em; font-weight: bold; color: #fa7; }
+    .big-timer { font-size: 1.6em; font-weight: bold; color: #D1912A; }
 
     /* tags */
     .tag { font-size: 0.72em; padding: 1px 5px; border-radius: 3px; }
-    .tag.morp  { background: #3a1010; color: #faa; border: 1px solid #6a2020; }
-    .tag.safe  { background: #0d2e0d; color: #7f7; border: 1px solid #2a6a2a; }
-    .tag.ghost { background: #1e1e1e; color: #666; border: 1px solid #333; }
+    .tag.morp  { background: #280818; color: #FEAED2; border: 1px solid #820D51; }
+    .tag.safe  { background: #081E14; color: #87DCAB; border: 1px solid #2A6A5A; }
+    .tag.ghost { background: #180D1E; color: #705060; border: 1px solid #2A1835; }
 
     /* ── Player row ── */
     #player-row {
@@ -251,12 +251,12 @@
       position: absolute;
       bottom: calc(100% + 8px);
       left: 50%; transform: translateX(-50%);
-      background: #222; border: 1px solid #4a4a4a;
+      background: #1C0E22; border: 1px solid #3A2A45;
       border-radius: 8px; padding: 5px 9px;
       font-size: 0.74em; width: 110px;
       text-align: center; word-break: break-word;
       white-space: normal; pointer-events: none;
-      z-index: 10; color: #ddd; line-height: 1.3;
+      z-index: 10; color: #F0D0E8; line-height: 1.3;
     }
     .speech-bubble::after { content: none; }
     /* ── cardinal directions ── */
@@ -288,7 +288,7 @@
       bottom: calc(100% + 4px);
       left: auto; right: calc(100% + 4px); transform: none;
     }
-    .speech-bubble.skipped { color: #444; font-style: italic; }
+    .speech-bubble.skipped { color: #3A2848; font-style: italic; }
     .speech-bubble.drawing-bubble { width: 364px; padding: 4px; }
     .speech-bubble.drawing-bubble canvas { max-width: 100%; border-radius: 3px; display: block; }
 
@@ -297,26 +297,26 @@
       display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
       justify-content: center;
       padding: 6px 8px; margin-bottom: 6px;
-      background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px;
+      background: #140A18; border: 1px solid #221435; border-radius: 4px;
     }
-    .draw-sep { width: 1px; height: 18px; background: #333; flex-shrink: 0; }
+    .draw-sep { width: 1px; height: 18px; background: #2A1835; flex-shrink: 0; }
     .color-swatch {
       width: 18px; height: 18px; border-radius: 50%;
       border: 2px solid transparent; cursor: pointer; padding: 0;
       flex-shrink: 0; transition: border-color 0.1s;
     }
     .color-swatch.active { border-color: #fff !important; }
-    .color-swatch:hover:not(.active) { border-color: #666; }
+    .color-swatch:hover:not(.active) { border-color: #705060; }
     .size-btn {
-      background: #1e1e1e; color: #aaa; border: 1px solid #3a3a3a;
+      background: #180D1E; color: #C09AB8; border: 1px solid #2E1A40;
       padding: 2px 7px; font-size: 0.78em; cursor: pointer; border-radius: 3px;
     }
-    .size-btn.active { background: #1e3a1e; color: #8ef; border-color: #3a6a3a; }
+    .size-btn.active { background: #1E1040; color: #D0BBF6; border-color: #4A2A80; }
     .tool-btn {
-      background: #1e1e1e; color: #aaa; border: 1px solid #3a3a3a;
+      background: #180D1E; color: #C09AB8; border: 1px solid #2E1A40;
       padding: 2px 8px; font-size: 0.78em; cursor: pointer; border-radius: 3px;
     }
-    .tool-btn.active { background: #3a1e1e; color: #faa; border-color: #7a3a3a; }
+    .tool-btn.active { background: #2A0818; color: #FEAED2; border-color: #7A1050; }
 
     .avatar-circle {
       width: 54px; height: 54px; border-radius: 50%;
@@ -328,8 +328,8 @@
       user-select: none; cursor: default;
     }
     .avatar-circle.is-ghost     { opacity: 0.3; filter: grayscale(1); }
-    .avatar-circle.is-you       { border-color: #ffd700 !important; box-shadow: 0 0 8px rgba(255,215,0,0.25); }
-    .avatar-circle.is-active    { box-shadow: 0 0 14px rgba(80,220,80,0.55); border-color: #4c4 !important; }
+    .avatar-circle.is-you       { border-color: #FFCE18 !important; box-shadow: 0 0 8px rgba(255,206,24,0.25); }
+    .avatar-circle.is-active    { box-shadow: 0 0 14px rgba(135,220,171,0.55); border-color: #87DCAB !important; }
     .avatar-circle.disconnected { opacity: 0.2; }
 
     .host-crown {
@@ -339,62 +339,62 @@
     }
 
     .avatar-name {
-      font-size: 0.7em; color: #aaa; text-align: center;
+      font-size: 0.7em; color: #C09AB8; text-align: center;
       max-width: 70px; overflow: hidden;
       text-overflow: ellipsis; white-space: nowrap;
     }
-    .avatar-name.is-you { color: #ffd700; }
+    .avatar-name.is-you { color: #FFCE18; }
 
     .hp-pips { display: flex; gap: 3px; justify-content: center; }
-    .hp-pip { width: 7px; height: 7px; border-radius: 50%; background: #c44; }
+    .hp-pip { width: 7px; height: 7px; border-radius: 50%; background: #B21030; }
     .hp-pip.empty { background: #202020; border: 1px solid #2e2e2e; }
 
     /* ── Log ── */
-    #log-wrap { border-top: 1px solid #1e1e1e; margin-top: 6px; flex-shrink: 0; }
+    #log-wrap { border-top: 1px solid #180D1E; margin-top: 6px; flex-shrink: 0; }
     #log-toggle {
-      background: none; border: none; color: #444;
+      background: none; border: none; color: #3A2848;
       font-family: monospace; font-size: 0.74em;
       cursor: pointer; padding: 5px 0; width: 100%; text-align: left;
     }
-    #log-toggle:hover { color: #777; }
+    #log-toggle:hover { color: #806878; }
     #log {
       height: 88px; overflow-y: auto;
-      background: #0c0c0c; border: 1px solid #1a1a1a;
+      background: #080508; border: 1px solid #140A18;
       border-radius: 4px; padding: 6px 8px;
-      font-size: 0.74em; color: #555;
+      font-size: 0.74em; color: #453060;
     }
     #log div { margin-bottom: 1px; }
-    #log div.info  { color: #5a9fdf; }
-    #log div.ok    { color: #5ab85a; }
-    #log div.warn  { color: #d49020; }
-    #log div.error { color: #d05050; }
+    #log div.info  { color: #71B2E6; }
+    #log div.ok    { color: #87DCAB; }
+    #log div.warn  { color: #D1912A; }
+    #log div.error { color: #B21030; }
 
     /* ── Chat ── */
     #chat-wrap {
-      border-top: 1px solid #1e1e1e;
+      border-top: 1px solid #180D1E;
       margin-top: 6px; flex-shrink: 0;
     }
     #chat-messages {
       height: 110px; overflow-y: auto;
-      background: #0c0c0c; border: 1px solid #1a1a1a;
+      background: #080508; border: 1px solid #140A18;
       border-radius: 4px 4px 0 0;
-      padding: 6px 8px; font-size: 0.8em; color: #aaa;
+      padding: 6px 8px; font-size: 0.8em; color: #C09AB8;
     }
     #chat-messages div { margin-bottom: 2px; line-height: 1.4; }
     #chat-messages .chat-name { font-weight: bold; }
     #chat-input-row {
       display: flex;
-      border: 1px solid #1a1a1a; border-top: none;
+      border: 1px solid #140A18; border-top: none;
       border-radius: 0 0 4px 4px; overflow: hidden;
     }
     #chat-input {
       flex: 1; border: none; border-radius: 0;
-      background: #101010; color: #ccc;
+      background: #0D0810; color: #E8C8DC;
       padding: 5px 8px; font-family: monospace; font-size: 0.8em;
     }
     #chat-input:focus { outline: none; }
     #btn-chat-send {
-      border: none; border-left: 1px solid #2a3a2a;
+      border: none; border-left: 1px solid #2A1A40;
       border-radius: 0; margin: 0; padding: 5px 12px;
       font-size: 0.78em;
     }
@@ -477,16 +477,16 @@
 <div id="panel-connect">
   <h2>Join a Game</h2>
   <div class="row">
-    <span style="color:#666;width:54px">Server</span>
+    <span style="color:#705060;width:54px">Server</span>
     <input type="text" id="server-url" style="width:220px">
   </div>
   <div class="row">
-    <span style="color:#666;width:54px">Name</span>
+    <span style="color:#705060;width:54px">Name</span>
     <input type="text" id="player-name" placeholder="Your name" style="width:160px">
   </div>
-  <div class="row" style="margin-top:14px; border-top:1px solid #222; padding-top:14px">
+  <div class="row" style="margin-top:14px; border-top:1px solid #1C0E22; padding-top:14px">
     <button onclick="createLobby()">Create Lobby</button>
-    <span style="color:#333;font-size:0.85em">— or —</span>
+    <span style="color:#2A1835;font-size:0.85em">— or —</span>
     <input type="text" id="join-code" placeholder="LOBBY CODE" style="width:110px;text-transform:uppercase;letter-spacing:2px">
     <button onclick="joinLobby()">Join</button>
   </div>
@@ -519,19 +519,19 @@
           <label for="drawing-hints-toggle">Drawing hints (players draw instead of type)</label>
         </div>
         <div style="margin-bottom:10px">
-          <div style="font-size:0.85em;color:#888;margin-bottom:4px">
+          <div style="font-size:0.85em;color:#907880;margin-bottom:4px">
             Custom boards (JSON array). Leave blank to use defaults:
           </div>
-          <textarea id="custom-boards-input" rows="4" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:0.8em;background:#1a1a1a;color:#ccc;border:1px solid #444;border-radius:4px;padding:6px;resize:vertical" placeholder='[{"board_hint":"Theme…","words":["word1","word2"]}]'></textarea>
+          <textarea id="custom-boards-input" rows="4" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:0.8em;background:#140A18;color:#E8C8DC;border:1px solid #3A2848;border-radius:4px;padding:6px;resize:vertical" placeholder='[{"board_hint":"Theme…","words":["word1","word2"]}]'></textarea>
           <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
             <button onclick="setCustomBoards()">Set Boards</button>
-            <button onclick="copyBoardTemplate()" id="copy-template-btn" style="background:#1a2a1a;border-color:#4a8;color:#8c8">Copy template</button>
-            <span id="custom-boards-status" style="font-size:0.82em;color:#888">using defaults</span>
+            <button onclick="copyBoardTemplate()" id="copy-template-btn" style="background:#0A1A14;border-color:#2A6A5A;color:#87DCAB">Copy template</button>
+            <span id="custom-boards-status" style="font-size:0.82em;color:#907880">using defaults</span>
           </div>
         </div>
         <button id="btn-start" onclick="startGame()" disabled>Start Game</button>
       </div>
-      <p id="lobby-waiting" style="color:#444;font-size:0.88em">Waiting for players…</p>
+      <p id="lobby-waiting" style="color:#3A2848;font-size:0.88em">Waiting for players…</p>
     </div>
 
     <!-- HINT PHASE -->
@@ -570,7 +570,7 @@
             <button class="tool-btn" onclick="clearCanvas('hint-canvas')">Clear</button>
           </div>
           <canvas id="hint-canvas" width="560" height="360"
-            style="background:#111;border:1px solid #444;border-radius:4px;cursor:crosshair;touch-action:none;display:block;max-width:100%;margin:0 auto">
+            style="background:#111;border:1px solid #3A2848;border-radius:4px;cursor:crosshair;touch-action:none;display:block;max-width:100%;margin:0 auto">
           </canvas>
           <button onclick="submitHint()" style="margin-top:6px">Submit Drawing</button>
         </div>
@@ -582,7 +582,7 @@
       <h3>Vote — pick <span id="vote-count-label"></span> suspect(s)</h3>
       <div id="vote-buttons" style="margin-bottom:8px"></div>
       <button id="btn-submit-votes" onclick="submitVotes()" disabled>Submit Votes</button>
-      <span id="vote-waiting" style="display:none;margin-left:12px;color:#555;font-size:0.88em">Votes submitted — waiting…</span>
+      <span id="vote-waiting" style="display:none;margin-left:12px;color:#453060;font-size:0.88em">Votes submitted — waiting…</span>
     </div>
 
     <!-- ACCUSATION RESULT -->
@@ -610,24 +610,24 @@
     <div id="act-damage" class="action-section hidden">
       <h3>Damage Phase</h3>
       <div id="damage-morp-action" class="hidden">
-        <p style="color:#faa;font-size:0.88em;margin-bottom:8px">You are the morp — choose a player to damage:</p>
+        <p style="color:#FEAED2;font-size:0.88em;margin-bottom:8px">You are the morp — choose a player to damage:</p>
         <div id="damage-buttons"></div>
       </div>
-      <p id="damage-waiting" style="display:none;color:#555;font-size:0.88em">Waiting for morp to deal damage…</p>
+      <p id="damage-waiting" style="display:none;color:#453060;font-size:0.88em">Waiting for morp to deal damage…</p>
     </div>
 
     <!-- ENDGAME (merged panel — shown to all roles) -->
     <div id="act-endgame" class="action-section hidden">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
         <h3 style="margin:0">2-Player Endgame</h3>
-        <span id="endgame-phase-label" style="color:#fa7;font-size:0.8em"></span>
+        <span id="endgame-phase-label" style="color:#D1912A;font-size:0.8em"></span>
         <span id="endgame-hint-timer"  class="big-timer" style="display:none">30</span>
         <span id="endgame-guess-timer" class="big-timer" style="display:none">30</span>
       </div>
 
       <!-- Ghost hint section (only shown to ghosts during hint phase) -->
       <div id="endgame-ghost-section" class="hidden">
-        <p style="color:#777;font-size:0.85em;margin-bottom:6px">You are a ghost — submit a hint for the finalists:</p>
+        <p style="color:#806878;font-size:0.85em;margin-bottom:6px">You are a ghost — submit a hint for the finalists:</p>
         <div id="endgame-ghost-input-block">
           <!-- Text mode -->
           <div id="endgame-ghost-text-block" class="row">
@@ -661,12 +661,12 @@
               <button class="tool-btn" onclick="clearCanvas('endgame-ghost-canvas')">Clear</button>
             </div>
             <canvas id="endgame-ghost-canvas" width="560" height="360"
-              style="background:#111;border:1px solid #444;border-radius:4px;cursor:crosshair;touch-action:none;display:block;max-width:100%;margin:0 auto">
+              style="background:#111;border:1px solid #3A2848;border-radius:4px;cursor:crosshair;touch-action:none;display:block;max-width:100%;margin:0 auto">
             </canvas>
             <button onclick="submitEndgameGhostHint()" style="margin-top:6px">Submit Drawing</button>
           </div>
         </div>
-        <p id="endgame-ghost-waiting" style="display:none;color:#555;font-size:0.88em">Hint submitted — waiting for guess phase…</p>
+        <p id="endgame-ghost-waiting" style="display:none;color:#453060;font-size:0.88em">Hint submitted — waiting for guess phase…</p>
       </div>
 
       <!-- Finalist guess section (only shown to finalists) -->
@@ -910,7 +910,7 @@ async function setCustomBoards() {
   const statusEl = document.getElementById('custom-boards-status');
   if (!raw) {
     statusEl.textContent = 'using defaults';
-    statusEl.style.color = '#888';
+    statusEl.style.color = '#907880';
     return;
   }
   let boards;
@@ -919,7 +919,7 @@ async function setCustomBoards() {
     if (!Array.isArray(boards)) throw new Error('Expected a JSON array.');
   } catch (e) {
     statusEl.textContent = `Invalid JSON: ${e.message}`;
-    statusEl.style.color = '#f77';
+    statusEl.style.color = '#FEAED2';
     return;
   }
   try {
@@ -931,14 +931,14 @@ async function setCustomBoards() {
     const body = await r.json().catch(() => ({}));
     if (!r.ok) {
       statusEl.textContent = body.detail || `Error ${r.status}`;
-      statusEl.style.color = '#f77';
+      statusEl.style.color = '#FEAED2';
       return;
     }
     statusEl.textContent = `${body.boards_set} custom board${body.boards_set === 1 ? '' : 's'} set`;
-    statusEl.style.color = '#7f7';
+    statusEl.style.color = '#87DCAB';
   } catch (e) {
     statusEl.textContent = `Request failed: ${e}`;
-    statusEl.style.color = '#f77';
+    statusEl.style.color = '#FEAED2';
   }
 }
 
@@ -1143,7 +1143,7 @@ function handleMessage(msg) {
       document.getElementById('btn-morp-guess').disabled = false;
       document.getElementById('guess-result').textContent =
         isMorpBeingAsked ? '' : `Waiting for ${msg.accused_morp_ids.map(playerName).join(', ')} to guess…`;
-      document.getElementById('guess-result').style.color = '#666';
+      document.getElementById('guess-result').style.color = '#705060';
       if (msg.timers_enabled) {
         startTimer('guess-timer', msg.deadline, () => {
           if (isMorpBeingAsked && !document.getElementById('guess-input').disabled) {
@@ -1167,7 +1167,7 @@ function handleMessage(msg) {
         ? `✓ ${playerName(msg.morp_id)} guessed correctly! Target: "${msg.target_word}"`
         : `✗ ${playerName(msg.morp_id)} guessed wrong. Target: "${msg.target_word}"${msg.timed_out ? ' (timed out)' : ''}`;
       document.getElementById('guess-result').textContent = resultText;
-      document.getElementById('guess-result').style.color = msg.correct ? '#7f7' : '#f77';
+      document.getElementById('guess-result').style.color = msg.correct ? '#87DCAB' : '#FEAED2';
       log(resultText, msg.correct ? 'ok' : 'warn');
       state.targetWord = msg.target_word;
       renderBoard();
@@ -1198,7 +1198,7 @@ function handleMessage(msg) {
         btn.onclick = () => { send({ type: 'next_round' }); btn.disabled = true; };
         rc.appendChild(btn);
       } else {
-        rc.innerHTML = '<p style="color:#555;font-size:0.88em">Waiting for host to start next round…</p>';
+        rc.innerHTML = '<p style="color:#453060;font-size:0.88em">Waiting for host to start next round…</p>';
       }
       showAction('round-end');
       log('Round over.', 'ok');
@@ -1314,11 +1314,11 @@ function handleMessage(msg) {
       if (msg.round_over) {
         const winner = msg.safe_player_id ? playerName(msg.safe_player_id) : null;
         resEl.innerHTML = winner
-          ? `<span style="color:#7f7">✓ ${winner} guessed correctly! Target: "${msg.target_word}"</span>`
-          : `<span style="color:#f77">✗ Nobody got it. Target: "${msg.target_word}"</span>`;
+          ? `<span style="color:#87DCAB">✓ ${winner} guessed correctly! Target: "${msg.target_word}"</span>`
+          : `<span style="color:#FEAED2">✗ Nobody got it. Target: "${msg.target_word}"</span>`;
       } else {
         const line = document.createElement('div');
-        line.style.color = '#f77';
+        line.style.color = '#FEAED2';
         line.textContent = `✗ ${playerName(msg.player_id)} guessed wrong.`;
         resEl.appendChild(line);
         if (msg.player_id === state.playerId) {
@@ -1333,15 +1333,15 @@ function handleMessage(msg) {
       clearTimer('endgame-hint-timer');
       clearTimer('endgame-guess-timer');
       document.getElementById('endgame-guess-result').innerHTML =
-        `<span style="color:#f77">⏰ Time's up! Target was: "${msg.target_word}"</span>`;
+        `<span style="color:#FEAED2">⏰ Time's up! Target was: "${msg.target_word}"</span>`;
       log(`Time's up. Target: "${msg.target_word}"`, 'warn');
       break;
 
     case 'endgame_round_end': {
       const ec = document.getElementById('round-end-content');
       ec.innerHTML = msg.safe_player_id
-        ? `<p style="color:#aaa;margin-bottom:8px">${playerName(msg.safe_player_id)} survived. Target: "${msg.target_word}"</p>`
-        : `<p style="color:#f77;margin-bottom:8px">Nobody guessed correctly. Target: "${msg.target_word}"</p>`;
+        ? `<p style="color:#C09AB8;margin-bottom:8px">${playerName(msg.safe_player_id)} survived. Target: "${msg.target_word}"</p>`
+        : `<p style="color:#FEAED2;margin-bottom:8px">Nobody guessed correctly. Target: "${msg.target_word}"</p>`;
       if (state.isHost) {
         const btn = document.createElement('button');
         btn.className = 'primary'; btn.textContent = 'Next Sudden Death Round ▶';
@@ -1349,7 +1349,7 @@ function handleMessage(msg) {
         ec.appendChild(btn);
       } else {
         const wait = document.createElement('p');
-        wait.style.cssText = 'color:#555;font-size:0.88em;margin-top:4px';
+        wait.style.cssText = 'color:#453060;font-size:0.88em;margin-top:4px';
         wait.textContent = 'Waiting for host…';
         ec.appendChild(wait);
       }
@@ -1362,8 +1362,8 @@ function handleMessage(msg) {
       clearTimer('guess-timer'); clearTimer('endgame-hint-timer'); clearTimer('endgame-guess-timer');
       document.getElementById('game-over-title').textContent = 'Game Over!';
       document.getElementById('game-over-content').innerHTML = msg.winner_id
-        ? `Winner: <strong style="color:#ffd700">${msg.winner_name}</strong>`
-        : '<em style="color:#666">Draw!</em>';
+        ? `Winner: <strong style="color:#FFCE18">${msg.winner_name}</strong>`
+        : '<em style="color:#705060">Draw!</em>';
       showAction('game-over');
       setPhaseLabel('GAME OVER');
       log(`Game over! Winner: ${msg.winner_name || 'nobody'}`, 'ok');
@@ -1569,9 +1569,9 @@ function checkYourTurn() {
   if (!currentPid) {
     indicator.textContent = ''; indicator.style.color = '';
   } else if (isMyTurn) {
-    indicator.textContent = 'Your turn!'; indicator.style.color = '#7f7';
+    indicator.textContent = 'Your turn!'; indicator.style.color = '#87DCAB';
   } else {
-    indicator.textContent = `Waiting for ${playerName(currentPid)}…`; indicator.style.color = '#fa7';
+    indicator.textContent = `Waiting for ${playerName(currentPid)}…`; indicator.style.color = '#D1912A';
   }
   // Update active-turn highlight on avatars
   renderPlayerRow();
@@ -1623,7 +1623,7 @@ function renderAccusation(msg) {
     </div>`;
   });
   document.getElementById('accusation-content').innerHTML =
-    `<p style="color:#666;font-size:0.85em;margin-bottom:6px">Accused:</p>${lines.join('')}`;
+    `<p style="color:#705060;font-size:0.85em;margin-bottom:6px">Accused:</p>${lines.join('')}`;
 }
 
 // ─── Damage ───────────────────────────────────────────────────────────────────
