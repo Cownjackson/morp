@@ -396,6 +396,130 @@
       cursor: pointer; transition: transform 0.1s;
     }
     .btn-create-lobby:hover { transform: translateY(-2px); }
+
+    /* ── Moop customizer on landing ── */
+    .card-row { position: relative; max-width: 380px; width: 100%; margin: 24px auto; z-index: 10; }
+    .card-row #panel-connect { margin: 0; }
+
+    .moop-sidebar {
+      position: absolute; left: calc(100% + 30px); top: 50%;
+      transform: translateY(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+
+    .moop-preview {
+      position: relative; width: 200px; height: 200px;
+      animation: wobble 3s ease-in-out infinite;
+    }
+
+    .moop-preview .layer, .moop-stage-modal .layer {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      image-rendering: auto; pointer-events: none;
+    }
+
+    .moop-preview .layer-color, .moop-stage-modal .layer-color { z-index: 1; }
+    .moop-preview .layer-base,  .moop-stage-modal .layer-base  { z-index: 2; }
+    .moop-preview .layer-eyes,  .moop-stage-modal .layer-eyes  { z-index: 3; }
+    .moop-preview .layer-mouth, .moop-stage-modal .layer-mouth { z-index: 4; }
+    .moop-preview .layer-acc,   .moop-stage-modal .layer-acc   { z-index: 5; }
+    .moop-preview .layer-hat,   .moop-stage-modal .layer-hat   { z-index: 6; }
+
+    @keyframes wobble {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(3deg); }
+      75% { transform: rotate(-3deg); }
+    }
+
+    .btn-customize {
+      border: 2px solid rgba(130, 13, 81, 0.5); border-radius: 10px;
+      font-family: 'Fredoka', sans-serif; font-size: 0.75rem; font-weight: 600;
+      padding: 6px 14px; background: rgba(42, 18, 32, 0.8); color: var(--peach);
+      cursor: pointer; transition: border-color 0.15s, transform 0.1s, color 0.15s;
+      backdrop-filter: blur(8px);
+    }
+    .btn-customize:hover { border-color: var(--lavender); color: var(--lavender); transform: translateY(-2px); }
+
+    /* ── Moop customizer modal ── */
+    .moop-modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 1100;
+      background: rgba(10, 2, 6, 0.7); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      align-items: safe center; justify-content: center; overflow-y: auto; padding: 20px;
+    }
+    .moop-modal-overlay.open { display: flex; }
+    .moop-modal-content { width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+    .moop-modal-title { font-size: 1.4rem; font-weight: 700; color: var(--peach); letter-spacing: 1px; }
+
+    .moop-stage-modal { position: relative; width: 180px; height: 180px; animation: wobble 3s ease-in-out infinite; }
+
+    .slot-panel {
+      width: 100%; background: rgba(42, 18, 32, 0.85); border: 3px solid var(--eggplant);
+      border-radius: 20px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35); overflow: hidden;
+    }
+    .slot-tabs { display: flex; border-bottom: 2px solid rgba(130, 13, 81, 0.4); }
+    .slot-tab {
+      flex: 1; padding: 12px 4px; background: none; border: none;
+      font-family: 'Fredoka', sans-serif; font-size: 0.75rem; font-weight: 600;
+      color: #7A5068; cursor: pointer; transition: color 0.15s, background 0.15s;
+      text-align: center; position: relative;
+    }
+    .slot-tab:hover { color: var(--peach); background: rgba(130, 13, 81, 0.15); }
+    .slot-tab.active { color: var(--mint); background: rgba(135, 220, 171, 0.08); }
+    .slot-tab.active::after {
+      content: ''; position: absolute; bottom: -2px; left: 20%; right: 20%;
+      height: 3px; background: var(--mint); border-radius: 3px 3px 0 0;
+    }
+    .slot-items { padding: 16px; display: none; gap: 10px; }
+    .slot-items.active { display: grid; grid-template-columns: repeat(4, 1fr); }
+    .slot-item {
+      aspect-ratio: 1; background: rgba(153, 135, 144, 0.7); border: 2px solid #5A2848;
+      border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.15s, transform 0.1s, background 0.15s; position: relative; overflow: hidden;
+    }
+    .slot-item:hover { border-color: var(--lavender); transform: translateY(-2px); }
+    .slot-item.selected { border-color: var(--mint); background: rgba(135, 220, 171, 0.1); box-shadow: 0 0 12px rgba(135, 220, 171, 0.2); }
+    .slot-item img { width: 80%; height: 80%; object-fit: contain; }
+    .slot-item.none-item { font-size: 1.4rem; color: #5A3548; font-weight: 700; }
+    .slot-item.none-item:hover { color: var(--coral); }
+    .slot-empty-msg { grid-column: 1 / -1; text-align: center; color: #5A3548; font-size: 0.85rem; font-weight: 500; padding: 20px 0; }
+    .moop-modal-buttons { display: flex; gap: 10px; width: 100%; }
+    .moop-modal-buttons button { flex: 1; padding: 12px 20px; font-size: 1rem; }
+    .btn-randomize { background: var(--lavender); color: #2A1540; }
+    .btn-modal-done { background: var(--mint); color: #1A3A28; }
+
+    /* ── Moop avatar (in-game) ── */
+    .moop-avatar {
+      position: relative; flex-shrink: 0;
+      border: 3px solid transparent;
+      transition: opacity 0.3s, filter 0.3s, box-shadow 0.2s;
+    }
+    .moop-avatar .layer {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      image-rendering: auto; pointer-events: none;
+    }
+    .moop-avatar .layer-color { z-index: 1; }
+    .moop-avatar .layer-base  { z-index: 2; }
+    .moop-avatar .layer-eyes  { z-index: 3; }
+    .moop-avatar .layer-mouth { z-index: 4; }
+    .moop-avatar .layer-acc   { z-index: 5; }
+    .moop-avatar .layer-hat   { z-index: 6; }
+    .moop-avatar.is-ghost     { opacity: 0.3; filter: grayscale(1); }
+    .moop-avatar.is-you       { border-color: #FFCE18 !important; box-shadow: 0 0 8px rgba(255,206,24,0.25); }
+    .moop-avatar.is-active    { box-shadow: 0 0 14px rgba(135,220,171,0.55); border-color: #87DCAB !important; }
+    .moop-avatar.disconnected { opacity: 0.2; }
+
+    @media (max-width: 560px) {
+      .moop-sidebar {
+        position: static; transform: none;
+        flex-direction: row; justify-content: center;
+        gap: 14px; margin-top: 18px; width: 100%;
+      }
+      .moop-preview { width: 80px; height: 80px; }
+      .moop-stage-modal { width: 150px; height: 150px; }
+      .slot-items.active { grid-template-columns: repeat(3, 1fr); }
+      .slot-tab { font-size: 0.65rem; padding: 10px 2px; }
+    }
+
     .connect-footer {
       display: flex; gap: 16px; justify-content: center;
       margin-top: 16px; position: relative; z-index: 10;
@@ -817,18 +941,50 @@
 </div>
 
 <!-- Connect screen -->
-<div id="panel-connect">
-  <h2>Join a Game</h2>
-  <input type="hidden" id="server-url">
-  <div class="connect-field">
-    <label for="player-name">your name</label>
-    <input type="text" id="player-name" placeholder="type here..." maxlength="20">
+<div class="card-row">
+  <div id="panel-connect">
+    <h2>Join a Game</h2>
+    <input type="hidden" id="server-url">
+    <div class="connect-field">
+      <label for="player-name">your name</label>
+      <input type="text" id="player-name" placeholder="type here..." maxlength="20">
+    </div>
+    <button class="btn-create-lobby" onclick="createLobby()">Create Lobby</button>
+    <div class="connect-divider">or</div>
+    <div class="connect-join-row">
+      <input type="text" id="join-code" placeholder="lobby code" maxlength="6">
+      <button onclick="joinLobby()">Join</button>
+    </div>
   </div>
-  <button class="btn-create-lobby" onclick="createLobby()">Create Lobby</button>
-  <div class="connect-divider">or</div>
-  <div class="connect-join-row">
-    <input type="text" id="join-code" placeholder="lobby code" maxlength="6">
-    <button onclick="joinLobby()">Join</button>
+  <div class="moop-sidebar" id="moop-sidebar">
+    <div class="moop-preview" id="moop-preview"></div>
+    <button class="btn-customize" id="moop-btn">customize</button>
+  </div>
+</div>
+
+<!-- Moop customizer modal -->
+<div class="moop-modal-overlay" id="moop-modal">
+  <div class="moop-modal-content">
+    <div class="moop-modal-title">customize your moop</div>
+    <div class="moop-stage-modal" id="moop-stage-modal"></div>
+    <div class="slot-panel">
+      <div class="slot-tabs">
+        <button class="slot-tab active" data-tab="colors">colors</button>
+        <button class="slot-tab" data-tab="hats">hats</button>
+        <button class="slot-tab" data-tab="eyes">eyes</button>
+        <button class="slot-tab" data-tab="mouths">mouths</button>
+        <button class="slot-tab" data-tab="accessories">acc</button>
+      </div>
+      <div class="slot-items active" id="grid-colors"></div>
+      <div class="slot-items" id="grid-hats"></div>
+      <div class="slot-items" id="grid-eyes"></div>
+      <div class="slot-items" id="grid-mouths"></div>
+      <div class="slot-items" id="grid-accessories"></div>
+    </div>
+    <div class="moop-modal-buttons">
+      <button class="btn btn-randomize" id="randomize-btn">randomize</button>
+      <button class="btn btn-modal-done" id="moop-done-btn">done</button>
+    </div>
   </div>
 </div>
 
@@ -1140,12 +1296,15 @@ function showLanding(show) {
   const method = show ? 'remove' : 'add';
   document.getElementById('landing-logo').classList[method]('hidden');
   document.getElementById('landing-footer').classList[method]('hidden');
-  document.getElementById('log-wrap').classList[show ? 'add' : 'remove']('hidden');
   document.querySelector('header').classList[show ? 'add' : 'remove']('landing-mode');
   document.body.classList[show ? 'add' : 'remove']('is-landing');
+  document.querySelector('.card-row').classList[method]('hidden');
 }
 // Start in landing mode
-document.addEventListener('DOMContentLoaded', () => showLanding(true));
+document.addEventListener('DOMContentLoaded', () => {
+  showLanding(true);
+  initMoopCustomizer();
+});
 
 // ── Changelog modal ──
 (function() {
@@ -1201,6 +1360,159 @@ const ACTIONS = [
   'lobby','hint','vote','accusation','morp-guess',
   'damage','endgame','round-end','game-over',
 ];
+
+// ─── Cosmetics ─────────────────────────────────────────────────────────────────
+const COSMETICS = {
+  colors: [
+    { id: 'trumskin', name: 'Trumskin', file: 'cosmetics/colors/trumskin.png', default: true },
+    { id: 'punch', name: 'Punch', file: 'cosmetics/colors/punch.png' },
+  ],
+  hats: [
+    { id: 'none', name: 'None', type: 'none' },
+    { id: 'cap', name: 'Cap', file: 'cosmetics/hats/cap.png' },
+    { id: 'flower', name: 'Flower', file: 'cosmetics/hats/flower.png' },
+    { id: 'babushka', name: 'Babushka', file: 'cosmetics/hats/babushka.png' },
+    { id: 'beanie', name: 'Beanie', file: 'cosmetics/hats/beanie_pompom.png' },
+    { id: 'bow', name: 'Bow', file: 'cosmetics/hats/bow.png' },
+    { id: 'crooner', name: 'Crooner', file: 'cosmetics/hats/crooner.png' },
+    { id: 'crown', name: 'Crown', file: 'cosmetics/hats/crown.png' },
+    { id: 'dunce', name: 'Dunce', file: 'cosmetics/hats/dunce.png' },
+    { id: 'halo', name: 'Halo', file: 'cosmetics/hats/halo.png' },
+    { id: 'hat_flaps', name: 'Hat Flaps', file: 'cosmetics/hats/hat_flaps.png' },
+    { id: 'monk', name: 'Monk', file: 'cosmetics/hats/monk.png' },
+    { id: 'ponytail', name: 'Ponytail', file: 'cosmetics/hats/ponytail.png' },
+    { id: 'princess', name: 'Princess', file: 'cosmetics/hats/princess.png' },
+    { id: 'propeller', name: 'Propeller', file: 'cosmetics/hats/propeller.png' },
+    { id: 'slick_back', name: 'Slick Back', file: 'cosmetics/hats/slick_back.png' },
+    { id: 'twirl', name: 'Twirl', file: 'cosmetics/hats/twirl.png' },
+    { id: 'umbrella', name: 'Umbrella', file: 'cosmetics/hats/umbrella.png' },
+  ],
+  eyes: [{ id: 'none', name: 'Default', type: 'none' }],
+  mouths: [{ id: 'none', name: 'Default', type: 'none' }],
+  accessories: [
+    { id: 'none', name: 'None', type: 'none' },
+    { id: 'scarf', name: 'Scarf', file: 'cosmetics/accessories/scarf.png' },
+    { id: 'blanket', name: 'Blanket', file: 'cosmetics/accessories/blanket.png' },
+    { id: 'tyson', name: 'Tyson', file: 'cosmetics/accessories/tyson.png' },
+  ],
+};
+
+const equipped = { colors: 'trumskin', hats: 'none', eyes: 'none', mouths: 'none', accessories: 'none' };
+
+// Load from localStorage if available
+try { Object.assign(equipped, JSON.parse(localStorage.getItem('moop_cosmetics') || '{}')); } catch {}
+
+function getCosmetics() {
+  return { color: equipped.colors, hat: equipped.hats, eyes: equipped.eyes, mouth: equipped.mouths, accessory: equipped.accessories };
+}
+
+function _cosmeticFile(category, id) {
+  const item = COSMETICS[category]?.find(i => i.id === id);
+  return item?.file || null;
+}
+
+function renderMoopInto(container, cosmeticsObj) {
+  container.innerHTML = '';
+  // cosmeticsObj can be the local `equipped` format (colors/hats/etc) or backend format (color/hat/etc)
+  const color = cosmeticsObj.color || cosmeticsObj.colors || 'trumskin';
+  const hat = cosmeticsObj.hat || cosmeticsObj.hats || 'none';
+  const eyes = cosmeticsObj.eyes || 'none';
+  const mouth = cosmeticsObj.mouth || cosmeticsObj.mouths || 'none';
+  const acc = cosmeticsObj.accessory || cosmeticsObj.accessories || 'none';
+
+  const layers = [
+    { cls: 'layer-color', file: _cosmeticFile('colors', color) },
+    { cls: 'layer-base', file: 'cosmetics/moop.png' },
+    { cls: 'layer-eyes', file: _cosmeticFile('eyes', eyes) },
+    { cls: 'layer-mouth', file: _cosmeticFile('mouths', mouth) },
+    { cls: 'layer-acc', file: _cosmeticFile('accessories', acc) },
+    { cls: 'layer-hat', file: _cosmeticFile('hats', hat) },
+  ];
+  layers.forEach(l => {
+    if (!l.file) return;
+    const img = document.createElement('img');
+    img.src = l.file;
+    img.className = 'layer ' + l.cls;
+    img.alt = '';
+    container.appendChild(img);
+  });
+}
+
+function renderMoopPreviews() {
+  const preview = document.getElementById('moop-preview');
+  const stage = document.getElementById('moop-stage-modal');
+  if (preview) renderMoopInto(preview, equipped);
+  if (stage) renderMoopInto(stage, equipped);
+}
+
+function renderCosmeticGrid(category) {
+  const grid = document.getElementById(`grid-${category}`);
+  if (!grid) return;
+  grid.innerHTML = '';
+  const items = COSMETICS[category];
+  if (items.length <= 1 && items[0]?.type === 'none') {
+    const none = document.createElement('div');
+    none.className = 'slot-item none-item selected';
+    none.textContent = 'x';
+    grid.appendChild(none);
+    const msg = document.createElement('div');
+    msg.className = 'slot-empty-msg';
+    msg.textContent = 'more coming soon...';
+    grid.appendChild(msg);
+    return;
+  }
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'slot-item' + (equipped[category] === item.id ? ' selected' : '');
+    el.title = item.name;
+    if (item.type === 'none') {
+      el.classList.add('none-item');
+      el.textContent = 'x';
+    } else if (item.file) {
+      const img = document.createElement('img');
+      img.src = item.file;
+      img.alt = item.name;
+      el.appendChild(img);
+    }
+    el.onclick = () => {
+      equipped[category] = item.id;
+      localStorage.setItem('moop_cosmetics', JSON.stringify(equipped));
+      renderMoopPreviews();
+      renderCosmeticGrid(category);
+    };
+    grid.appendChild(el);
+  });
+}
+
+function initMoopCustomizer() {
+  Object.keys(COSMETICS).forEach(cat => renderCosmeticGrid(cat));
+  renderMoopPreviews();
+
+  const modal = document.getElementById('moop-modal');
+  document.getElementById('moop-btn').addEventListener('click', () => modal.classList.add('open'));
+  document.getElementById('moop-done-btn').addEventListener('click', () => modal.classList.remove('open'));
+  modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
+
+  document.querySelectorAll('.slot-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.slot-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.slot-items').forEach(g => g.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(`grid-${tab.dataset.tab}`).classList.add('active');
+    });
+  });
+
+  document.getElementById('randomize-btn').addEventListener('click', () => {
+    Object.keys(COSMETICS).forEach(cat => {
+      const items = COSMETICS[cat];
+      equipped[cat] = items[Math.floor(Math.random() * items.length)].id;
+    });
+    localStorage.setItem('moop_cosmetics', JSON.stringify(equipped));
+    renderMoopPreviews();
+    const activeTab = document.querySelector('.slot-tab.active');
+    if (activeTab) renderCosmeticGrid(activeTab.dataset.tab);
+  });
+}
 
 // ─── State ────────────────────────────────────────────────────────────────────
 const state = {
@@ -1275,6 +1587,7 @@ function _setConnectBusy(busy) {
 }
 
 async function createLobby() {
+  log(`createLobby called, _connecting=${_connecting}`, 'info');
   if (!_checkProtocol() || _connecting) return;
   const name = document.getElementById('player-name').value.trim();
   if (!name) { log('Enter a name to start a lobby.', 'warn'); return; }
@@ -1291,7 +1604,7 @@ async function createLobby() {
     const { lobby_id } = await createRes.json();
     const joinRes = await fetch(`${base}/lobby/${lobby_id}/join`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, cosmetics: getCosmetics() }),
     });
     if (!joinRes.ok) {
       const body = await joinRes.json().catch(() => ({}));
@@ -1382,6 +1695,7 @@ async function setCustomBoards() {
 }
 
 async function joinLobby() {
+  log(`joinLobby called, _connecting=${_connecting}`, 'info');
   if (!_checkProtocol() || _connecting) return;
   const code = document.getElementById('join-code').value.trim().toUpperCase();
   const name = document.getElementById('player-name').value.trim();
@@ -1391,7 +1705,7 @@ async function joinLobby() {
   try {
     const r = await fetch(`${httpBase()}/lobby/${code}/join`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, cosmetics: getCosmetics() }),
     });
     if (!r.ok) {
       const body = await r.json().catch(() => ({}));
@@ -1942,15 +2256,21 @@ function renderPlayerRow() {
       wrap.appendChild(bel);
     }
 
-    // Avatar circle
+    // Avatar moop
     const circle = document.createElement('div');
-    circle.className = 'avatar-circle';
+    circle.className = 'moop-avatar';
+    circle.style.width = '80px';
+    circle.style.height = '80px';
     if (p.is_ghost)            circle.classList.add('is-ghost');
     if (p.id === state.playerId) circle.classList.add('is-you');
     if (p.id === currentTurnPid && !p.is_ghost) circle.classList.add('is-active');
     if (p.is_connected === false) circle.classList.add('disconnected');
-    circle.style.background = avatarColor(p.id);
-    circle.textContent = initials(p.name);
+    if (p.cosmetics) {
+      renderMoopInto(circle, p.cosmetics);
+    } else {
+      circle.style.background = avatarColor(p.id);
+      circle.textContent = initials(p.name);
+    }
 
     // Host crown
     if (p.id === state.hostId) {
@@ -2059,13 +2379,17 @@ function renderAccusation(msg) {
   const lines = msg.accused_ids.map(id => {
     const role = msg.roles_revealed[id];
     return `<div style="display:flex;gap:8px;align-items:center;margin:4px 0">
-      <div class="avatar-circle" style="width:28px;height:28px;font-size:0.75em;background:${avatarColor(id)};border:2px solid transparent;flex-shrink:0">${initials(playerName(id))}</div>
+      <div class="moop-avatar" id="acc-moop-${id}" style="width:40px;height:40px;flex-shrink:0"></div>
       <strong>${playerName(id)}</strong>
       <span class="tag ${role}">${role.toUpperCase()}</span>
     </div>`;
   });
   document.getElementById('accusation-content').innerHTML =
     `<p style="color:#705060;font-size:0.85em;margin-bottom:6px">Accused:</p>${lines.join('')}`;
+  msg.accused_ids.forEach(id => {
+    const el = document.getElementById(`acc-moop-${id}`);
+    if (el && state.players[id]?.cosmetics) renderMoopInto(el, state.players[id].cosmetics);
+  });
 }
 
 // ─── Damage ───────────────────────────────────────────────────────────────────

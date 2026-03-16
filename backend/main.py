@@ -13,7 +13,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 _FRONTEND = pathlib.Path(__file__).parent.parent / "frontend" / "index.html"
-_ASSETS   = pathlib.Path(__file__).parent.parent / "assets"
+_ASSETS     = pathlib.Path(__file__).parent.parent / "assets"
+_COSMETICS  = pathlib.Path(__file__).parent.parent / "frontend" / "cosmetics"
 
 from backend.connection_manager import ConnectionManager
 from backend.game.board import validate_custom_board
@@ -23,6 +24,7 @@ from backend.models.player import Role
 
 app = FastAPI()
 
+app.mount("/cosmetics", StaticFiles(directory=_COSMETICS), name="cosmetics")
 app.mount("/assets", StaticFiles(directory=_ASSETS), name="assets")
 
 app.add_middleware(
@@ -66,7 +68,7 @@ async def _setup_shutdown_handler():
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _lobby_code() -> str:
-    chars = string.ascii_uppercase + string.digits
+    chars = string.ascii_uppercase# + string.digits
     return "".join(secrets.choice(chars) for _ in range(6))
 
 
@@ -98,6 +100,7 @@ async def serve_frontend():
 
 class JoinRequest(BaseModel):
     name: str
+    cosmetics: dict | None = None
 
 
 class KickRequest(BaseModel):
@@ -131,6 +134,9 @@ async def join_lobby(lobby_id: str, body: JoinRequest):
     existing = engine.find_disconnected_by_name(body.name)
     if existing:
         # Don't mark connected yet — wait for WebSocket to actually establish
+        if body.cosmetics:
+            from backend.models.player import PlayerCosmetics
+            existing.cosmetics = PlayerCosmetics(**body.cosmetics)
         return {"player_id": existing.id}
     # Block new players from joining an active game, but allow joins after game over
     if engine.lobby.started and engine.state.phase != GamePhase.GAME_OVER:
@@ -143,6 +149,9 @@ async def join_lobby(lobby_id: str, body: JoinRequest):
         raise HTTPException(status_code=409, detail=str(e))
     # Mark not connected until the WebSocket handshake completes
     engine.lobby.players[player_id].is_connected = False
+    if body.cosmetics:
+        from backend.models.player import PlayerCosmetics
+        engine.lobby.players[player_id].cosmetics = PlayerCosmetics(**body.cosmetics)
     return {"player_id": player_id}
 
 
@@ -204,7 +213,7 @@ async def set_custom_boards(lobby_id: str, body: SetBoardsRequest):
 async def get_lobby(lobby_id: str):
     engine = _get_engine(lobby_id)
     players = [
-        {"id": p.id, "name": p.name, "hp": p.hp, "is_ghost": p.is_ghost}
+        {"id": p.id, "name": p.name, "hp": p.hp, "is_ghost": p.is_ghost, "cosmetics": p.cosmetics.model_dump()}
         for p in engine.lobby.players.values()
     ]
     return {"lobby_id": lobby_id, "players": players, "started": engine.lobby.started}
@@ -761,6 +770,7 @@ def _lobby_update(engine: GameEngine) -> dict:
                 "hp": p.hp,
                 "is_ghost": p.is_ghost,
                 "is_connected": p.is_connected,
+                "cosmetics": p.cosmetics.model_dump(),
             }
             for p in engine.lobby.players.values()
         ],
