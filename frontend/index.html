@@ -4,22 +4,181 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Morp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --raspberry-wine: #500E2F;
+      --eggplant: #820D51;
+      --grape: #6528CE;
+      --punch: #B21030;
+      --mint: #87DCAB;
+      --mustard: #D1912A;
+      --pinky: #FEAED2;
+      --trumskin: #CC6711;
+      --shreks-toe: #A3AF0A;
+      --white: #FFFDFD;
+      --black: #020202;
+      --cream: #F3E49D;
+      --lavender: #D0BBF6;
+      --sky: #71B2E6;
+      --coral: #F15241;
+      --peach: #FFE1B1;
+      --mint-foam: #D4FFE5;
+      --frost: #EAFFF3;
+      --rose-mist: #FFE5EA;
+      --amber: #ED9302;
+      --apricot: #FFB271;
+      --wisteria: #D99EFF;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: monospace;
-      background: #500E2F;
-      color: #FFFDFD;
+      font-family: 'Fredoka', sans-serif;
+      background: var(--raspberry-wine);
+      color: var(--white);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       max-width: 960px;
       margin: 0 auto;
       padding: 0 14px 14px;
+      position: relative;
+    }
+    body.is-landing {
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
     }
 
     .hidden { display: none !important; }
+
+    /* ── Drifting background color swatches ── */
+    .swatch {
+      position: fixed;
+      z-index: 0;
+      border-radius: 28px;
+      will-change: transform;
+    }
+    .swatch-1 {
+      width: 480px; height: 420px;
+      background: var(--grape);
+      top: -80px; left: -100px;
+      border-radius: 44px;
+      animation: drift1 55s ease-in-out infinite;
+    }
+    .swatch-2 {
+      width: 520px; height: 380px;
+      background: var(--eggplant);
+      top: -70px; right: -120px;
+      border-radius: 40px;
+      animation: drift2 65s ease-in-out infinite;
+    }
+    .swatch-3 {
+      width: 340px; height: 280px;
+      background: var(--trumskin);
+      top: 38%; left: -60px;
+      border-radius: 36px;
+      animation: drift3 50s ease-in-out infinite;
+    }
+    .swatch-4 {
+      width: 400px; height: 340px;
+      background: var(--mint);
+      bottom: -90px; right: -60px;
+      border-radius: 44px;
+      animation: drift4 60s ease-in-out infinite;
+    }
+    .swatch-5 {
+      width: 360px; height: 300px;
+      background: var(--punch);
+      bottom: -70px; left: -80px;
+      border-radius: 38px;
+      animation: drift5 45s ease-in-out infinite;
+    }
+    .swatch-6 {
+      width: 260px; height: 220px;
+      background: var(--mustard);
+      top: 5%; left: 40%;
+      border-radius: 32px;
+      animation: drift6 52s ease-in-out infinite;
+    }
+    .swatch-7 {
+      width: 280px; height: 240px;
+      background: var(--pinky);
+      top: 48%; right: 2%;
+      border-radius: 34px;
+      animation: drift7 58s ease-in-out infinite;
+    }
+    .swatch-8 {
+      width: 220px; height: 200px;
+      background: var(--shreks-toe);
+      bottom: 8%; left: 32%;
+      border-radius: 30px;
+      animation: drift8 48s ease-in-out infinite;
+    }
+    .swatch-9 {
+      width: 200px; height: 180px;
+      background: var(--lavender);
+      top: 22%; right: 18%;
+      border-radius: 28px;
+      animation: drift9 62s ease-in-out infinite;
+    }
+
+    @keyframes drift1 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(180px, 120px) rotate(6deg); }
+      50% { transform: translate(60px, 220px) rotate(-3deg); }
+      75% { transform: translate(-120px, 80px) rotate(4deg); }
+    }
+    @keyframes drift2 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(-150px, 160px) rotate(-5deg); }
+      50% { transform: translate(-240px, 60px) rotate(3deg); }
+      75% { transform: translate(-60px, -120px) rotate(-3deg); }
+    }
+    @keyframes drift3 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(160px, -140px) rotate(7deg); }
+      50% { transform: translate(240px, -50px) rotate(3deg); }
+      75% { transform: translate(80px, 120px) rotate(-4deg); }
+    }
+    @keyframes drift4 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(-130px, -180px) rotate(-4deg); }
+      50% { transform: translate(-200px, -80px) rotate(4deg); }
+      75% { transform: translate(-60px, 70px) rotate(-3deg); }
+    }
+    @keyframes drift5 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(170px, -100px) rotate(5deg); }
+      50% { transform: translate(90px, -200px) rotate(-3deg); }
+      75% { transform: translate(-70px, -120px) rotate(4deg); }
+    }
+    @keyframes drift6 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(-100px, 150px) rotate(-6deg); }
+      50% { transform: translate(80px, 200px) rotate(4deg); }
+      75% { transform: translate(140px, 60px) rotate(-3deg); }
+    }
+    @keyframes drift7 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(-140px, -130px) rotate(5deg); }
+      50% { transform: translate(-60px, 110px) rotate(-4deg); }
+      75% { transform: translate(110px, -70px) rotate(3deg); }
+    }
+    @keyframes drift8 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(100px, -150px) rotate(-5deg); }
+      50% { transform: translate(-80px, -190px) rotate(6deg); }
+      75% { transform: translate(-140px, 60px) rotate(-3deg); }
+    }
+    @keyframes drift9 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(140px, 100px) rotate(5deg); }
+      50% { transform: translate(-100px, 170px) rotate(-4deg); }
+      75% { transform: translate(-160px, -60px) rotate(3deg); }
+    }
 
     /* ── Header ── */
     header {
@@ -29,8 +188,11 @@
       padding: 12px 0 10px;
       border-bottom: 2px solid #6B3010;
       flex-shrink: 0;
+      position: relative;
+      z-index: 10;
     }
-    header h1 { color: #87DCAB; font-size: 1.4em; letter-spacing: 2px; }
+    header h1 { color: var(--punch); font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 1.6em; letter-spacing: 2px; }
+    header.landing-mode { display: none; }
     #lobby-code-display {
       color: #87DCAB; font-weight: bold; font-size: 1.1em;
       background: #18082A; padding: 2px 10px; border-radius: 4px;
@@ -134,19 +296,68 @@
 
     /* ── Connect screen ── */
     #panel-connect {
-      background: #130A1A; border: 2px solid #553010;
-      border-radius: 8px; padding: 28px; margin: 24px auto;
-      max-width: 420px; width: 100%;
+      background: rgba(42, 18, 32, 0.85);
+      border: 3px solid var(--eggplant);
+      border-radius: 20px; padding: 28px 24px; margin: 24px auto;
+      max-width: 380px; width: 100%;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      position: relative;
+      z-index: 10;
     }
-    #panel-connect h2 {
-      color: #87DCAB; font-size: 1.1em; margin-bottom: 18px;
-      letter-spacing: 1px;
+    #panel-connect h2 { display: none; }
+
+    /* ── Landing logo ── */
+    .logo-area { text-align: center; position: relative; z-index: 10; margin-top: 60px; }
+    .logo {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 5.5rem; font-weight: 700;
+      color: var(--punch); line-height: 1;
+      letter-spacing: 4px; cursor: default; user-select: none;
     }
+
+    /* ── Connect form field ── */
+    .connect-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .connect-field label { font-size: 0.85rem; font-weight: 600; color: var(--peach); }
+    .connect-field input { width: 100%; }
+    .connect-divider {
+      text-align: center; color: #6A4858; font-size: 0.85rem; font-weight: 500;
+      display: flex; align-items: center; gap: 14px; margin: 4px 0;
+    }
+    .connect-divider::before, .connect-divider::after {
+      content: ''; flex: 1; height: 2px; background: #3A1828; border-radius: 1px;
+    }
+    .connect-join-row { display: flex; gap: 8px; }
+    .connect-join-row input { flex: 1; text-align: center; text-transform: uppercase; letter-spacing: 3px; }
+    .btn-create-lobby {
+      width: 100%; padding: 14px 24px;
+      background: var(--mint); color: #1A3A28;
+      border: none; border-radius: 14px;
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1.05rem; font-weight: 600;
+      cursor: pointer; transition: transform 0.1s;
+    }
+    .btn-create-lobby:hover { transform: translateY(-2px); }
+    .connect-footer {
+      display: flex; gap: 16px; justify-content: center;
+      margin-top: 16px; position: relative; z-index: 10;
+    }
+    .connect-footer button {
+      background: none; border: none; color: #7A5068;
+      font-family: 'Fredoka', sans-serif; font-size: 0.8rem;
+      font-weight: 500; cursor: pointer; padding: 4px 0;
+      border-bottom: 2px dotted #3A1828; border-radius: 0;
+    }
+    .connect-footer button:hover { color: var(--pinky); border-bottom-color: var(--pinky); transform: none; }
+    .connect-footer .sep { color: #3A1828; font-size: 0.7rem; align-self: center; }
 
     /* ── Game layout ── */
     #game-layout {
       display: flex; flex-direction: column;
       flex: 1; gap: 10px; padding-top: 10px;
+      position: relative;
+      z-index: 10;
     }
 
     /* ── Board ── */
@@ -189,25 +400,26 @@
 
     /* ── Shared form elements ── */
     input[type="text"], input:not([type]) {
-      background: #180D1E; color: #FFFDFD;
-      border: 1px solid #2E1A40; border-radius: 4px;
-      padding: 7px 10px; font-family: monospace; font-size: 0.9em;
+      background: #180D1E; color: var(--white);
+      border: 2px solid #5A2848; border-radius: 12px;
+      padding: 10px 14px; font-family: 'Fredoka', sans-serif; font-size: 0.9em;
       text-align: left;
     }
-    input:focus { outline: 1px solid #453060; }
-    textarea { text-align: left; }
+    input::placeholder { color: #5A3548; }
+    input:focus { outline: none; border-color: var(--mint); }
+    textarea { text-align: left; font-family: 'Fredoka', sans-serif; }
     button {
-      background: #2B1460; color: #D0BBF6; border: 1px solid #4A22A0;
-      border-radius: 4px; padding: 7px 14px; cursor: pointer;
-      margin: 3px; font-family: monospace; font-size: 0.88em;
-      transition: background 0.12s;
+      background: var(--lavender); color: #2A1540; border: none;
+      border-radius: 14px; padding: 10px 18px; cursor: pointer;
+      margin: 3px; font-family: 'Fredoka', sans-serif; font-size: 0.9em;
+      font-weight: 600; transition: transform 0.1s, background 0.12s;
     }
-    button:hover:not(:disabled) { background: #3C1880; }
-    button:disabled { background: #180D1E; color: #3A2848; border-color: #221435; cursor: not-allowed; }
-    button.primary { background: #351060; color: #D0BBF6; border-color: #5D2F7C; }
-    button.primary:hover:not(:disabled) { background: #451278; }
-    button.danger  { background: #3A0818; color: #FEAED2; border-color: #6A1040; }
-    button.danger:hover:not(:disabled) { background: #500E2F; }
+    button:hover:not(:disabled) { transform: translateY(-2px); }
+    button:disabled { background: #2A1A22; color: #5A3848; cursor: not-allowed; }
+    button.primary { background: var(--mint); color: #1A3A28; }
+    button.primary:hover:not(:disabled) { background: #6ACFA0; }
+    button.danger  { background: var(--punch); color: var(--white); }
+    button.danger:hover:not(:disabled) { background: #9A0E28; }
     .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; justify-content: center; }
     .toggle-row { display: flex; gap: 8px; align-items: center; justify-content: center; }
     .toggle-row label { cursor: pointer; color: #907880; font-size: 0.88em; }
@@ -377,7 +589,7 @@
     .hp-pip.empty { background: #202020; border: 1px solid #2e2e2e; }
 
     /* ── Log ── */
-    #log-wrap { border-top: 1px solid #180D1E; margin-top: 6px; flex-shrink: 0; }
+    #log-wrap { border-top: 1px solid #180D1E; margin-top: 6px; flex-shrink: 0; position: relative; z-index: 10; }
     #log-toggle {
       background: none; border: none; color: #3A2848;
       font-family: monospace; font-size: 0.74em;
@@ -429,8 +641,19 @@
 </head>
 <body>
 
+<!-- Drifting background color swatches -->
+<div class="swatch swatch-1"></div>
+<div class="swatch swatch-2"></div>
+<div class="swatch swatch-3"></div>
+<div class="swatch swatch-4"></div>
+<div class="swatch swatch-5"></div>
+<div class="swatch swatch-6"></div>
+<div class="swatch swatch-7"></div>
+<div class="swatch swatch-8"></div>
+<div class="swatch swatch-9"></div>
+
 <header>
-  <h1>YOU ARE PLAYING MORP</h1>
+  <h1>MORP</h1>
   <span id="lobby-code-display" class="hidden"></span>
   <span id="phase-label"></span>
   <button id="changelog-btn" title="What's new">★</button>
@@ -508,23 +731,32 @@
 
 <div id="role-banner"></div>
 
+<!-- Landing logo -->
+<div class="logo-area" id="landing-logo">
+  <div class="logo">MORP</div>
+</div>
+
 <!-- Connect screen -->
 <div id="panel-connect">
   <h2>Join a Game</h2>
-  <div class="row">
-    <span style="color:#705060;width:54px">Server</span>
-    <input type="text" id="server-url" style="width:220px">
+  <input type="hidden" id="server-url">
+  <div class="connect-field">
+    <label for="player-name">your name</label>
+    <input type="text" id="player-name" placeholder="type here..." maxlength="20">
   </div>
-  <div class="row">
-    <span style="color:#705060;width:54px">Name</span>
-    <input type="text" id="player-name" placeholder="Your name" style="width:160px">
-  </div>
-  <div class="row" style="margin-top:14px; border-top:1px solid #1C0E22; padding-top:14px">
-    <button onclick="createLobby()">Create Lobby</button>
-    <span style="color:#2A1835;font-size:0.85em">— or —</span>
-    <input type="text" id="join-code" placeholder="LOBBY CODE" style="width:110px;text-transform:uppercase;letter-spacing:2px">
+  <button class="btn-create-lobby" onclick="createLobby()">Create Lobby</button>
+  <div class="connect-divider">or</div>
+  <div class="connect-join-row">
+    <input type="text" id="join-code" placeholder="lobby code" maxlength="6">
     <button onclick="joinLobby()">Join</button>
   </div>
+</div>
+
+<!-- Footer links (below card, only on landing) -->
+<div class="connect-footer" id="landing-footer">
+  <button id="changelog-btn-footer" title="What's new">changelog</button>
+  <span class="sep">&middot;</span>
+  <button id="help-btn-footer" title="How to play">how to play</button>
 </div>
 
 <!-- Main game layout (shown after connecting) -->
@@ -823,10 +1055,23 @@
 </div>
 
 <script>
+// ── Landing show/hide helper ──
+function showLanding(show) {
+  const method = show ? 'remove' : 'add';
+  document.getElementById('landing-logo').classList[method]('hidden');
+  document.getElementById('landing-footer').classList[method]('hidden');
+  document.getElementById('log-wrap').classList[show ? 'add' : 'remove']('hidden');
+  document.querySelector('header').classList[show ? 'add' : 'remove']('landing-mode');
+  document.body.classList[show ? 'add' : 'remove']('is-landing');
+}
+// Start in landing mode
+document.addEventListener('DOMContentLoaded', () => showLanding(true));
+
 // ── Changelog modal ──
 (function() {
   const overlay = document.getElementById('changelog-overlay');
   document.getElementById('changelog-btn').addEventListener('click', () => overlay.classList.add('open'));
+  document.getElementById('changelog-btn-footer').addEventListener('click', () => overlay.classList.add('open'));
   document.getElementById('changelog-close').addEventListener('click', () => overlay.classList.remove('open'));
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 })();
@@ -835,6 +1080,7 @@
 (function() {
   const overlay = document.getElementById('help-overlay');
   document.getElementById('help-btn').addEventListener('click', () => overlay.classList.add('open'));
+  document.getElementById('help-btn-footer').addEventListener('click', () => overlay.classList.add('open'));
   document.getElementById('help-close').addEventListener('click', () => overlay.classList.remove('open'));
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 })();
@@ -1095,6 +1341,7 @@ function connectWS(lobbyId, playerId, name, isRetry) {
     codeEl.textContent = 'Lobby Code: ' + lobbyId;
     codeEl.classList.remove('hidden');
     document.getElementById('panel-connect').classList.add('hidden');
+    showLanding(false);
     document.getElementById('game-layout').classList.remove('hidden');
     showAction('lobby');
   };
@@ -1109,6 +1356,7 @@ function connectWS(lobbyId, playerId, name, isRetry) {
       document.getElementById('role-banner').className = '';
       document.getElementById('role-banner').textContent = '';
       document.getElementById('panel-connect').classList.remove('hidden');
+      showLanding(true);
       _setConnectBusy(false);
       return;
     }
@@ -1155,6 +1403,7 @@ function handleMessage(msg) {
       document.getElementById('role-banner').className = '';
       document.getElementById('role-banner').textContent = '';
       document.getElementById('panel-connect').classList.remove('hidden');
+      showLanding(true);
       document.getElementById('maintenance-overlay').classList.add('open');
       break;
     }
