@@ -340,8 +340,8 @@
     // In production, this would come from a manifest.json or server endpoint.
     const COSMETICS = {
       colors: [
-        { id: 'none', name: 'Default', type: 'none' },
-        { id: 'trumskin', name: 'Trumskin', file: 'cosmetics/colors/trumskin.png' },
+        { id: 'trumskin', name: 'Trumskin', file: 'cosmetics/colors/trumskin.png', default: true },
+        { id: 'punch', name: 'Punch', file: 'cosmetics/colors/punch.png' },
       ],
       hats: [
         { id: 'none', name: 'None', type: 'none' },
@@ -373,10 +373,9 @@
       ],
       accessories: [
         { id: 'none', name: 'None', type: 'none' },
-        { id: 'scarf', name: 'Scarf', type: 'cosmetics/accessories/scarf.png' },
-        { id: 'blanket', name: 'Blanket', type: 'cosmetics/accessories/blanket.png' },
-        { id: 'tyson', name: 'Tyson', type: 'cosmetics/accessories/tyson.png' },
-        // Empty — awaiting art
+        { id: 'scarf', name: 'Scarf', file: 'cosmetics/accessories/scarf.png' },
+        { id: 'blanket', name: 'Blanket', file: 'cosmetics/accessories/blanket.png' },
+        { id: 'tyson', name: 'Tyson', file: 'cosmetics/accessories/tyson.png' },
       ],
     };
 
