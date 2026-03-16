@@ -420,7 +420,7 @@
     .moop-preview .layer-color, .moop-stage-modal .layer-color { z-index: 1; }
     .moop-preview .layer-base,  .moop-stage-modal .layer-base  { z-index: 2; }
     .moop-preview .layer-eyes,  .moop-stage-modal .layer-eyes  { z-index: 3; }
-    .moop-preview .layer-mouth, .moop-stage-modal .layer-mouth { z-index: 4; }
+    .moop-preview .layer-face, .moop-stage-modal .layer-face { z-index: 4; }
     .moop-preview .layer-acc,   .moop-stage-modal .layer-acc   { z-index: 5; }
     .moop-preview .layer-hat,   .moop-stage-modal .layer-hat   { z-index: 6; }
 
@@ -500,7 +500,7 @@
     .moop-avatar .layer-color { z-index: 1; }
     .moop-avatar .layer-base  { z-index: 2; }
     .moop-avatar .layer-eyes  { z-index: 3; }
-    .moop-avatar .layer-mouth { z-index: 4; }
+    .moop-avatar .layer-face  { z-index: 4; }
     .moop-avatar .layer-acc   { z-index: 5; }
     .moop-avatar .layer-hat   { z-index: 6; }
     .moop-avatar.is-ghost     { opacity: 0.3; filter: grayscale(1); }
@@ -972,13 +972,13 @@
         <button class="slot-tab active" data-tab="colors">colors</button>
         <button class="slot-tab" data-tab="hats">hats</button>
         <button class="slot-tab" data-tab="eyes">eyes</button>
-        <button class="slot-tab" data-tab="mouths">mouths</button>
+        <button class="slot-tab" data-tab="face">face</button>
         <button class="slot-tab" data-tab="accessories">acc</button>
       </div>
       <div class="slot-items active" id="grid-colors"></div>
       <div class="slot-items" id="grid-hats"></div>
       <div class="slot-items" id="grid-eyes"></div>
-      <div class="slot-items" id="grid-mouths"></div>
+      <div class="slot-items" id="grid-face"></div>
       <div class="slot-items" id="grid-accessories"></div>
     </div>
     <div class="moop-modal-buttons">
@@ -1366,44 +1366,61 @@ const COSMETICS = {
   colors: [
     { id: 'trumskin', name: 'Trumskin', file: 'cosmetics/colors/trumskin.png', default: true },
     { id: 'punch', name: 'Punch', file: 'cosmetics/colors/punch.png' },
+    { id: 'eggplant', name: 'Eggplant', file: 'cosmetics/colors/eggplant.png' },
+    { id: 'grape', name: 'Grape', file: 'cosmetics/colors/grape.png' },
+    { id: 'mint', name: 'Mint', file: 'cosmetics/colors/mint.png' },
+    { id: 'mustard', name: 'Mustard', file: 'cosmetics/colors/mustard.png' },
+    { id: 'pinky', name: 'Pinky', file: 'cosmetics/colors/pinky.png' },
+    { id: 'raspberry_wine', name: 'Raspberry Wine', file: 'cosmetics/colors/raspberry_wine.png' },
+    { id: 'shreks_toe', name: "Shrek's Toe", file: 'cosmetics/colors/shreks_toe.png' },
   ],
   hats: [
     { id: 'none', name: 'None', type: 'none' },
-    { id: 'cap', name: 'Cap', file: 'cosmetics/hats/cap.png' },
-    { id: 'flower', name: 'Flower', file: 'cosmetics/hats/flower.png' },
     { id: 'babushka', name: 'Babushka', file: 'cosmetics/hats/babushka.png' },
-    { id: 'beanie', name: 'Beanie', file: 'cosmetics/hats/beanie_pompom.png' },
+    { id: 'baby_bottle_beanie', name: 'Baby Bottle Beanie', file: 'cosmetics/hats/baby_bottle_beanie.png' },
+    { id: 'beanie', name: 'Beanie', file: 'cosmetics/hats/beanie.png' },
     { id: 'bow', name: 'Bow', file: 'cosmetics/hats/bow.png' },
+    { id: 'cap', name: 'Cap', file: 'cosmetics/hats/cap.png' },
+    { id: 'clover', name: 'Clover', file: 'cosmetics/hats/clover.png' },
+    { id: 'cowgirl', name: 'Cowgirl', file: 'cosmetics/hats/cowgirl.png' },
     { id: 'crooner', name: 'Crooner', file: 'cosmetics/hats/crooner.png' },
-    { id: 'crown', name: 'Crown', file: 'cosmetics/hats/crown.png' },
     { id: 'dunce', name: 'Dunce', file: 'cosmetics/hats/dunce.png' },
+    { id: 'flower', name: 'Flower', file: 'cosmetics/hats/flower.png' },
     { id: 'halo', name: 'Halo', file: 'cosmetics/hats/halo.png' },
     { id: 'hat_flaps', name: 'Hat Flaps', file: 'cosmetics/hats/hat_flaps.png' },
-    { id: 'monk', name: 'Monk', file: 'cosmetics/hats/monk.png' },
-    { id: 'ponytail', name: 'Ponytail', file: 'cosmetics/hats/ponytail.png' },
     { id: 'princess', name: 'Princess', file: 'cosmetics/hats/princess.png' },
     { id: 'propeller', name: 'Propeller', file: 'cosmetics/hats/propeller.png' },
-    { id: 'slick_back', name: 'Slick Back', file: 'cosmetics/hats/slick_back.png' },
-    { id: 'twirl', name: 'Twirl', file: 'cosmetics/hats/twirl.png' },
-    { id: 'umbrella', name: 'Umbrella', file: 'cosmetics/hats/umbrella.png' },
+    { id: 'sprout', name: 'Sprout', file: 'cosmetics/hats/sprout.png' },
+    { id: 'trucker', name: 'Trucker', file: 'cosmetics/hats/trucker.png' },
   ],
-  eyes: [{ id: 'none', name: 'Default', type: 'none' }],
-  mouths: [{ id: 'none', name: 'Default', type: 'none' }],
+  eyes: [
+    { id: 'eyes', name: 'Default', file: 'cosmetics/eyes/eyes.png', default: true },
+    { id: 'drama', name: 'Drama', file: 'cosmetics/eyes/drama.png' },
+    { id: 'drama2', name: 'Drama 2', file: 'cosmetics/eyes/drama2.png' },
+    { id: 'gleam', name: 'Gleam', file: 'cosmetics/eyes/gleam.png' },
+    { id: 'lashes', name: 'Lashes', file: 'cosmetics/eyes/lashes.png' },
+    { id: 'sparkle', name: 'Sparkle', file: 'cosmetics/eyes/sparkle.png' },
+    { id: 'tear', name: 'Tear', file: 'cosmetics/eyes/tear.png' },
+    { id: 'winged', name: 'Winged', file: 'cosmetics/eyes/winged.png' },
+  ],
+  face: [
+    { id: 'none', name: 'None', type: 'none' },
+    { id: 'blush', name: 'Blush', file: 'cosmetics/face/blush.png' },
+    { id: 'shiny', name: 'Shiny', file: 'cosmetics/face/shiny.png' },
+  ],
   accessories: [
     { id: 'none', name: 'None', type: 'none' },
     { id: 'scarf', name: 'Scarf', file: 'cosmetics/accessories/scarf.png' },
-    { id: 'blanket', name: 'Blanket', file: 'cosmetics/accessories/blanket.png' },
-    { id: 'tyson', name: 'Tyson', file: 'cosmetics/accessories/tyson.png' },
   ],
 };
 
-const equipped = { colors: 'trumskin', hats: 'none', eyes: 'none', mouths: 'none', accessories: 'none' };
+const equipped = { colors: 'trumskin', hats: 'none', eyes: 'eyes', face: 'none', accessories: 'none' };
 
 // Load from localStorage if available
 try { Object.assign(equipped, JSON.parse(localStorage.getItem('moop_cosmetics') || '{}')); } catch {}
 
 function getCosmetics() {
-  return { color: equipped.colors, hat: equipped.hats, eyes: equipped.eyes, mouth: equipped.mouths, accessory: equipped.accessories };
+  return { color: equipped.colors, hat: equipped.hats, eyes: equipped.eyes, face: equipped.face, accessory: equipped.accessories };
 }
 
 function _cosmeticFile(category, id) {
@@ -1416,15 +1433,15 @@ function renderMoopInto(container, cosmeticsObj) {
   // cosmeticsObj can be the local `equipped` format (colors/hats/etc) or backend format (color/hat/etc)
   const color = cosmeticsObj.color || cosmeticsObj.colors || 'trumskin';
   const hat = cosmeticsObj.hat || cosmeticsObj.hats || 'none';
-  const eyes = cosmeticsObj.eyes || 'none';
-  const mouth = cosmeticsObj.mouth || cosmeticsObj.mouths || 'none';
+  const eyes = cosmeticsObj.eyes || 'eyes';
+  const face = cosmeticsObj.face || 'none';
   const acc = cosmeticsObj.accessory || cosmeticsObj.accessories || 'none';
 
   const layers = [
     { cls: 'layer-color', file: _cosmeticFile('colors', color) },
     { cls: 'layer-base', file: 'cosmetics/moop.png' },
     { cls: 'layer-eyes', file: _cosmeticFile('eyes', eyes) },
-    { cls: 'layer-mouth', file: _cosmeticFile('mouths', mouth) },
+    { cls: 'layer-face', file: _cosmeticFile('face', face) },
     { cls: 'layer-acc', file: _cosmeticFile('accessories', acc) },
     { cls: 'layer-hat', file: _cosmeticFile('hats', hat) },
   ];

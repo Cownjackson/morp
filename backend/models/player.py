@@ -10,8 +10,8 @@ class Role(str, Enum):
 class PlayerCosmetics(BaseModel):
     color: str = "trumskin"
     hat: str = "none"
-    eyes: str = "none"
-    mouth: str = "none"
+    eyes: str = "eyes"
+    face: str = "none"
     accessory: str = "none"
 
 
