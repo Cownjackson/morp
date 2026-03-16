@@ -243,6 +243,58 @@
     }
     #changelog-btn:hover { border-color: #D1912A; color: #D1912A; }
 
+    /* ── Credits button ── */
+    #credits-btn {
+      position: fixed;
+      bottom: 12px; right: 14px;
+      z-index: 15;
+      background: none; border: none;
+      color: #5A3848; font-family: 'Fredoka', sans-serif;
+      font-size: 0.6rem; font-weight: 500;
+      cursor: pointer; padding: 2px 6px;
+      border-radius: 0; margin: 0;
+      opacity: 0.6; transition: opacity 0.15s, color 0.15s;
+    }
+    #credits-btn:hover { opacity: 1; color: var(--pinky); transform: none; }
+
+    /* ── Credits modal ── */
+    #credits-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75); z-index: 1000;
+      align-items: center; justify-content: center; padding: 16px;
+    }
+    #credits-overlay.open { display: flex; }
+    #credits-modal {
+      background: rgba(42, 18, 32, 0.92);
+      border: 3px solid var(--eggplant);
+      border-radius: 20px; padding: 28px;
+      max-width: 340px; width: 100%;
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      text-align: center; position: relative;
+    }
+    #credits-modal h2 {
+      color: var(--pinky); font-size: 1.1em;
+      margin-bottom: 18px; font-weight: 600;
+    }
+    #credits-modal .credit-entry {
+      margin-bottom: 12px; color: var(--peach); font-size: 0.9em; line-height: 1.5;
+    }
+    #credits-modal .credit-entry a {
+      color: inherit; text-decoration: none;
+    }
+    #credits-modal .credit-entry a:hover {
+      color: var(--pinky); text-decoration: underline;
+    }
+    #credits-modal .credit-role {
+      color: #7A5068; font-size: 0.75em; text-transform: lowercase;
+    }
+    #credits-close {
+      position: absolute; top: 12px; right: 14px;
+      background: none; border: none; color: #705060; font-size: 1.3em;
+      cursor: pointer; line-height: 1; padding: 0; margin: 0; border-radius: 0;
+    }
+    #credits-close:hover { color: var(--white); transform: none; }
+
     /* ── Changelog modal ── */
     #changelog-overlay {
       display: none; position: fixed; inset: 0;
@@ -666,6 +718,29 @@
 </head>
 <body>
 
+<!-- Credits button -->
+<button id="credits-btn">credits</button>
+
+<!-- Credits modal -->
+<div id="credits-overlay">
+  <div id="credits-modal">
+    <button id="credits-close">&times;</button>
+    <h2>credits</h2>
+    <div class="credit-entry">
+      jjax7<br>
+      <span class="credit-role">code</span>
+    </div>
+    <div class="credit-entry">
+      <a href="https://www.instagram.com/_sluggmama_" target="_blank" rel="noopener noreferrer">@_sluggmama_</a><br>
+      <span class="credit-role">Art Director</span>
+    </div>
+    <div class="credit-entry">
+      <a href="https://www.youtube.com/@bisnispinguin" target="_blank" rel="noopener noreferrer">bisnispinguin</a><br>
+      <span class="credit-role">middle manager</span>
+    </div>
+  </div>
+</div>
+
 <!-- Drifting background color swatches -->
 <div class="swatch swatch-1"></div>
 <div class="swatch swatch-2"></div>
@@ -693,9 +768,9 @@
 
     <h3>Visual Overhaul</h3>
     <ul>
-      <li><strong>New color scheme</strong>: Full UI repaint using the official Morp palette — Grape, Mint, Mustard, Pinky, Punch, and more throughout.</li>
+      <li><strong>New Color Scheme and fancy moving background yay</strong>: Official color scheme has been set. I like them a lot so I added the core colors floating in the background for everyone to see.</li>
       <li><strong>Drawing sidebar</strong>: The drawing toolbar is now a vertical sidebar beside the canvas. Cleaner layout, more canvas space.</li>
-      <li><strong>Morp palette in the draw tool</strong>: Drawing colors updated from generic defaults to all 38 colors of the official Morp palette, organized by row.</li>
+      <li><strong>Extended palette</strong>: Drawing colors updated from my weird selection of colors to a hand picked color palette designed by sally.</li>
       <li><strong>Active color preview</strong>: A color indicator at the top of the drawing sidebar shows your currently selected drawing color.</li>
     </ul>
 
@@ -1107,6 +1182,14 @@ document.addEventListener('DOMContentLoaded', () => showLanding(true));
   document.getElementById('help-btn').addEventListener('click', () => overlay.classList.add('open'));
   document.getElementById('help-btn-footer').addEventListener('click', () => overlay.classList.add('open'));
   document.getElementById('help-close').addEventListener('click', () => overlay.classList.remove('open'));
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+})();
+
+// ── Credits modal ──
+(function() {
+  const overlay = document.getElementById('credits-overlay');
+  document.getElementById('credits-btn').addEventListener('click', () => overlay.classList.add('open'));
+  document.getElementById('credits-close').addEventListener('click', () => overlay.classList.remove('open'));
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 })();
 
