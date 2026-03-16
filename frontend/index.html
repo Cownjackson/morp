@@ -66,63 +66,63 @@
       background: var(--grape);
       top: -80px; left: -100px;
       border-radius: 44px;
-      animation: drift1 55s ease-in-out infinite;
+      animation: drift1 55s ease-in-out infinite alternate;
     }
     .swatch-2 {
       width: 520px; height: 380px;
       background: var(--eggplant);
       top: -70px; right: -120px;
       border-radius: 40px;
-      animation: drift2 65s ease-in-out infinite;
+      animation: drift2 65s ease-in-out infinite alternate;
     }
     .swatch-3 {
       width: 340px; height: 280px;
       background: var(--trumskin);
       top: 38%; left: -60px;
       border-radius: 36px;
-      animation: drift3 50s ease-in-out infinite;
+      animation: drift3 50s ease-in-out infinite alternate;
     }
     .swatch-4 {
       width: 400px; height: 340px;
       background: var(--mint);
       bottom: -90px; right: -60px;
       border-radius: 44px;
-      animation: drift4 60s ease-in-out infinite;
+      animation: drift4 60s ease-in-out infinite alternate;
     }
     .swatch-5 {
       width: 360px; height: 300px;
       background: var(--punch);
       bottom: -70px; left: -80px;
       border-radius: 38px;
-      animation: drift5 45s ease-in-out infinite;
+      animation: drift5 45s ease-in-out infinite alternate;
     }
     .swatch-6 {
       width: 260px; height: 220px;
       background: var(--mustard);
       top: 5%; left: 40%;
       border-radius: 32px;
-      animation: drift6 52s ease-in-out infinite;
+      animation: drift6 52s ease-in-out infinite alternate;
     }
     .swatch-7 {
       width: 280px; height: 240px;
       background: var(--pinky);
       top: 48%; right: 2%;
       border-radius: 34px;
-      animation: drift7 58s ease-in-out infinite;
+      animation: drift7 58s ease-in-out infinite alternate;
     }
     .swatch-8 {
       width: 220px; height: 200px;
       background: var(--shreks-toe);
       bottom: 8%; left: 32%;
       border-radius: 30px;
-      animation: drift8 48s ease-in-out infinite;
+      animation: drift8 48s ease-in-out infinite alternate;
     }
     .swatch-9 {
       width: 200px; height: 180px;
       background: var(--lavender);
       top: 22%; right: 18%;
       border-radius: 28px;
-      animation: drift9 62s ease-in-out infinite;
+      animation: drift9 62s ease-in-out infinite alternate;
     }
 
     @keyframes drift1 {
@@ -178,6 +178,31 @@
       25% { transform: translate(140px, 100px) rotate(5deg); }
       50% { transform: translate(-100px, 170px) rotate(-4deg); }
       75% { transform: translate(-160px, -60px) rotate(3deg); }
+    }
+
+    /* ── Swatches: tablet scaling ── */
+    @media (max-width: 768px) {
+      .swatch-1 { width: 280px; height: 240px; top: -80px; left: -100px; }
+      .swatch-2 { width: 300px; height: 220px; top: -70px; right: -120px; }
+      .swatch-3 { width: 200px; height: 160px; }
+      .swatch-4 { width: 240px; height: 200px; bottom: -100px; right: -80px; }
+      .swatch-5 { width: 220px; height: 180px; bottom: -80px; left: -100px; }
+      .swatch-6 { width: 160px; height: 130px; }
+      .swatch-7 { width: 170px; height: 150px; }
+      .swatch-8 { width: 140px; height: 120px; }
+      .swatch-9 { width: 130px; height: 110px; }
+    }
+    /* ── Swatches: phone scaling ── */
+    @media (max-width: 480px) {
+      .swatch-1 { width: 200px; height: 170px; top: -70px; left: -80px; }
+      .swatch-2 { width: 220px; height: 160px; top: -60px; right: -100px; }
+      .swatch-3 { width: 150px; height: 120px; left: -60px; }
+      .swatch-4 { width: 180px; height: 150px; bottom: -80px; right: -60px; }
+      .swatch-5 { width: 160px; height: 130px; bottom: -60px; left: -70px; }
+      .swatch-6 { width: 120px; height: 100px; top: 3%; left: 50%; }
+      .swatch-7 { width: 130px; height: 110px; top: 55%; right: -20px; }
+      .swatch-8 { display: none; }
+      .swatch-9 { display: none; }
     }
 
     /* ── Header ── */
