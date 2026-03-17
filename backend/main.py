@@ -15,6 +15,8 @@ from pydantic import BaseModel
 _FRONTEND = pathlib.Path(__file__).parent.parent / "frontend" / "index.html"
 _ASSETS     = pathlib.Path(__file__).parent.parent / "assets"
 _COSMETICS  = pathlib.Path(__file__).parent.parent / "frontend" / "cosmetics"
+_STYLES     = pathlib.Path(__file__).parent.parent / "frontend" / "styles"
+_SCRIPTS    = pathlib.Path(__file__).parent.parent / "frontend" / "scripts"
 
 from backend.connection_manager import ConnectionManager
 from backend.game.board import validate_custom_board
@@ -26,6 +28,8 @@ app = FastAPI()
 
 app.mount("/cosmetics", StaticFiles(directory=_COSMETICS), name="cosmetics")
 app.mount("/assets", StaticFiles(directory=_ASSETS), name="assets")
+app.mount("/styles", StaticFiles(directory=_STYLES), name="styles")
+app.mount("/scripts", StaticFiles(directory=_SCRIPTS), name="scripts")
 
 app.add_middleware(
     CORSMiddleware,
