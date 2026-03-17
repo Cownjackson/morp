@@ -6,8 +6,36 @@
   position: fixed;
   inset: 0;
   overflow: hidden;
-  pointer-events: none;
+  pointer-events: auto;
   z-index: var(--background-block-layer-z);
+}
+
+.background-ripple-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.background-ripple {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 999px;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  filter: blur(8px);
+  will-change: transform, width, height, opacity;
+}
+
+.background-interaction-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: auto;
+  background: transparent;
 }
 
 .swatch {
