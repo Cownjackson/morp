@@ -92,6 +92,65 @@
     }
     .header-btn:hover { border-color: var(--pinky); color: var(--pinky); transform: none; }
 
+    /* ── Volume control ── */
+    #volume-wrap {
+      position: fixed;
+      top: 14px; right: 14px;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+    #volume-btn {
+      background: none; border: 1px solid rgba(58, 40, 72, 0.6);
+      color: #8A6878; border-radius: 10px;
+      width: 36px; height: 36px;
+      font-size: 1em; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.15s, color 0.15s;
+      padding: 0; margin: 0; flex-shrink: 0;
+      position: relative; z-index: 2;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #volume-btn:hover { border-color: var(--pinky); color: var(--pinky); }
+    #volume-btn.muted { color: #5A3848; border-color: rgba(58, 40, 72, 0.3); }
+
+    #volume-slider-track {
+      width: 0; overflow: hidden;
+      transition: width 0.25s ease;
+      display: flex; align-items: center;
+    }
+    #volume-wrap.open #volume-slider-track {
+      width: 90px;
+    }
+    #volume-slider {
+      -webkit-appearance: none; appearance: none;
+      width: 80px; height: 6px;
+      background: rgba(90, 56, 72, 0.5);
+      border-radius: 3px; outline: none;
+      margin-left: 8px; cursor: pointer;
+    }
+    #volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 18px; height: 18px;
+      background: var(--pinky); border-radius: 50%;
+      border: 2px solid var(--raspberry-wine);
+      cursor: pointer; transition: background 0.15s;
+    }
+    #volume-slider::-moz-range-thumb {
+      width: 18px; height: 18px;
+      background: var(--pinky); border-radius: 50%;
+      border: 2px solid var(--raspberry-wine);
+      cursor: pointer;
+    }
+    #volume-slider::-webkit-slider-runnable-track {
+      height: 6px; border-radius: 3px;
+    }
+    /* On touch devices, hide the slider — just use tap to mute */
+    @media (hover: none) and (pointer: coarse) {
+      #volume-slider-track { display: none; }
+    }
+
     /* ── Credits button ── */
     #credits-btn {
       position: fixed;
@@ -674,6 +733,23 @@
 </head>
 <body>
 
+<!-- Background music -->
+<audio id="bg-music" src="music/Morp_vol1.mp3" loop preload="auto"></audio>
+
+<!-- Volume control (top-right) -->
+<div id="volume-wrap">
+  <button id="volume-btn" title="Music">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path id="vol-speaker" d="M11 5L6 9H2v6h4l5 4V5z"/>
+      <path id="vol-waves" d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>
+      <line id="vol-mute-line" x1="23" y1="1" x2="1" y2="23" style="display:none" stroke-width="2.5"/>
+    </svg>
+  </button>
+  <div id="volume-slider-track">
+    <input type="range" id="volume-slider" min="0" max="100" value="30">
+  </div>
+</div>
+
 <!-- Credits button -->
 <button id="credits-btn">credits</button>
 
@@ -690,9 +766,10 @@
       <a href="https://www.instagram.com/_sluggmama_" target="_blank" rel="noopener noreferrer">@_sluggmama_</a><br>
       <span class="credit-role">Art Director</span>
     </div>
+
     <div class="credit-entry">
       <a href="https://www.youtube.com/@bisnispinguin" target="_blank" rel="noopener noreferrer">bisnispinguin</a><br>
-      <span class="credit-role">middle manager</span>
+      <span class="credit-role">middle manager, blocks</span>
     </div>
   </div>
 </div>
@@ -1158,6 +1235,70 @@ document.addEventListener('DOMContentLoaded', () => {
   showLanding(true);
   initMoopCustomizer();
 });
+
+// ── Music player ──
+(function() {
+  const audio = document.getElementById('bg-music');
+  const wrap = document.getElementById('volume-wrap');
+  const btn = document.getElementById('volume-btn');
+  const slider = document.getElementById('volume-slider');
+  const waves = document.getElementById('vol-waves');
+  const muteLine = document.getElementById('vol-mute-line');
+  const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches;
+
+  let started = false;
+  const savedVol = localStorage.getItem('morp_volume');
+  const savedMute = localStorage.getItem('morp_muted') === 'true';
+  const vol = savedVol !== null ? Number(savedVol) : 30;
+  slider.value = vol;
+  audio.volume = vol / 100;
+
+  function updateIcon() {
+    const muted = audio.muted || audio.volume === 0;
+    btn.classList.toggle('muted', muted);
+    waves.style.display = muted ? 'none' : '';
+    muteLine.style.display = muted ? '' : 'none';
+  }
+
+  if (savedMute) { audio.muted = true; }
+  updateIcon();
+
+  // Start playback on first user interaction (browser autoplay policy)
+  function tryPlay() {
+    if (started) return;
+    started = true;
+    audio.play().catch(() => {});
+    document.removeEventListener('click', tryPlay);
+    document.removeEventListener('keydown', tryPlay);
+    document.removeEventListener('touchstart', tryPlay);
+  }
+  document.addEventListener('click', tryPlay);
+  document.addEventListener('keydown', tryPlay);
+  document.addEventListener('touchstart', tryPlay);
+
+  // Tap / click = toggle mute
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    audio.muted = !audio.muted;
+    localStorage.setItem('morp_muted', audio.muted);
+    updateIcon();
+  });
+
+  // Desktop: hover to reveal volume slider
+  if (!isTouch) {
+    wrap.addEventListener('mouseenter', () => wrap.classList.add('open'));
+    wrap.addEventListener('mouseleave', () => wrap.classList.remove('open'));
+  }
+
+  slider.addEventListener('input', () => {
+    const v = Number(slider.value);
+    audio.volume = v / 100;
+    audio.muted = false;
+    localStorage.setItem('morp_volume', v);
+    localStorage.setItem('morp_muted', 'false');
+    updateIcon();
+  });
+})();
 
 // ── Changelog modal ──
 (function() {

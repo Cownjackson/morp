@@ -17,6 +17,7 @@ _ASSETS     = pathlib.Path(__file__).parent.parent / "assets"
 _COSMETICS  = pathlib.Path(__file__).parent.parent / "frontend" / "cosmetics"
 _STYLES     = pathlib.Path(__file__).parent.parent / "frontend" / "styles"
 _SCRIPTS    = pathlib.Path(__file__).parent.parent / "frontend" / "scripts"
+_MUSIC      = pathlib.Path(__file__).parent.parent / "frontend" / "music"
 
 from backend.connection_manager import ConnectionManager
 from backend.game.board import validate_custom_board
@@ -30,6 +31,7 @@ app.mount("/cosmetics", StaticFiles(directory=_COSMETICS), name="cosmetics")
 app.mount("/assets", StaticFiles(directory=_ASSETS), name="assets")
 app.mount("/styles", StaticFiles(directory=_STYLES), name="styles")
 app.mount("/scripts", StaticFiles(directory=_SCRIPTS), name="scripts")
+app.mount("/music", StaticFiles(directory=_MUSIC), name="music")
 
 app.add_middleware(
     CORSMiddleware,
