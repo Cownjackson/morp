@@ -12,7 +12,7 @@
 
   const restitution = 0.98;
   const minSpeed = 70;
-  const maxSpeed = 180;
+  const maxSpeed = 225;
   const hitboxScale = 0.95;
   const sizeRanges = {
     squareMin: 170,
@@ -40,6 +40,14 @@
     rippleLifetime: 950,
     rippleStartRadius: 10,
     rippleEndRadius: 120
+  };
+  const collisionJiggleConfig = {
+    maxTilt: 1.2,
+    maxStretch: 0.06,
+    oscillationPeriod: 0.4,
+    settleDuration: 1.15,
+    dampingPower: 2.2,
+    speedToStretch: 0.028
   };
   const ripplePalette = [
     '--mint',
@@ -272,7 +280,10 @@
   }
 
   function renderBlock(block) {
-    block.element.style.transform = `translate(${block.x}px, ${block.y}px) rotate(${block.angle}deg)`;
+    block.element.style.transform =
+      `translate(${block.x}px, ${block.y}px) ` +
+      `rotate(${block.angle + block.jiggleAngle}deg) ` +
+      `scale(${block.jiggleScaleX}, ${block.jiggleScaleY})`;
   }
 
   function hexToRgb(hex) {
@@ -354,10 +365,42 @@
         baseVy: config.vy,
         angle: config.rotation,
         spin: config.spin,
+        jiggleCompressionX: 0,
+        jiggleCompressionY: 0,
+        jiggleTiltAmplitude: 0,
+        jiggleTime: collisionJiggleConfig.settleDuration,
+        jiggleAngle: 0,
+        jiggleScaleX: 1,
+        jiggleScaleY: 1,
         xRatio: config.xRatio,
         yRatio: config.yRatio
       };
     });
+
+    function applyCollisionJiggle(block, normalX, normalY, impact) {
+      const jiggleStrength = Math.min(impact * collisionJiggleConfig.speedToStretch, 1);
+      const compressionX = Math.abs(normalX) * collisionJiggleConfig.maxStretch * jiggleStrength;
+      const compressionY = Math.abs(normalY) * collisionJiggleConfig.maxStretch * jiggleStrength;
+      const reboundX = Math.abs(normalY) * collisionJiggleConfig.maxStretch * jiggleStrength * 0.2;
+      const reboundY = Math.abs(normalX) * collisionJiggleConfig.maxStretch * jiggleStrength * 0.2;
+
+      block.jiggleCompressionX = clamp(
+        block.jiggleCompressionX + compressionX - reboundX,
+        0,
+        collisionJiggleConfig.maxStretch
+      );
+      block.jiggleCompressionY = clamp(
+        block.jiggleCompressionY + compressionY - reboundY,
+        0,
+        collisionJiggleConfig.maxStretch
+      );
+      block.jiggleTiltAmplitude = clamp(
+        block.jiggleTiltAmplitude + (normalX * normalY) * collisionJiggleConfig.maxTilt * jiggleStrength,
+        -collisionJiggleConfig.maxTilt,
+        collisionJiggleConfig.maxTilt
+      );
+      block.jiggleTime = 0;
+    }
 
     function updateResponsiveLayout() {
       const { viewportScale, speedScale } = getResponsiveMetrics();
@@ -432,6 +475,32 @@
       }
     }
 
+    function updateCollisionJiggle(delta) {
+      blocks.forEach((block) => {
+        block.jiggleTime = Math.min(block.jiggleTime + delta, collisionJiggleConfig.settleDuration);
+
+        if (block.jiggleTime >= collisionJiggleConfig.settleDuration) {
+          block.jiggleCompressionX = 0;
+          block.jiggleCompressionY = 0;
+          block.jiggleTiltAmplitude = 0;
+          block.jiggleAngle = 0;
+          block.jiggleScaleX = 1;
+          block.jiggleScaleY = 1;
+          return;
+        }
+
+        const progress = block.jiggleTime / collisionJiggleConfig.settleDuration;
+        const decay = (1 - progress) ** collisionJiggleConfig.dampingPower;
+        const oscillation =
+          -Math.cos((block.jiggleTime / collisionJiggleConfig.oscillationPeriod) * Math.PI * 2);
+        const amount = Math.max(oscillation, 0) * decay;
+
+        block.jiggleScaleX = 1 - block.jiggleCompressionX * amount;
+        block.jiggleScaleY = 1 - block.jiggleCompressionY * amount;
+        block.jiggleAngle = block.jiggleTiltAmplitude * oscillation * decay;
+      });
+    }
+
     function applyImpulse(x, y) {
       const responsiveRadius = Math.max(
         interactionConfig.impulseRadius * 0.78,
@@ -496,9 +565,28 @@
 
       for (let i = 0; i < blocks.length; i += 1) {
         for (let j = i + 1; j < blocks.length; j += 1) {
+          const beforeAx = blocks[i].vx;
+          const beforeAy = blocks[i].vy;
+          const beforeBx = blocks[j].vx;
+          const beforeBy = blocks[j].vy;
           resolveCollision(blocks[i], blocks[j]);
+          const impactA = Math.hypot(blocks[i].vx - beforeAx, blocks[i].vy - beforeAy);
+          const impactB = Math.hypot(blocks[j].vx - beforeBx, blocks[j].vy - beforeBy);
+
+          if (impactA > 0.5 || impactB > 0.5) {
+            const dx = (blocks[j].x + blocks[j].width / 2) - (blocks[i].x + blocks[i].width / 2);
+            const dy = (blocks[j].y + blocks[j].height / 2) - (blocks[i].y + blocks[i].height / 2);
+            const distance = Math.hypot(dx, dy) || 1;
+            const normalX = dx / distance;
+            const normalY = dy / distance;
+
+            applyCollisionJiggle(blocks[i], normalX, normalY, impactA);
+            applyCollisionJiggle(blocks[j], -normalX, -normalY, impactB);
+          }
         }
       }
+
+      updateCollisionJiggle(delta);
 
       blocks.forEach((block) => {
         bounceOffWalls(block, viewportWidth, viewportHeight);
