@@ -151,9 +151,8 @@ function _parseColor(color) {
   return _parseColorCache[color];
 }
 
-function _floodFill(ctx, startX, startY, fillColor, tolerance) {
-  tolerance = tolerance || 80;
-  const tolSq = tolerance * tolerance;
+function _floodFill(ctx, startX, startY, fillColor, toleranceArg) {
+  const maxTol = toleranceArg || 80;
   const w = ctx.canvas.width, h = ctx.canvas.height;
   if (startX < 0 || startX >= w || startY < 0 || startY >= h) return;
   const imageData = ctx.getImageData(0, 0, w, h);
@@ -164,6 +163,12 @@ function _floodFill(ctx, startX, startY, fillColor, tolerance) {
   const tr = data[idx], tg = data[idx+1], tb = data[idx+2], ta = data[idx+3];
   // Don't fill if target is already the fill color
   if (Math.abs(tr - fc[0]) < 3 && Math.abs(tg - fc[1]) < 3 && Math.abs(tb - fc[2]) < 3 && Math.abs(ta - fc[3]) < 3) return;
+  // Adaptive tolerance: cap at half the distance between target and fill color
+  // so the fill never bleeds through strokes drawn in the fill color
+  const dfr = fc[0] - tr, dfg = fc[1] - tg, dfb = fc[2] - tb;
+  const halfDist = Math.sqrt(dfr*dfr + dfg*dfg + dfb*dfb) / 2;
+  const tol = Math.min(maxTol, halfDist);
+  const tolSq = tol * tol;
   function match(i) {
     const dr = data[i] - tr, dg = data[i+1] - tg, db = data[i+2] - tb, da = data[i+3] - ta;
     return (dr*dr + dg*dg + db*db + da*da) <= tolSq;
@@ -203,6 +208,8 @@ function _floodFill(ctx, startX, startY, fillColor, tolerance) {
   // Anti-alias cleanup: iteratively absorb fringe pixels into the filled area.
   // Each pass fills unvisited pixels adjacent to already-filled pixels, working
   // inward through the anti-aliased gradient until reaching solid stroke color.
+  // Fringe limit: only absorb pixels closer to target than to fill color
+  const fringeLimitSq = halfDist * halfDist * 4; // = full distance squared
   const FRINGE_PASSES = 2;
   for (let pass = 0; pass < FRINGE_PASSES; pass++) {
     const absorb = [];
@@ -216,6 +223,10 @@ function _floodFill(ctx, startX, startY, fillColor, tolerance) {
           (y > 0     && visited[pi - w]) ||
           (y < h - 1 && visited[pi + w]);
         if (!hasFilledNeighbor) continue;
+        // Skip pixels that are too far from target (solid stroke pixels)
+        const i = pi * 4;
+        const dr = data[i] - tr, dg = data[i+1] - tg, db = data[i+2] - tb;
+        if (dr*dr + dg*dg + db*db > fringeLimitSq) continue;
         absorb.push(pi);
       }
     }
