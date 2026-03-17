@@ -156,14 +156,18 @@
       position: fixed;
       bottom: 12px; right: 14px;
       z-index: 15;
-      background: none; border: none;
-      color: #5A3848; font-family: 'Fredoka', sans-serif;
+      background: rgba(42, 18, 32, 0.82);
+      border: 2px solid rgba(130, 13, 81, 0.45);
+      color: #C8A8B8; font-family: 'Fredoka', sans-serif;
       font-size: 0.6rem; font-weight: 500;
-      cursor: pointer; padding: 2px 6px;
-      border-radius: 0; margin: 0;
-      opacity: 0.6; transition: opacity 0.15s, color 0.15s;
+      cursor: pointer; padding: 6px 10px;
+      border-radius: 12px; margin: 0;
+      opacity: 0.88; transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.2);
     }
-    #credits-btn:hover { opacity: 1; color: var(--pinky); transform: none; }
+    #credits-btn:hover { opacity: 1; color: var(--pinky); border-color: rgba(208, 187, 246, 0.55); transform: none; }
 
     /* ── Credits modal ── */
     #credits-overlay {
@@ -266,13 +270,16 @@
     #panel-connect {
       background: rgba(42, 18, 32, 0.85);
       border: 3px solid var(--eggplant);
-      border-radius: 20px; padding: 28px 24px; margin: 24px auto;
-      max-width: 380px; width: 100%;
+      border-radius: 20px; padding: 28px 24px 24px; margin: 24px auto;
+      max-width: 420px; width: 100%;
       box-shadow: 0 8px 24px rgba(0,0,0,0.35);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       position: relative;
       z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
     #panel-connect h2 { display: none; }
 
@@ -286,18 +293,25 @@
     }
 
     /* ── Connect form field ── */
-    .connect-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
-    .connect-field label { font-size: 0.85rem; font-weight: 600; color: var(--peach); }
+    .connect-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 0; }
     .connect-field input { width: 100%; }
     .connect-divider {
-      text-align: center; color: #6A4858; font-size: 0.85rem; font-weight: 500;
-      display: flex; align-items: center; gap: 14px; margin: 4px 0;
+      text-align: center; color: #B995A8; font-size: 0.78rem; font-weight: 600;
+      display: flex; align-items: center; gap: 14px; margin: 2px 0;
+      letter-spacing: 0.08em; text-transform: uppercase;
     }
     .connect-divider::before, .connect-divider::after {
-      content: ''; flex: 1; height: 2px; background: #3A1828; border-radius: 1px;
+      content: ''; flex: 1; height: 2px; background: linear-gradient(90deg, rgba(58,24,40,0.3), rgba(130,13,81,0.8), rgba(58,24,40,0.3)); border-radius: 999px;
     }
-    .connect-join-row { display: flex; gap: 8px; }
-    .connect-join-row input { flex: 1; text-align: center; text-transform: uppercase; letter-spacing: 3px; }
+    .connect-divider span {
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(130, 13, 81, 0.45);
+      background: rgba(28, 10, 20, 0.65);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .connect-join-row { display: flex; gap: 8px; align-items: stretch; }
+    .connect-join-row input { flex: 1; text-align: center; text-transform: none; letter-spacing: 0.02em; }
     .btn-create-lobby {
       width: 100%; padding: 14px 24px;
       background: var(--mint); color: #1A3A28;
@@ -309,18 +323,49 @@
     .btn-create-lobby:hover { transform: translateY(-2px); }
 
     /* ── Moop customizer on landing ── */
-    .card-row { position: relative; max-width: 380px; width: 100%; margin: 24px auto; z-index: 10; }
+    .card-row { position: relative; max-width: 420px; width: 100%; margin: 24px auto; z-index: 10; }
     .card-row #panel-connect { margin: 0; }
 
     .moop-sidebar {
-      position: absolute; left: calc(100% + 30px); top: 50%;
-      transform: translateY(-50%);
+      position: static;
       display: flex; flex-direction: column; align-items: center; gap: 10px;
+      width: 100%;
+      margin: 4px 0 2px;
+    }
+
+    .moop-preview-frame {
+      width: 178px; height: 178px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 24px;
+      border: 2px solid rgba(130, 13, 81, 0.48);
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 60%),
+        rgba(29, 10, 22, 0.72);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        0 8px 22px rgba(0,0,0,0.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .moop-preview-frame::before {
+      content: '';
+      position: absolute;
+      width: 160px; height: 160px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle, rgba(237, 147, 2, 0.26) 0%, rgba(204, 103, 17, 0.16) 32%, rgba(130, 13, 81, 0.06) 55%, transparent 76%);
+      filter: blur(10px);
+      transform: translateY(8px);
+      pointer-events: none;
+      z-index: 0;
     }
 
     .moop-preview {
-      position: relative; width: 200px; height: 200px;
+      position: relative; width: 177px; height: 177px;
       animation: wobble 3s ease-in-out infinite;
+      z-index: 1;
     }
 
     .moop-preview .layer, .moop-stage-modal .layer {
@@ -347,6 +392,7 @@
       padding: 6px 14px; background: rgba(42, 18, 32, 0.8); color: var(--peach);
       cursor: pointer; transition: border-color 0.15s, transform 0.1s, color 0.15s;
       backdrop-filter: blur(8px);
+      align-self: center;
     }
     .btn-customize:hover { border-color: var(--lavender); color: var(--lavender); transform: translateY(-2px); }
 
@@ -421,19 +467,40 @@
 
     @media (max-width: 560px) {
       .moop-sidebar {
-        position: static; transform: none;
-        flex-direction: row; justify-content: center;
-        gap: 14px; margin-top: 18px; width: 100%;
+        gap: 10px; margin: 2px 0 0;
       }
-      .moop-preview { width: 80px; height: 80px; }
+      .moop-preview-frame { width: 140px; height: 140px; }
+      .moop-preview-frame::before { width: 126px; height: 126px; }
+      .moop-preview { width: 135px; height: 135px; }
       .moop-stage-modal { width: 150px; height: 150px; }
       .slot-items.active { grid-template-columns: repeat(3, 1fr); }
       .slot-tab { font-size: 0.65rem; padding: 10px 2px; }
     }
 
+    #landing-meta-panel {
+      margin-top: 16px;
+      position: relative;
+      z-index: 10;
+      width: fit-content;
+      max-width: 420px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    body.is-landing #landing-meta-panel {
+      background: rgba(42, 18, 32, 0.78);
+      border: 2px solid rgba(130, 13, 81, 0.42);
+      border-radius: 18px;
+      padding: 9px 16px 10px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
     .connect-footer {
       display: flex; gap: 16px; justify-content: center;
-      margin-top: 16px; position: relative; z-index: 10;
+      margin-top: 0; position: relative; z-index: 10;
+      width: fit-content;
+      margin-left: auto;
+      margin-right: auto;
     }
     .connect-footer button {
       background: none; border: none; color: #7A5068;
@@ -496,6 +563,10 @@
       border: 2px solid #5A2848; border-radius: 12px;
       padding: 10px 14px; font-family: 'Fredoka', sans-serif; font-size: 0.9em;
       text-align: left;
+    }
+    #player-name, #join-code {
+      text-align: center;
+      text-transform: lowercase;
     }
     input::placeholder { color: #5A3548; }
     input:focus { outline: none; border-color: var(--mint); }
@@ -682,12 +753,26 @@
 
     /* ── Log ── */
     #log-wrap { border-top: 1px solid #180D1E; margin-top: 6px; flex-shrink: 0; position: relative; z-index: 10; }
+    body.is-landing #log-wrap {
+      border-top: 1px solid rgba(130, 13, 81, 0.35);
+      margin-top: 6px;
+      padding-top: 3px;
+    }
     #log-toggle {
       background: none; border: none; color: #3A2848;
       font-family: monospace; font-size: 0.74em;
       cursor: pointer; padding: 5px 0; width: 100%; text-align: left;
     }
     #log-toggle:hover { color: #806878; }
+    body.is-landing #log-toggle {
+      color: #7A5068;
+      font-family: 'Fredoka', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 500;
+      text-align: center;
+      padding: 4px 0 0;
+    }
+    body.is-landing #log-toggle:hover { color: var(--pinky); }
     #log {
       height: 88px; overflow-y: auto;
       background: #080508; border: 1px solid #140A18;
@@ -876,19 +961,20 @@
     <h2>Join a Game</h2>
     <input type="hidden" id="server-url">
     <div class="connect-field">
-      <label for="player-name">your name</label>
-      <input type="text" id="player-name" placeholder="type here..." maxlength="20">
+      <input type="text" id="player-name" placeholder="your name" maxlength="20" aria-label="your name">
+    </div>
+    <div class="moop-sidebar" id="moop-sidebar">
+      <div class="moop-preview-frame">
+        <div class="moop-preview" id="moop-preview"></div>
+      </div>
+      <button class="btn-customize" id="moop-btn">customize</button>
     </div>
     <button class="btn-create-lobby" onclick="createLobby()">Create Lobby</button>
-    <div class="connect-divider">or</div>
+    <div class="connect-divider"><span>or</span></div>
     <div class="connect-join-row">
       <input type="text" id="join-code" placeholder="lobby code" maxlength="6">
       <button onclick="joinLobby()">Join</button>
     </div>
-  </div>
-  <div class="moop-sidebar" id="moop-sidebar">
-    <div class="moop-preview" id="moop-preview"></div>
-    <button class="btn-customize" id="moop-btn">customize</button>
   </div>
 </div>
 
@@ -918,11 +1004,19 @@
   </div>
 </div>
 
-<!-- Footer links (below card, only on landing) -->
-<div class="connect-footer" id="landing-footer">
-  <button id="changelog-btn-footer" title="What's new">changelog</button>
-  <span class="sep">&middot;</span>
-  <button id="help-btn-footer" title="How to play">how to play</button>
+<!-- Footer links and event log (landing treatment) -->
+<div id="landing-meta-panel">
+  <div class="connect-footer" id="landing-footer">
+    <button id="changelog-btn-footer" title="What's new">changelog</button>
+    <span class="sep">&middot;</span>
+    <button id="help-btn-footer" title="How to play">how to play</button>
+  </div>
+
+  <!-- Collapsible event log -->
+  <div id="log-wrap">
+    <button id="log-toggle" onclick="toggleLog()">▸ Event Log</button>
+    <div id="log" class="hidden"></div>
+  </div>
 </div>
 
 <!-- Main game layout (shown after connecting) -->
@@ -1213,12 +1307,6 @@
   </div>
 
 </div><!-- /game-layout -->
-
-<!-- Collapsible event log -->
-<div id="log-wrap">
-  <button id="log-toggle" onclick="toggleLog()">▸ Event Log</button>
-  <div id="log" class="hidden"></div>
-</div>
 
 <script>
 // ── Landing show/hide helper ──
