@@ -23,11 +23,32 @@
     rectStretchMin: 30,
     rectStretchMax: 105,
     minSide: 150,
-    responsiveMinScale: 0.5,
+    responsiveMinScale: 0.36,
     responsiveMaxScale: 1,
+    narrowViewportWidth: 430,
+    narrowViewportMinBoost: 0.14,
     referenceWidth: 1440,
     referenceHeight: 900
   };
+  const motionRanges = {
+    responsiveMinSpeedScale: 0.72,
+    responsiveMaxSpeedScale: 1
+  };
+  const interactionConfig = {
+    impulseRadius: 320,
+    impulseStrength: 150,
+    rippleLifetime: 950,
+    rippleStartRadius: 10,
+    rippleEndRadius: 120
+  };
+  const ripplePalette = [
+    '--mint',
+    '--pinky',
+    '--grape',
+    '--mustard',
+    '--sky',
+    '--peach'
+  ];
 
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
@@ -35,6 +56,14 @@
 
   function randomInRange(min, max) {
     return Math.round(min + Math.random() * (max - min));
+  }
+
+  function lerp(start, end, amount) {
+    return start + (end - start) * amount;
+  }
+
+  function easeOutCubic(value) {
+    return 1 - (1 - value) ** 3;
   }
 
   function shuffle(values) {
@@ -73,12 +102,35 @@
         };
   }
 
-  function getViewportScale() {
+  function getResponsiveMetrics() {
     const widthScale = window.innerWidth / sizeRanges.referenceWidth;
     const heightScale = window.innerHeight / sizeRanges.referenceHeight;
-    const scale = Math.min(widthScale, heightScale, sizeRanges.responsiveMaxScale);
+    const rawScale = clamp(
+      Math.min(widthScale, heightScale, sizeRanges.responsiveMaxScale),
+      sizeRanges.responsiveMinScale,
+      sizeRanges.responsiveMaxScale
+    );
+    const normalizedScale =
+      (rawScale - sizeRanges.responsiveMinScale) /
+      (sizeRanges.responsiveMaxScale - sizeRanges.responsiveMinScale);
+    const narrowViewportRatio = clamp(window.innerWidth / sizeRanges.narrowViewportWidth, 0, 1);
+    const narrowViewportAdjustment =
+      (1 - narrowViewportRatio) * sizeRanges.narrowViewportMinBoost;
+    const viewportScale = clamp(
+      sizeRanges.responsiveMinScale +
+        (sizeRanges.responsiveMaxScale - sizeRanges.responsiveMinScale) * normalizedScale ** 1.15 -
+        narrowViewportAdjustment,
+      sizeRanges.responsiveMinScale,
+      sizeRanges.responsiveMaxScale
+    );
+    const speedScale = clamp(
+      motionRanges.responsiveMinSpeedScale +
+        (motionRanges.responsiveMaxSpeedScale - motionRanges.responsiveMinSpeedScale) * normalizedScale,
+      motionRanges.responsiveMinSpeedScale,
+      motionRanges.responsiveMaxSpeedScale
+    );
 
-    return clamp(scale, sizeRanges.responsiveMinScale, sizeRanges.responsiveMaxScale);
+    return { viewportScale, speedScale };
   }
 
   function getHitbox(block) {
@@ -223,6 +275,25 @@
     block.element.style.transform = `translate(${block.x}px, ${block.y}px) rotate(${block.angle}deg)`;
   }
 
+  function hexToRgb(hex) {
+    const normalized = hex.trim();
+    const value = normalized.startsWith('#') ? normalized.slice(1) : normalized;
+
+    if (value.length !== 6) {
+      return { r: 255, g: 255, b: 255 };
+    }
+
+    return {
+      r: Number.parseInt(value.slice(0, 2), 16),
+      g: Number.parseInt(value.slice(2, 4), 16),
+      b: Number.parseInt(value.slice(4, 6), 16)
+    };
+  }
+
+  function rgbaString(color, alpha) {
+    return `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
+  }
+
   function initBackgroundBlocks(containerId = 'background-block-layer') {
     const container = document.getElementById(containerId);
     if (!container || container.dataset.initialized === 'true') {
@@ -236,6 +307,26 @@
         container.appendChild(swatch);
       }
     });
+
+    let rippleLayer = container.querySelector('.background-ripple-layer');
+    if (!rippleLayer) {
+      rippleLayer = document.createElement('div');
+      rippleLayer.className = 'background-ripple-layer';
+      container.appendChild(rippleLayer);
+    }
+
+    let interactionLayer = container.querySelector('.background-interaction-layer');
+    if (!interactionLayer) {
+      interactionLayer = document.createElement('div');
+      interactionLayer.className = 'background-interaction-layer';
+      container.appendChild(interactionLayer);
+    }
+
+    const paletteColors = ripplePalette.map((cssVariable) =>
+      hexToRgb(getComputedStyle(document.documentElement).getPropertyValue(cssVariable))
+    );
+    const ripples = [];
+    let rippleIndex = 0;
 
     const shapeModes = shuffle([
       'square', 'square', 'square', 'square',
@@ -259,6 +350,8 @@
         y: 0,
         vx: config.vx,
         vy: config.vy,
+        baseVx: config.vx,
+        baseVy: config.vy,
         angle: config.rotation,
         spin: config.spin,
         xRatio: config.xRatio,
@@ -266,14 +359,16 @@
       };
     });
 
-    function updateBlockDimensions() {
-      const viewportScale = getViewportScale();
+    function updateResponsiveLayout() {
+      const { viewportScale, speedScale } = getResponsiveMetrics();
 
       blocks.forEach((block) => {
         block.width = Math.round(block.baseWidth * viewportScale);
         block.height = Math.round(block.baseHeight * viewportScale);
         block.element.style.width = `${block.width}px`;
         block.element.style.height = `${block.height}px`;
+        block.vx = Math.sign(block.vx || block.baseVx) * Math.abs(block.baseVx * speedScale);
+        block.vy = Math.sign(block.vy || block.baseVy) * Math.abs(block.baseVy * speedScale);
       });
     }
 
@@ -281,7 +376,7 @@
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
 
-      updateBlockDimensions();
+      updateResponsiveLayout();
 
       blocks.forEach((block) => {
         const maxX = Math.max(viewportWidth - block.width, 0);
@@ -292,6 +387,95 @@
         bounceOffWalls(block, viewportWidth, viewportHeight);
         renderBlock(block);
       });
+    }
+
+    function spawnRipple(x, y) {
+      const element = document.createElement('div');
+      const color = paletteColors[rippleIndex % paletteColors.length];
+      rippleIndex += 1;
+
+      element.className = 'background-ripple';
+      element.style.border = `2px solid ${rgbaString(color, 0.88)}`;
+      element.style.boxShadow = `0 0 14px ${rgbaString(color, 0.3)}`;
+
+      rippleLayer.appendChild(element);
+      ripples.push({
+        element,
+        x,
+        y,
+        bornAt: performance.now(),
+        startRadius: interactionConfig.rippleStartRadius,
+        endRadius: Math.max(
+          interactionConfig.rippleEndRadius,
+          Math.min(window.innerWidth, window.innerHeight) * 0.17
+        )
+      });
+    }
+
+    function updateRipples(now) {
+      for (let index = ripples.length - 1; index >= 0; index -= 1) {
+        const ripple = ripples[index];
+        const progress = clamp((now - ripple.bornAt) / interactionConfig.rippleLifetime, 0, 1);
+        const easedProgress = easeOutCubic(progress);
+        const radius = lerp(ripple.startRadius, ripple.endRadius, easedProgress);
+        const opacity = (1 - progress) ** 1.8;
+
+        ripple.element.style.width = `${radius * 2}px`;
+        ripple.element.style.height = `${radius * 2}px`;
+        ripple.element.style.transform = `translate(${ripple.x - radius}px, ${ripple.y - radius}px)`;
+        ripple.element.style.opacity = opacity.toFixed(3);
+
+        if (progress >= 1) {
+          ripple.element.remove();
+          ripples.splice(index, 1);
+        }
+      }
+    }
+
+    function applyImpulse(x, y) {
+      const responsiveRadius = Math.max(
+        interactionConfig.impulseRadius * 0.78,
+        Math.min(window.innerWidth, window.innerHeight) * 0.42
+      );
+      const responsiveStrength = lerp(
+        interactionConfig.impulseStrength * 0.82,
+        interactionConfig.impulseStrength,
+        clamp(window.innerWidth / 1024, 0, 1)
+      );
+
+      blocks.forEach((block) => {
+        const centerX = block.x + block.width / 2;
+        const centerY = block.y + block.height / 2;
+        const dx = centerX - x;
+        const dy = centerY - y;
+        const distance = Math.hypot(dx, dy);
+
+        if (distance > responsiveRadius) {
+          return;
+        }
+
+        const safeDistance = Math.max(distance, 10);
+        const nx = dx / safeDistance;
+        const ny = dy / safeDistance;
+        const falloff = (1 - distance / responsiveRadius) ** 2;
+        const impulse = responsiveStrength * falloff;
+
+        block.vx += nx * impulse;
+        block.vy += ny * impulse;
+      });
+    }
+
+    function handlePointerDown(event) {
+      if (event.pointerType === 'mouse' && event.button !== 0) {
+        return;
+      }
+
+      if (document.elementFromPoint(event.clientX, event.clientY) !== interactionLayer) {
+        return;
+      }
+
+      applyImpulse(event.clientX, event.clientY);
+      spawnRipple(event.clientX, event.clientY);
     }
 
     let lastTime = performance.now();
@@ -322,10 +506,13 @@
         renderBlock(block);
       });
 
+      updateRipples(now);
+
       requestAnimationFrame(animate);
     }
 
     window.addEventListener('resize', placeBlocks);
+    interactionLayer.addEventListener('pointerdown', handlePointerDown, { passive: true });
 
     placeBlocks();
     requestAnimationFrame((now) => {
