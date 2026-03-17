@@ -2791,25 +2791,35 @@ function _replayCanvas(canvasId) {
   ctx.globalCompositeOperation = 'source-over';
 }
 
+const _parseColorCache = {};
+function _parseColor(color) {
+  if (_parseColorCache[color]) return _parseColorCache[color];
+  const tmp = document.createElement('canvas');
+  tmp.width = tmp.height = 1;
+  const c = tmp.getContext('2d');
+  c.fillStyle = color;
+  c.fillRect(0, 0, 1, 1);
+  const rgba = c.getImageData(0, 0, 1, 1).data;
+  _parseColorCache[color] = [rgba[0], rgba[1], rgba[2], rgba[3]];
+  return _parseColorCache[color];
+}
+
 function _floodFill(ctx, startX, startY, fillColor, tolerance) {
-  tolerance = tolerance || 200;
+  tolerance = tolerance || 80;
+  const tolSq = tolerance * tolerance;
   const w = ctx.canvas.width, h = ctx.canvas.height;
   if (startX < 0 || startX >= w || startY < 0 || startY >= h) return;
   const imageData = ctx.getImageData(0, 0, w, h);
   const data = imageData.data;
-  // Parse fill color
-  const tmp = document.createElement('canvas').getContext('2d');
-  tmp.fillStyle = fillColor;
-  tmp.fillRect(0, 0, 1, 1);
-  const fc = tmp.getImageData(0, 0, 1, 1).data;
+  const fc = _parseColor(fillColor);
   // Target color at start pixel
   const idx = (startY * w + startX) * 4;
   const tr = data[idx], tg = data[idx+1], tb = data[idx+2], ta = data[idx+3];
   // Don't fill if target is already the fill color
   if (Math.abs(tr - fc[0]) < 3 && Math.abs(tg - fc[1]) < 3 && Math.abs(tb - fc[2]) < 3 && Math.abs(ta - fc[3]) < 3) return;
   function match(i) {
-    return Math.abs(data[i] - tr) <= tolerance && Math.abs(data[i+1] - tg) <= tolerance
-        && Math.abs(data[i+2] - tb) <= tolerance && Math.abs(data[i+3] - ta) <= tolerance;
+    const dr = data[i] - tr, dg = data[i+1] - tg, db = data[i+2] - tb, da = data[i+3] - ta;
+    return (dr*dr + dg*dg + db*db + da*da) <= tolSq;
   }
   // Scanline flood fill
   const stack = [[startX, startY]];
@@ -2841,6 +2851,32 @@ function _floodFill(ctx, startX, startY, fillColor, tolerance) {
         else spanBelow = false;
       }
       x++;
+    }
+  }
+  // Anti-alias cleanup: iteratively absorb fringe pixels into the filled area.
+  // Each pass fills unvisited pixels adjacent to already-filled pixels, working
+  // inward through the anti-aliased gradient until reaching solid stroke color.
+  const FRINGE_PASSES = 2;
+  for (let pass = 0; pass < FRINGE_PASSES; pass++) {
+    const absorb = [];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const pi = y * w + x;
+        if (visited[pi]) continue;
+        const hasFilledNeighbor =
+          (x > 0     && visited[pi - 1]) ||
+          (x < w - 1 && visited[pi + 1]) ||
+          (y > 0     && visited[pi - w]) ||
+          (y < h - 1 && visited[pi + w]);
+        if (!hasFilledNeighbor) continue;
+        absorb.push(pi);
+      }
+    }
+    if (absorb.length === 0) break;
+    for (const pi of absorb) {
+      const i = pi * 4;
+      data[i] = fc[0]; data[i+1] = fc[1]; data[i+2] = fc[2]; data[i+3] = fc[3];
+      visited[pi] = 1;
     }
   }
   ctx.putImageData(imageData, 0, 0);
