@@ -57,6 +57,13 @@
     '--sky',
     '--peach'
   ];
+  const logoPaintConfig = {
+    shadowDarkness: 0.52,
+    shadowOpacity: 0.9,
+    holdDuration: 156,
+    fadeDuration: 312,
+    detectionInsetRatio: 0.125
+  };
 
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
@@ -305,6 +312,36 @@
     return `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
   }
 
+  function parseRgbString(color) {
+    const matches = color.match(/\d+(\.\d+)?/g);
+
+    if (!matches || matches.length < 3) {
+      return { r: 255, g: 255, b: 255 };
+    }
+
+    return {
+      r: Number.parseFloat(matches[0]),
+      g: Number.parseFloat(matches[1]),
+      b: Number.parseFloat(matches[2])
+    };
+  }
+
+  function darkenColor(color, factor) {
+    return {
+      r: Math.round(color.r * factor),
+      g: Math.round(color.g * factor),
+      b: Math.round(color.b * factor)
+    };
+  }
+
+  function mixColor(start, end, amount) {
+    return {
+      r: Math.round(lerp(start.r, end.r, amount)),
+      g: Math.round(lerp(start.g, end.g, amount)),
+      b: Math.round(lerp(start.b, end.b, amount))
+    };
+  }
+
   function initBackgroundBlocks(containerId = 'background-block-layer') {
     const container = document.getElementById(containerId);
     if (!container || container.dataset.initialized === 'true') {
@@ -338,6 +375,18 @@
     );
     const ripples = [];
     let rippleIndex = 0;
+    const landingLogoText = document.getElementById('landing-logo-text');
+    const logoLetters = landingLogoText
+      ? Array.from(landingLogoText.querySelectorAll('.logo-letter')).map((element) => ({
+          element,
+          bounds: null,
+          lastPaintedAt: -Infinity,
+          lastPaintColor: null
+        }))
+      : [];
+    const defaultLogoFill = hexToRgb(getComputedStyle(document.documentElement).getPropertyValue('--punch'));
+    const defaultLogoShadow = darkenColor(defaultLogoFill, logoPaintConfig.shadowDarkness);
+    let logoBoundsRaf = 0;
 
     const shapeModes = shuffle([
       'square', 'square', 'square', 'square',
@@ -357,6 +406,8 @@
         height,
         baseWidth: width,
         baseHeight: height,
+        color: getComputedStyle(element).backgroundColor,
+        radius: parseFloat(getComputedStyle(element).borderTopLeftRadius) || 0,
         x: 0,
         y: 0,
         vx: config.vx,
@@ -376,6 +427,99 @@
         yRatio: config.yRatio
       };
     });
+    function updateLogoLetterBounds() {
+      logoLetters.forEach((letter) => {
+        letter.bounds = letter.element.getBoundingClientRect();
+      });
+    }
+
+    function scheduleLogoBoundsRefresh(frameCount = 2) {
+      if (logoBoundsRaf) {
+        cancelAnimationFrame(logoBoundsRaf);
+      }
+
+      const refresh = (remainingFrames) => {
+        if (remainingFrames > 0) {
+          logoBoundsRaf = requestAnimationFrame(() => refresh(remainingFrames - 1));
+          return;
+        }
+
+        logoBoundsRaf = 0;
+        updateLogoLetterBounds();
+      };
+
+      refresh(frameCount);
+    }
+
+    function updateLogoPaint(now) {
+      if (!logoLetters.length) {
+        return;
+      }
+
+      const bestByLetter = logoLetters.map(() => ({ score: 0, color: null }));
+
+      blocks.forEach((block) => {
+        const hitbox = getHitbox(block);
+        const extents = getRotatedExtents(hitbox);
+        const blockLeft = hitbox.centerX - extents.x;
+        const blockRight = hitbox.centerX + extents.x;
+        const blockTop = hitbox.centerY - extents.y;
+        const blockBottom = hitbox.centerY + extents.y;
+
+        logoLetters.forEach((letter, index) => {
+          const bounds = letter.bounds;
+          if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
+            return;
+          }
+
+          const insetX = bounds.width * logoPaintConfig.detectionInsetRatio;
+          const insetY = bounds.height * logoPaintConfig.detectionInsetRatio;
+          const effectiveLeft = bounds.left + insetX;
+          const effectiveRight = bounds.right - insetX;
+          const effectiveTop = bounds.top + insetY;
+          const effectiveBottom = bounds.bottom - insetY;
+
+          const overlapWidth = Math.min(blockRight, effectiveRight) - Math.max(blockLeft, effectiveLeft);
+          const overlapHeight = Math.min(blockBottom, effectiveBottom) - Math.max(blockTop, effectiveTop);
+
+          if (overlapWidth <= 0 || overlapHeight <= 0) {
+            return;
+          }
+
+          const score = overlapWidth * overlapHeight;
+          if (score > bestByLetter[index].score) {
+            bestByLetter[index] = { score, color: parseRgbString(block.color) };
+          }
+        });
+      });
+
+      logoLetters.forEach((letter, index) => {
+        if (bestByLetter[index].color) {
+          letter.lastPaintColor = bestByLetter[index].color;
+          letter.lastPaintedAt = now;
+        }
+
+        const elapsed = now - letter.lastPaintedAt;
+        const fadeProgress = clamp(
+          (elapsed - logoPaintConfig.holdDuration) / logoPaintConfig.fadeDuration,
+          0,
+          1
+        );
+        const activeColor = letter.lastPaintColor ?? defaultLogoFill;
+        const fillColor = mixColor(activeColor, defaultLogoFill, fadeProgress);
+        const shadowColor = mixColor(
+          darkenColor(activeColor, logoPaintConfig.shadowDarkness),
+          defaultLogoShadow,
+          fadeProgress
+        );
+
+        letter.element.style.setProperty('--logo-fill', rgbaString(fillColor, 1));
+        letter.element.style.setProperty(
+          '--logo-shadow',
+          rgbaString(shadowColor, logoPaintConfig.shadowOpacity)
+        );
+      });
+    }
 
     function applyCollisionJiggle(block, normalX, normalY, impact) {
       const jiggleStrength = Math.min(impact * collisionJiggleConfig.speedToStretch, 1);
@@ -594,13 +738,35 @@
         renderBlock(block);
       });
 
+      updateLogoPaint(now);
       updateRipples(now);
 
       requestAnimationFrame(animate);
     }
 
-    window.addEventListener('resize', placeBlocks);
+    window.addEventListener('resize', () => {
+      updateLogoLetterBounds();
+      placeBlocks();
+      scheduleLogoBoundsRefresh(1);
+    });
     interactionLayer.addEventListener('pointerdown', handlePointerDown, { passive: true });
+    updateLogoLetterBounds();
+    scheduleLogoBoundsRefresh();
+
+    if (document.fonts?.ready) {
+      document.fonts.ready.then(() => {
+        updateLogoLetterBounds();
+        scheduleLogoBoundsRefresh();
+      });
+    }
+
+    if (typeof ResizeObserver !== 'undefined' && landingLogoText) {
+      const logoObserver = new ResizeObserver(() => {
+        updateLogoLetterBounds();
+        scheduleLogoBoundsRefresh(1);
+      });
+      logoObserver.observe(landingLogoText);
+    }
 
     placeBlocks();
     requestAnimationFrame((now) => {

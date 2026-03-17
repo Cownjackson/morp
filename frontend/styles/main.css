@@ -274,10 +274,22 @@ header h1 {
 /* ── Landing logo ── */
 .logo-area { text-align: center; position: relative; z-index: 10; margin-top: 60px; }
 .logo {
+  display: inline-flex;
+  gap: 4px;
   font-family: 'Fredoka', sans-serif;
   font-size: 5.5rem; font-weight: 700;
-  color: var(--punch); line-height: 1;
-  letter-spacing: 4px; cursor: default; user-select: none;
+  line-height: 1;
+  cursor: default;
+  user-select: none;
+}
+.logo-letter {
+  --logo-fill: var(--punch);
+  --logo-shadow: rgba(102, 12, 53, 0.9);
+  position: relative;
+  display: inline-block;
+  color: var(--logo-fill);
+  text-shadow: 0 5px 0 var(--logo-shadow);
+  transition: color 0.17s linear, text-shadow 0.17s linear;
 }
 
 /* ── Connect form field ── */
