@@ -1127,7 +1127,8 @@
               </div>
               <div class="draw-sidebar-sep"></div>
               <div class="draw-tools">
-                <button class="tool-btn" id="hint-eraser-btn" onclick="toggleEraser('hint',this)">Eraser</button>
+                <button class="tool-btn eraser-btn" id="hint-eraser-btn" onclick="toggleEraser('hint',this)">Eraser</button>
+                <button class="tool-btn fill-btn" id="hint-fill-btn" onclick="toggleFill('hint',this)">Fill</button>
                 <button class="tool-btn" onclick="undoStroke('hint-canvas')">Undo</button>
                 <button class="tool-btn" onclick="clearCanvas('hint-canvas')">Clear</button>
               </div>
@@ -1253,7 +1254,8 @@
                 </div>
                 <div class="draw-sidebar-sep"></div>
                 <div class="draw-tools">
-                  <button class="tool-btn" id="endgame-eraser-btn" onclick="toggleEraser('endgame',this)">Eraser</button>
+                  <button class="tool-btn eraser-btn" id="endgame-eraser-btn" onclick="toggleEraser('endgame',this)">Eraser</button>
+                  <button class="tool-btn fill-btn" id="endgame-fill-btn" onclick="toggleFill('endgame',this)">Fill</button>
                   <button class="tool-btn" onclick="undoStroke('endgame-ghost-canvas')">Undo</button>
                   <button class="tool-btn" onclick="clearCanvas('endgame-ghost-canvas')">Clear</button>
                 </div>
@@ -2656,8 +2658,8 @@ const _drawState = {};
 
 // Per-tool-key settings: hint canvas vs endgame ghost canvas
 const _drawTools = {
-  hint:    { color: '#FFFDFD', size: 3, eraser: false },
-  endgame: { color: '#FFFDFD', size: 3, eraser: false },
+  hint:    { color: '#FFFDFD', size: 3, eraser: false, fill: false },
+  endgame: { color: '#FFFDFD', size: 3, eraser: false, fill: false },
 };
 
 function _fillBg(ctx, canvas) {
@@ -2703,8 +2705,16 @@ function initCanvas(canvasId, toolKey) {
   function startDraw(e) {
     const ds = _drawState[canvasId];
     const t  = _drawTools[toolKey];
+    const pos = getPos(e);
+    // Fill tool: perform flood fill on click, don't start a stroke
+    if (t.fill) {
+      const fillStroke = { fill: true, x: pos.x, y: pos.y, color: t.color, points: [], eraser: false, size: 0 };
+      _floodFill(ctx, Math.round(pos.x), Math.round(pos.y), t.color);
+      ds.strokes.push(fillStroke);
+      return;
+    }
     ds.drawing  = true;
-    ds.lastPos  = getPos(e);
+    ds.lastPos  = pos;
     ds.currentStroke = {
       color: t.eraser ? null : t.color,
       size: t.size,
@@ -2781,7 +2791,66 @@ function _replayCanvas(canvasId) {
   ctx.globalCompositeOperation = 'source-over';
 }
 
+function _floodFill(ctx, startX, startY, fillColor, tolerance) {
+  tolerance = tolerance || 200;
+  const w = ctx.canvas.width, h = ctx.canvas.height;
+  if (startX < 0 || startX >= w || startY < 0 || startY >= h) return;
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const data = imageData.data;
+  // Parse fill color
+  const tmp = document.createElement('canvas').getContext('2d');
+  tmp.fillStyle = fillColor;
+  tmp.fillRect(0, 0, 1, 1);
+  const fc = tmp.getImageData(0, 0, 1, 1).data;
+  // Target color at start pixel
+  const idx = (startY * w + startX) * 4;
+  const tr = data[idx], tg = data[idx+1], tb = data[idx+2], ta = data[idx+3];
+  // Don't fill if target is already the fill color
+  if (Math.abs(tr - fc[0]) < 3 && Math.abs(tg - fc[1]) < 3 && Math.abs(tb - fc[2]) < 3 && Math.abs(ta - fc[3]) < 3) return;
+  function match(i) {
+    return Math.abs(data[i] - tr) <= tolerance && Math.abs(data[i+1] - tg) <= tolerance
+        && Math.abs(data[i+2] - tb) <= tolerance && Math.abs(data[i+3] - ta) <= tolerance;
+  }
+  // Scanline flood fill
+  const stack = [[startX, startY]];
+  const visited = new Uint8Array(w * h);
+  while (stack.length > 0) {
+    let [x, y] = stack.pop();
+    let pi = y * w + x;
+    if (visited[pi]) continue;
+    // Move left to find span start
+    while (x > 0 && match(((y * w) + x - 1) * 4)) x--;
+    let spanAbove = false, spanBelow = false;
+    // Scan right
+    while (x < w) {
+      pi = y * w + x;
+      const i = pi * 4;
+      if (visited[pi] || !match(i)) break;
+      data[i] = fc[0]; data[i+1] = fc[1]; data[i+2] = fc[2]; data[i+3] = fc[3];
+      visited[pi] = 1;
+      // Check above
+      if (y > 0) {
+        const above = ((y-1) * w + x);
+        if (!visited[above] && match(above * 4)) { if (!spanAbove) { stack.push([x, y-1]); spanAbove = true; } }
+        else spanAbove = false;
+      }
+      // Check below
+      if (y < h - 1) {
+        const below = ((y+1) * w + x);
+        if (!visited[below] && match(below * 4)) { if (!spanBelow) { stack.push([x, y+1]); spanBelow = true; } }
+        else spanBelow = false;
+      }
+      x++;
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
 function _drawStrokeOnCtx(ctx, stroke, scaleX, scaleY) {
+  if (stroke.fill) {
+    _floodFill(ctx, Math.round(stroke.x * scaleX), Math.round(stroke.y * scaleY), stroke.color);
+    return;
+  }
   if (!stroke.points || stroke.points.length === 0) return;
   const sz = stroke.size * Math.min(scaleX, scaleY);
   ctx.save();
@@ -2832,11 +2901,14 @@ function setDrawColor(toolKey, el) {
   const t = _drawTools[toolKey];
   t.color  = el.dataset.color;
   t.eraser = false;
+  t.fill   = false;
   const toolbar = el.closest('.draw-toolbar');
   toolbar.querySelectorAll('.color-swatch').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
-  const eraserBtn = toolbar.querySelector('.tool-btn');
+  const eraserBtn = toolbar.querySelector('.eraser-btn');
   if (eraserBtn) eraserBtn.classList.remove('active');
+  const fillBtn = toolbar.querySelector('.fill-btn');
+  if (fillBtn) fillBtn.classList.remove('active');
   const preview = toolbar.querySelector('.draw-current-color');
   if (preview) preview.style.background = el.dataset.color;
 }
@@ -2851,10 +2923,23 @@ function setDrawSize(toolKey, el) {
 function toggleEraser(toolKey, el) {
   const t = _drawTools[toolKey];
   t.eraser = !t.eraser;
+  t.fill = false;
   el.classList.toggle('active', t.eraser);
-  // Deselect color swatches visually when eraser is on
   const toolbar = el.closest('.draw-toolbar');
   toolbar.querySelectorAll('.color-swatch').forEach(b => b.classList.toggle('active', !t.eraser && b.dataset.color === t.color));
+  const fillBtn = toolbar.querySelector('.fill-btn');
+  if (fillBtn) fillBtn.classList.remove('active');
+}
+
+function toggleFill(toolKey, el) {
+  const t = _drawTools[toolKey];
+  t.fill = !t.fill;
+  t.eraser = false;
+  el.classList.toggle('active', t.fill);
+  const toolbar = el.closest('.draw-toolbar');
+  toolbar.querySelectorAll('.color-swatch').forEach(b => b.classList.toggle('active', !t.fill && b.dataset.color === t.color));
+  const eraserBtn = toolbar.querySelector('.eraser-btn');
+  if (eraserBtn) eraserBtn.classList.remove('active');
 }
 
 // ─── Enter key shortcuts ──────────────────────────────────────────────────────
