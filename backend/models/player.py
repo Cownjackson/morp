@@ -7,6 +7,14 @@ class Role(str, Enum):
     MORP = "morp"
 
 
+class PlayerCosmetics(BaseModel):
+    color: str = "trumskin"
+    hat: str = "none"
+    eyes: str = "eyes"
+    face: str = "none"
+    accessory: str = "none"
+
+
 class Player(BaseModel):
     id: str
     name: str
@@ -14,6 +22,7 @@ class Player(BaseModel):
     role: Role | None = None
     is_ghost: bool = False
     is_connected: bool = True
+    cosmetics: PlayerCosmetics = Field(default_factory=PlayerCosmetics)
 
     def is_active(self) -> bool:
         """Active means alive and in the game."""

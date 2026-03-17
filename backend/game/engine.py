@@ -1,7 +1,7 @@
 import random
 
 MAX_HINT_LENGTH = 30
-MAX_DRAWING_POINTS = 5000
+MAX_DRAWING_POINTS = 20000
 
 
 def _cap_drawing_points(drawing_data: list, max_points: int) -> list:

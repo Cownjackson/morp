@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Bungee+Shade&family=Chicle&family=Lilita+One&family=Modak&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --raspberry-wine: #500E2F;
+      --eggplant: #820D51;
+      --grape: #6528CE;
+      --punch: #B21030;
+      --mint: #87DCAB;
+      --mustard: #D1912A;
+      --pinky: #FEAED2;
+      --trumskin: #CC6711;
+      --shreks-toe: #A3AF0A;
+      --white: #FFFDFD;
+      --black: #020202;
+      --cream: #F3E49D;
+      --lavender: #D0BBF6;
+      --sky: #71B2E6;
+      --coral: #F15241;
+      --peach: #FFE1B1;
+      --mint-foam: #D4FFE5;
+      --frost: #EAFFF3;
+      --rose-mist: #FFE5EA;
+      --amber: #ED9302;
+      --apricot: #FFB271;
+      --wisteria: #D99EFF;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background: var(--raspberry-wine);
+      color: var(--white);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ── Large drifting color blocks showcasing the palette ── */
+    .swatch {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 0;
+      border-radius: 28px;
+      will-change: transform;
+      pointer-events: none;
+    }
+
+    /* Grape — big anchor top-left */
+    .swatch-1 {
+      width: 480px; height: 420px;
+      background: var(--grape);
+      border-radius: 44px;
+    }
+
+    /* Eggplant — top right */
+    .swatch-2 {
+      width: 520px; height: 380px;
+      background: var(--eggplant);
+      border-radius: 40px;
+    }
+
+    /* Trumskin — mid left */
+    .swatch-3 {
+      width: 340px; height: 280px;
+      background: var(--trumskin);
+      border-radius: 36px;
+    }
+
+    /* Mint — bottom right */
+    .swatch-4 {
+      width: 400px; height: 340px;
+      background: var(--mint);
+      border-radius: 44px;
+    }
+
+    /* Punch — bottom left */
+    .swatch-5 {
+      width: 360px; height: 300px;
+      background: var(--punch);
+      border-radius: 38px;
+    }
+
+    /* Mustard — upper middle */
+    .swatch-6 {
+      width: 260px; height: 220px;
+      background: var(--mustard);
+      border-radius: 32px;
+    }
+
+    /* Pinky — mid right */
+    .swatch-7 {
+      width: 280px; height: 240px;
+      background: var(--pinky);
+      border-radius: 34px;
+    }
+
+    /* Shreks Toe — bottom middle */
+    .swatch-8 {
+      width: 220px; height: 200px;
+      background: var(--shreks-toe);
+      border-radius: 30px;
+    }
+
+    /* Lavender â€” floating accent */
+
+    /* Each block drifts on a long, lazy orbit — big travel range */
+    @keyframes drift1 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(180px, 120px) rotate(6deg); }
+      50% { transform: translate(60px, 220px) rotate(-3deg); }
+      75% { transform: translate(-120px, 80px) rotate(4deg); }
+    }
+    @keyframes drift2 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(-150px, 160px) rotate(-5deg); }
+      50% { transform: translate(-240px, 60px) rotate(3deg); }
+      75% { transform: translate(-60px, -120px) rotate(-3deg); }
+    }
+    @keyframes drift3 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(160px, -140px) rotate(7deg); }
+      50% { transform: translate(240px, -50px) rotate(3deg); }
+      75% { transform: translate(80px, 120px) rotate(-4deg); }
+    }
+    @keyframes drift4 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(-130px, -180px) rotate(-4deg); }
+      50% { transform: translate(-200px, -80px) rotate(4deg); }
+      75% { transform: translate(-60px, 70px) rotate(-3deg); }
+    }
+    @keyframes drift5 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(170px, -100px) rotate(5deg); }
+      50% { transform: translate(90px, -200px) rotate(-3deg); }
+      75% { transform: translate(-70px, -120px) rotate(4deg); }
+    }
+    @keyframes drift6 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(-100px, 150px) rotate(-6deg); }
+      50% { transform: translate(80px, 200px) rotate(4deg); }
+      75% { transform: translate(140px, 60px) rotate(-3deg); }
+    }
+    @keyframes drift7 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(-140px, -130px) rotate(5deg); }
+      50% { transform: translate(-60px, 110px) rotate(-4deg); }
+      75% { transform: translate(110px, -70px) rotate(3deg); }
+    }
+    @keyframes drift8 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(100px, -150px) rotate(-5deg); }
+      50% { transform: translate(-80px, -190px) rotate(6deg); }
+      75% { transform: translate(-140px, 60px) rotate(-3deg); }
+    }
+    @keyframes drift9 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(140px, 100px) rotate(5deg); }
+      50% { transform: translate(-100px, 170px) rotate(-4deg); }
+      75% { transform: translate(-160px, -60px) rotate(3deg); }
+    }
+
+    /* ── Landing ── */
+    .landing {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      padding: 32px 20px;
+      width: 100%;
+      max-width: 380px;
+    }
+
+    /* ── Logo experiments — showing option A ── */
+    .logo-area {
+      text-align: center;
+    }
+
+    /* Fredoka chunky with punch color + deep shadow */
+    .logo {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 5.5rem;
+      font-weight: 700;
+      color: var(--punch);
+      line-height: 1;
+      letter-spacing: 4px;
+      cursor: default;
+      user-select: none;
+    }
+
+    /* ── Card ── */
+    .card {
+      width: 100%;
+      background: rgba(42, 18, 32, 0.85);
+      border: 3px solid var(--eggplant);
+      border-radius: 20px;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow:
+        0 8px 24px rgba(0,0,0,0.35);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* ── Inputs ── */
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--peach);
+    }
+
+    .field input {
+      background: rgba(20, 8, 14, 0.8);
+      border: 2px solid #5A2848;
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: var(--white);
+      font-family: 'Fredoka', sans-serif;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .field input::placeholder {
+      color: #5A3548;
+    }
+
+    .field input:focus {
+      border-color: var(--mint);
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      border: none;
+      border-radius: 14px;
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+    .btn:active {
+      transform: translateY(2px);
+      box-shadow: none !important;
+    }
+
+    .btn-create {
+      width: 100%;
+      padding: 14px 24px;
+      background: var(--mint);
+      color: #1A3A28;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      text-align: center;
+      color: #6A4858;
+      font-size: 0.85rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 2px;
+      background: #3A1828;
+      border-radius: 1px;
+    }
+
+    /* ── Join row ── */
+    .join-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .join-row input {
+      flex: 1;
+      background: rgba(20, 8, 14, 0.8);
+      border: 2px solid #5A2848;
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: var(--white);
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1rem;
+      letter-spacing: 3px;
+      text-align: center;
+      text-transform: uppercase;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .join-row input::placeholder {
+      color: #5A3548;
+      letter-spacing: 2px;
+    }
+
+    .join-row input:focus {
+      border-color: var(--lavender);
+    }
+
+    .btn-join {
+      padding: 12px 22px;
+      background: var(--lavender);
+      color: #2A1540;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+    }
+
+    .footer button {
+      background: none;
+      border: none;
+      color: #7A5068;
+      font-family: 'Fredoka', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.15s;
+      padding: 4px 0;
+      border-bottom: 2px dotted #3A1828;
+    }
+
+    .footer button:hover {
+      color: var(--pinky);
+      border-bottom-color: var(--pinky);
+    }
+
+    .footer .sep {
+      color: #3A1828;
+      font-size: 0.7rem;
+      align-self: center;
+    }
+
+    /* ── Corner details ── */
+    .corner {
+      position: fixed;
+      z-index: 5;
+      font-size: 0.65rem;
+      font-weight: 500;
+      pointer-events: none;
+      opacity: 0.4;
+    }
+    .corner.bl {
+      bottom: 14px; left: 16px;
+      color: var(--peach);
+    }
+    .corner.tr {
+      top: 14px; right: 16px;
+      color: var(--mustard);
+    }
+
+    @media (max-width: 500px) {
+      .logo { font-size: 3.8rem; }
+      .card { padding: 22px 18px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Big drifting palette swatches -->
+  <div class="swatch swatch-1"></div>
+  <div class="swatch swatch-2"></div>
+  <div class="swatch swatch-3"></div>
+  <div class="swatch swatch-4"></div>
+  <div class="swatch swatch-5"></div>
+  <div class="swatch swatch-6"></div>
+  <div class="swatch swatch-7"></div>
+  <div class="swatch swatch-8"></div>
+
+  <div class="corner tr">v0.4</div>
+
+  <main class="landing">
+    <div class="logo-area">
+      <div class="logo">MORP</div>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label for="name-input">your name</label>
+        <input type="text" id="name-input" placeholder="type here..." maxlength="20" autofocus>
+      </div>
+
+      <button class="btn btn-create" id="create-btn">Create Lobby</button>
+
+      <div class="divider">or</div>
+
+      <div class="join-row">
+        <input type="text" id="code-input" placeholder="lobby code" maxlength="6">
+        <button class="btn btn-join" id="join-btn">Join</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <button id="changelog-btn">changelog</button>
+      <span class="sep">·</span>
+      <button id="help-btn">how to play</button>
+    </div>
+  </main>
+
+  <script>
+    const swatchConfigs = [
+      { selector: '.swatch-1', xRatio: 0.03, yRatio: 0.05, vx: 92, vy: 76, rotation: 4, spin: 7 },
+      { selector: '.swatch-2', xRatio: 0.58, yRatio: 0.04, vx: -88, vy: 72, rotation: -5, spin: -6 },
+      { selector: '.swatch-3', xRatio: 0.04, yRatio: 0.46, vx: 96, vy: -70, rotation: 3, spin: 8 },
+      { selector: '.swatch-4', xRatio: 0.57, yRatio: 0.58, vx: -82, vy: -90, rotation: -4, spin: -7 },
+      { selector: '.swatch-5', xRatio: 0.12, yRatio: 0.7, vx: 86, vy: -84, rotation: 5, spin: 6 },
+      { selector: '.swatch-6', xRatio: 0.42, yRatio: 0.16, vx: 78, vy: 88, rotation: -3, spin: -9 },
+      { selector: '.swatch-7', xRatio: 0.74, yRatio: 0.36, vx: -94, vy: 74, rotation: 6, spin: 7 },
+      { selector: '.swatch-8', xRatio: 0.29, yRatio: 0.74, vx: 90, vy: -96, rotation: -6, spin: -8 }
+    ];
+
+    const restitution = 0.98;
+    const minSpeed = 70;
+    const maxSpeed = 180;
+    const hitboxScale = 0.95;
+    const sizeRanges = {
+      squareMin: 170,
+      squareMax: 350,
+      squareVariance: 18,
+      rectMin: 180,
+      rectMax: 360,
+      rectStretchMin: 30,
+      rectStretchMax: 105,
+      minSide: 150,
+      responsiveMinScale: 0.5,
+      responsiveMaxScale: 1,
+      referenceWidth: 1440,
+      referenceHeight: 900
+    };
+    const shapeModes = shuffle([
+      'square', 'square', 'square', 'square',
+      'rectangle', 'rectangle', 'rectangle', 'rectangle'
+    ]);
+    const blocks = swatchConfigs.map((config) => {
+      const element = document.querySelector(config.selector);
+      const { width, height } = generateBlockSize(shapeModes.pop());
+
+      element.style.width = `${width}px`;
+      element.style.height = `${height}px`;
+
+      return {
+        element,
+        width,
+        height,
+        baseWidth: width,
+        baseHeight: height,
+        x: 0,
+        y: 0,
+        vx: config.vx,
+        vy: config.vy,
+        angle: config.rotation,
+        spin: config.spin,
+        xRatio: config.xRatio,
+        yRatio: config.yRatio
+      };
+    });
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function randomInRange(min, max) {
+      return Math.round(min + Math.random() * (max - min));
+    }
+
+    function shuffle(values) {
+      const copy = [...values];
+
+      for (let i = copy.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+
+      return copy;
+    }
+
+    function generateBlockSize(shapeMode) {
+      if (shapeMode === 'square') {
+        const baseSize = randomInRange(sizeRanges.squareMin, sizeRanges.squareMax);
+
+        return {
+          width: Math.max(sizeRanges.minSide, baseSize + randomInRange(-sizeRanges.squareVariance, sizeRanges.squareVariance)),
+          height: Math.max(sizeRanges.minSide, baseSize + randomInRange(-sizeRanges.squareVariance, sizeRanges.squareVariance))
+        };
+      }
+
+      const baseSize = randomInRange(sizeRanges.rectMin, sizeRanges.rectMax);
+      const stretch = randomInRange(sizeRanges.rectStretchMin, sizeRanges.rectStretchMax);
+      const horizontal = Math.random() > 0.5;
+
+      return horizontal
+        ? {
+            width: Math.max(sizeRanges.minSide, baseSize + stretch),
+            height: Math.max(sizeRanges.minSide, baseSize - randomInRange(10, stretch - 8))
+          }
+        : {
+            width: Math.max(sizeRanges.minSide, baseSize - randomInRange(10, stretch - 8)),
+            height: Math.max(sizeRanges.minSide, baseSize + stretch)
+          };
+    }
+
+    function getViewportScale() {
+      const widthScale = window.innerWidth / sizeRanges.referenceWidth;
+      const heightScale = window.innerHeight / sizeRanges.referenceHeight;
+      const scale = Math.min(widthScale, heightScale, sizeRanges.responsiveMaxScale);
+
+      return clamp(scale, sizeRanges.responsiveMinScale, sizeRanges.responsiveMaxScale);
+    }
+
+    function updateBlockDimensions() {
+      const viewportScale = getViewportScale();
+
+      blocks.forEach((block) => {
+        block.width = Math.round(block.baseWidth * viewportScale);
+        block.height = Math.round(block.baseHeight * viewportScale);
+        block.element.style.width = `${block.width}px`;
+        block.element.style.height = `${block.height}px`;
+      });
+    }
+
+    function keepMomentum(block) {
+      const speed = Math.hypot(block.vx, block.vy);
+
+      if (speed < minSpeed) {
+        const scale = minSpeed / (speed || 1);
+        block.vx *= scale;
+        block.vy *= scale;
+      } else if (speed > maxSpeed) {
+        const scale = maxSpeed / speed;
+        block.vx *= scale;
+        block.vy *= scale;
+      }
+    }
+
+    function getHitbox(block) {
+      return {
+        centerX: block.x + block.width / 2,
+        centerY: block.y + block.height / 2,
+        halfWidth: (block.width * hitboxScale) / 2,
+        halfHeight: (block.height * hitboxScale) / 2,
+        angle: (block.angle * Math.PI) / 180
+      };
+    }
+
+    function getAxes(hitbox) {
+      const cos = Math.cos(hitbox.angle);
+      const sin = Math.sin(hitbox.angle);
+
+      return [
+        { x: cos, y: sin },
+        { x: -sin, y: cos }
+      ];
+    }
+
+    function projectHitbox(hitbox, axis) {
+      const axes = getAxes(hitbox);
+      const centerProjection = hitbox.centerX * axis.x + hitbox.centerY * axis.y;
+      const radius =
+        hitbox.halfWidth * Math.abs(axis.x * axes[0].x + axis.y * axes[0].y) +
+        hitbox.halfHeight * Math.abs(axis.x * axes[1].x + axis.y * axes[1].y);
+
+      return {
+        min: centerProjection - radius,
+        max: centerProjection + radius
+      };
+    }
+
+    function getRotatedExtents(hitbox) {
+      const cos = Math.cos(hitbox.angle);
+      const sin = Math.sin(hitbox.angle);
+
+      return {
+        x: Math.abs(cos) * hitbox.halfWidth + Math.abs(sin) * hitbox.halfHeight,
+        y: Math.abs(sin) * hitbox.halfWidth + Math.abs(cos) * hitbox.halfHeight
+      };
+    }
+
+    function bounceOffWalls(block, viewportWidth, viewportHeight) {
+      const hitbox = getHitbox(block);
+      const extents = getRotatedExtents(hitbox);
+      const minX = hitbox.centerX - extents.x;
+      const maxX = hitbox.centerX + extents.x;
+      const minY = hitbox.centerY - extents.y;
+      const maxY = hitbox.centerY + extents.y;
+
+      if (minX <= 0) {
+        block.x += -minX;
+        block.vx = Math.abs(block.vx) * restitution;
+      } else if (maxX >= viewportWidth) {
+        block.x -= maxX - viewportWidth;
+        block.vx = -Math.abs(block.vx) * restitution;
+      }
+
+      if (minY <= 0) {
+        block.y += -minY;
+        block.vy = Math.abs(block.vy) * restitution;
+      } else if (maxY >= viewportHeight) {
+        block.y -= maxY - viewportHeight;
+        block.vy = -Math.abs(block.vy) * restitution;
+      }
+    }
+
+    function resolveCollision(a, b) {
+      const hitboxA = getHitbox(a);
+      const hitboxB = getHitbox(b);
+      const axes = [...getAxes(hitboxA), ...getAxes(hitboxB)];
+      let smallestOverlap = Infinity;
+      let collisionAxis = null;
+
+      for (const axis of axes) {
+        const projectionA = projectHitbox(hitboxA, axis);
+        const projectionB = projectHitbox(hitboxB, axis);
+        const overlap = Math.min(projectionA.max, projectionB.max) - Math.max(projectionA.min, projectionB.min);
+
+        if (overlap <= 0) {
+          return;
+        }
+
+        if (overlap < smallestOverlap) {
+          smallestOverlap = overlap;
+          collisionAxis = axis;
+        }
+      }
+
+      const dx = hitboxB.centerX - hitboxA.centerX;
+      const dy = hitboxB.centerY - hitboxA.centerY;
+      let normalX = collisionAxis.x;
+      let normalY = collisionAxis.y;
+
+      if (dx * normalX + dy * normalY < 0) {
+        normalX *= -1;
+        normalY *= -1;
+      }
+
+      const separationX = normalX * (smallestOverlap / 2);
+      const separationY = normalY * (smallestOverlap / 2);
+
+      a.x -= separationX;
+      a.y -= separationY;
+      b.x += separationX;
+      b.y += separationY;
+
+      const relativeVelocityX = b.vx - a.vx;
+      const relativeVelocityY = b.vy - a.vy;
+      const approachSpeed = relativeVelocityX * normalX + relativeVelocityY * normalY;
+
+      if (approachSpeed >= 0) {
+        return;
+      }
+
+      const impulse = (-(1 + restitution) * approachSpeed) / 2;
+
+      a.vx -= impulse * normalX;
+      a.vy -= impulse * normalY;
+      b.vx += impulse * normalX;
+      b.vy += impulse * normalY;
+    }
+
+    function renderBlock(block) {
+      block.element.style.transform = `translate(${block.x}px, ${block.y}px) rotate(${block.angle}deg)`;
+    }
+
+    function placeBlocks() {
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      updateBlockDimensions();
+
+      blocks.forEach((block) => {
+        const maxX = Math.max(viewportWidth - block.width, 0);
+        const maxY = Math.max(viewportHeight - block.height, 0);
+
+        block.x = clamp(maxX * block.xRatio, 0, maxX);
+        block.y = clamp(maxY * block.yRatio, 0, maxY);
+        bounceOffWalls(block, viewportWidth, viewportHeight);
+        renderBlock(block);
+      });
+    }
+
+    let lastTime = performance.now();
+
+    function animate(now) {
+      const delta = Math.min((now - lastTime) / 1000, 0.033);
+      lastTime = now;
+
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      blocks.forEach((block) => {
+        block.x += block.vx * delta;
+        block.y += block.vy * delta;
+        block.angle += block.spin * delta;
+        bounceOffWalls(block, viewportWidth, viewportHeight);
+      });
+
+      for (let i = 0; i < blocks.length; i += 1) {
+        for (let j = i + 1; j < blocks.length; j += 1) {
+          resolveCollision(blocks[i], blocks[j]);
+        }
+      }
+
+      blocks.forEach((block) => {
+        bounceOffWalls(block, viewportWidth, viewportHeight);
+        keepMomentum(block);
+        renderBlock(block);
+      });
+
+      requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', placeBlocks);
+
+    placeBlocks();
+    requestAnimationFrame((now) => {
+      lastTime = now;
+      animate(now);
+    });
+  </script>
+</body>
+</html>
