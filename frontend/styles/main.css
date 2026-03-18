@@ -288,8 +288,27 @@ header h1 {
   position: relative;
   display: inline-block;
   color: var(--logo-fill);
-  text-shadow: 0 5px 0 var(--logo-shadow);
-  transition: color 0.17s linear, text-shadow 0.17s linear;
+  vertical-align: top;
+}
+.logo-letter-fill,
+.logo-letter-shadow {
+  display: block;
+  font: inherit;
+  line-height: 1;
+  transition: color 0.17s linear;
+}
+.logo-letter-shadow {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  color: var(--logo-shadow);
+  pointer-events: none;
+  z-index: 0;
+}
+.logo-letter-fill {
+  position: relative;
+  color: var(--logo-fill);
+  z-index: 1;
 }
 
 /* ── Connect form field ── */

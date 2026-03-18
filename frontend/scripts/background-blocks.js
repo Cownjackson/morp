@@ -60,9 +60,11 @@
   const logoPaintConfig = {
     shadowDarkness: 0.52,
     shadowOpacity: 0.9,
-    holdDuration: 156,
-    fadeDuration: 312,
-    detectionInsetRatio: 0.125
+    holdDuration: 234,
+    fadeDuration: 468,
+    detectionInsetRatio: 0.215,
+    alphaThreshold: 108,
+    maskSampleDivisions: 8
   };
 
   function clamp(value, min, max) {
@@ -189,6 +191,20 @@
       x: Math.abs(cos) * hitbox.halfWidth + Math.abs(sin) * hitbox.halfHeight,
       y: Math.abs(sin) * hitbox.halfWidth + Math.abs(cos) * hitbox.halfHeight
     };
+  }
+
+  function pointInRotatedHitbox(hitbox, x, y) {
+    const cos = Math.cos(hitbox.angle);
+    const sin = Math.sin(hitbox.angle);
+    const dx = x - hitbox.centerX;
+    const dy = y - hitbox.centerY;
+    const localX = (dx * cos) + (dy * sin);
+    const localY = (-dx * sin) + (dy * cos);
+
+    return (
+      Math.abs(localX) <= hitbox.halfWidth &&
+      Math.abs(localY) <= hitbox.halfHeight
+    );
   }
 
   function bounceOffWalls(block, viewportWidth, viewportHeight) {
@@ -342,6 +358,152 @@
     };
   }
 
+  function createLogoLetterObjects(landingLogoText) {
+    if (!landingLogoText) {
+      return [];
+    }
+
+    return Array.from(landingLogoText.querySelectorAll('.logo-letter')).map((element) => {
+      const character = element.dataset.letter || element.textContent.trim();
+      element.dataset.letter = character;
+
+      if (!element.querySelector('.logo-letter-fill')) {
+        const shadowElement = document.createElement('span');
+        shadowElement.className = 'logo-letter-shadow';
+        shadowElement.setAttribute('aria-hidden', 'true');
+        shadowElement.textContent = character;
+
+        const fillElement = document.createElement('span');
+        fillElement.className = 'logo-letter-fill';
+        fillElement.setAttribute('aria-hidden', 'true');
+        fillElement.textContent = character;
+
+        element.textContent = '';
+        element.append(shadowElement, fillElement);
+      }
+
+      return {
+        element,
+        fillElement: element.querySelector('.logo-letter-fill'),
+        bounds: null,
+        character,
+        maskCanvas: document.createElement('canvas'),
+        maskContext: null,
+        maskAlpha: null,
+        maskScale: 1,
+        maskWidth: 0,
+        maskHeight: 0,
+        lastPaintedAt: -Infinity,
+        lastPaintColor: null
+      };
+    });
+  }
+
+  function getLogoFont(fillElement) {
+    const style = getComputedStyle(fillElement);
+    const fontStyle = style.fontStyle || 'normal';
+    const fontWeight = style.fontWeight || '400';
+    const fontSize = style.fontSize || '16px';
+    const fontFamily = style.fontFamily || 'sans-serif';
+
+    return `${fontStyle} ${fontWeight} ${fontSize} ${fontFamily}`;
+  }
+
+  function rebuildLogoLetterMask(letter) {
+    const bounds = letter.bounds;
+    if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
+      letter.maskAlpha = null;
+      letter.maskWidth = 0;
+      letter.maskHeight = 0;
+      return;
+    }
+
+    const dpr = window.devicePixelRatio || 1;
+    const canvasWidth = Math.max(1, Math.ceil(bounds.width * dpr));
+    const canvasHeight = Math.max(1, Math.ceil(bounds.height * dpr));
+    const canvas = letter.maskCanvas;
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) {
+      letter.maskAlpha = null;
+      letter.maskContext = null;
+      letter.maskWidth = 0;
+      letter.maskHeight = 0;
+      return;
+    }
+
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    context.clearRect(0, 0, bounds.width, bounds.height);
+    context.font = getLogoFont(letter.fillElement);
+    context.textBaseline = 'alphabetic';
+    context.fillStyle = '#fff';
+
+    const metrics = context.measureText(letter.character);
+    const glyphWidth = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight;
+    const glyphHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+    const x =
+      ((bounds.width - glyphWidth) / 2) + metrics.actualBoundingBoxLeft;
+    const y =
+      ((bounds.height - glyphHeight) / 2) + metrics.actualBoundingBoxAscent;
+
+    context.fillText(letter.character, x, y);
+
+    letter.maskContext = context;
+    letter.maskAlpha = context.getImageData(0, 0, canvasWidth, canvasHeight).data;
+    letter.maskScale = dpr;
+    letter.maskWidth = canvasWidth;
+    letter.maskHeight = canvasHeight;
+  }
+
+  function letterHasShapeOverlap(letter, hitbox, overlapLeft, overlapTop, overlapRight, overlapBottom) {
+    if (!letter.maskAlpha || !letter.bounds) {
+      return false;
+    }
+
+    const scale = letter.maskScale;
+    const startX = Math.max(0, Math.floor((overlapLeft - letter.bounds.left) * scale));
+    const endX = Math.min(letter.maskWidth, Math.ceil((overlapRight - letter.bounds.left) * scale));
+    const startY = Math.max(0, Math.floor((overlapTop - letter.bounds.top) * scale));
+    const endY = Math.min(letter.maskHeight, Math.ceil((overlapBottom - letter.bounds.top) * scale));
+
+    if (endX <= startX || endY <= startY) {
+      return false;
+    }
+
+    const sampleStep = Math.max(
+      1,
+      Math.floor(Math.min(endX - startX, endY - startY) / logoPaintConfig.maskSampleDivisions)
+    );
+
+    for (let y = startY; y < endY; y += sampleStep) {
+      for (let x = startX; x < endX; x += sampleStep) {
+        const viewportX = letter.bounds.left + (x / scale);
+        const viewportY = letter.bounds.top + (y / scale);
+        if (!pointInRotatedHitbox(hitbox, viewportX, viewportY)) {
+          continue;
+        }
+
+        const alphaIndex = ((y * letter.maskWidth) + x) * 4 + 3;
+        if (letter.maskAlpha[alphaIndex] >= logoPaintConfig.alphaThreshold) {
+          return true;
+        }
+      }
+    }
+
+    const centerX = Math.floor((startX + endX - 1) / 2);
+    const centerY = Math.floor((startY + endY - 1) / 2);
+    const centerViewportX = letter.bounds.left + (centerX / scale);
+    const centerViewportY = letter.bounds.top + (centerY / scale);
+    if (!pointInRotatedHitbox(hitbox, centerViewportX, centerViewportY)) {
+      return false;
+    }
+
+    const centerIndex = ((centerY * letter.maskWidth) + centerX) * 4 + 3;
+    return letter.maskAlpha[centerIndex] >= logoPaintConfig.alphaThreshold;
+  }
+
   function initBackgroundBlocks(containerId = 'background-block-layer') {
     const container = document.getElementById(containerId);
     if (!container || container.dataset.initialized === 'true') {
@@ -376,14 +538,7 @@
     const ripples = [];
     let rippleIndex = 0;
     const landingLogoText = document.getElementById('landing-logo-text');
-    const logoLetters = landingLogoText
-      ? Array.from(landingLogoText.querySelectorAll('.logo-letter')).map((element) => ({
-          element,
-          bounds: null,
-          lastPaintedAt: -Infinity,
-          lastPaintColor: null
-        }))
-      : [];
+    const logoLetters = createLogoLetterObjects(landingLogoText);
     const defaultLogoFill = hexToRgb(getComputedStyle(document.documentElement).getPropertyValue('--punch'));
     const defaultLogoShadow = darkenColor(defaultLogoFill, logoPaintConfig.shadowDarkness);
     let logoBoundsRaf = 0;
@@ -429,7 +584,8 @@
     });
     function updateLogoLetterBounds() {
       logoLetters.forEach((letter) => {
-        letter.bounds = letter.element.getBoundingClientRect();
+        letter.bounds = letter.fillElement.getBoundingClientRect();
+        rebuildLogoLetterMask(letter);
       });
     }
 
@@ -483,6 +639,15 @@
           const overlapHeight = Math.min(blockBottom, effectiveBottom) - Math.max(blockTop, effectiveTop);
 
           if (overlapWidth <= 0 || overlapHeight <= 0) {
+            return;
+          }
+
+          const overlapLeft = Math.max(blockLeft, effectiveLeft);
+          const overlapTop = Math.max(blockTop, effectiveTop);
+          const overlapRight = Math.min(blockRight, effectiveRight);
+          const overlapBottom = Math.min(blockBottom, effectiveBottom);
+
+          if (!letterHasShapeOverlap(letter, hitbox, overlapLeft, overlapTop, overlapRight, overlapBottom)) {
             return;
           }
 
