@@ -23,13 +23,40 @@
     rectStretchMin: 30,
     rectStretchMax: 105,
     minSide: 150,
-    responsiveMinScale: 0.36,
-    responsiveMaxScale: 1,
+    responsiveMinScale: 0.306,
+    responsiveMaxScale: 1.035,
+    baseCurvePower: 1.8,
     narrowViewportWidth: 430,
     narrowViewportMinBoost: 0.14,
-    referenceWidth: 1440,
-    referenceHeight: 900
+    radiusMinScale: 0.82,
+    radiusMaxScale: 1.04,
+    radiusShortSideClamp: 0.19,
+    referenceWidth: 1680,
+    referenceHeight: 980
   };
+  const responsiveBoostTiers = [
+    {
+      startWidth: 700,
+      startHeight: 960,
+      targetWidth: 820,
+      targetHeight: 1180,
+      boost: 1.08
+    },
+    {
+      startWidth: sizeRanges.referenceWidth,
+      startHeight: sizeRanges.referenceHeight,
+      targetWidth: 2560,
+      targetHeight: 1440,
+      boost: 1.15
+    },
+    {
+      startWidth: 2560,
+      startHeight: 1440,
+      targetWidth: 3840,
+      targetHeight: 2160,
+      boost: 1.3
+    }
+  ];
   const motionRanges = {
     responsiveMinSpeedScale: 0.72,
     responsiveMaxSpeedScale: 1
@@ -60,9 +87,11 @@
   const logoPaintConfig = {
     shadowDarkness: 0.52,
     shadowOpacity: 0.9,
-    holdDuration: 156,
-    fadeDuration: 312,
-    detectionInsetRatio: 0.125
+    holdDuration: 234,
+    fadeDuration: 468,
+    detectionInsetRatio: 0.215,
+    alphaThreshold: 108,
+    maskSampleDivisions: 8
   };
 
   function clamp(value, min, max) {
@@ -79,6 +108,34 @@
 
   function easeOutCubic(value) {
     return 1 - (1 - value) ** 3;
+  }
+
+  function smootherstep(value) {
+    const clamped = clamp(value, 0, 1);
+    return clamped * clamped * clamped * (clamped * (clamped * 6 - 15) + 10);
+  }
+
+  function getViewportRatio(targetWidth, targetHeight) {
+    return Math.min(window.innerWidth / targetWidth, window.innerHeight / targetHeight);
+  }
+
+  function getTierBoost() {
+    let boost = 1;
+
+    responsiveBoostTiers.forEach((tier) => {
+      const startRatio = Math.min(
+        tier.startWidth / tier.targetWidth,
+        tier.startHeight / tier.targetHeight
+      );
+      const targetRatio = getViewportRatio(tier.targetWidth, tier.targetHeight);
+      const progress = smootherstep(
+        clamp((targetRatio - startRatio) / (1 - startRatio), 0, 1)
+      );
+
+      boost = lerp(boost, tier.boost, progress);
+    });
+
+    return boost;
   }
 
   function shuffle(values) {
@@ -128,24 +185,33 @@
     const normalizedScale =
       (rawScale - sizeRanges.responsiveMinScale) /
       (sizeRanges.responsiveMaxScale - sizeRanges.responsiveMinScale);
+    const smoothedScale = smootherstep(normalizedScale);
+    const sizeCurveScale = smoothedScale ** sizeRanges.baseCurvePower;
     const narrowViewportRatio = clamp(window.innerWidth / sizeRanges.narrowViewportWidth, 0, 1);
     const narrowViewportAdjustment =
-      (1 - narrowViewportRatio) * sizeRanges.narrowViewportMinBoost;
-    const viewportScale = clamp(
+      smootherstep(1 - narrowViewportRatio) * sizeRanges.narrowViewportMinBoost;
+    const baseViewportScale = clamp(
       sizeRanges.responsiveMinScale +
-        (sizeRanges.responsiveMaxScale - sizeRanges.responsiveMinScale) * normalizedScale ** 1.15 -
+        (sizeRanges.responsiveMaxScale - sizeRanges.responsiveMinScale) * sizeCurveScale -
         narrowViewportAdjustment,
       sizeRanges.responsiveMinScale,
       sizeRanges.responsiveMaxScale
     );
+    const viewportScale = baseViewportScale * getTierBoost();
     const speedScale = clamp(
       motionRanges.responsiveMinSpeedScale +
         (motionRanges.responsiveMaxSpeedScale - motionRanges.responsiveMinSpeedScale) * normalizedScale,
       motionRanges.responsiveMinSpeedScale,
       motionRanges.responsiveMaxSpeedScale
     );
+    const radiusScale = clamp(
+      sizeRanges.radiusMinScale +
+        (sizeRanges.radiusMaxScale - sizeRanges.radiusMinScale) * smoothedScale ** 1.15,
+      sizeRanges.radiusMinScale,
+      sizeRanges.radiusMaxScale
+    );
 
-    return { viewportScale, speedScale };
+    return { viewportScale, speedScale, radiusScale };
   }
 
   function getHitbox(block) {
@@ -189,6 +255,20 @@
       x: Math.abs(cos) * hitbox.halfWidth + Math.abs(sin) * hitbox.halfHeight,
       y: Math.abs(sin) * hitbox.halfWidth + Math.abs(cos) * hitbox.halfHeight
     };
+  }
+
+  function pointInRotatedHitbox(hitbox, x, y) {
+    const cos = Math.cos(hitbox.angle);
+    const sin = Math.sin(hitbox.angle);
+    const dx = x - hitbox.centerX;
+    const dy = y - hitbox.centerY;
+    const localX = (dx * cos) + (dy * sin);
+    const localY = (-dx * sin) + (dy * cos);
+
+    return (
+      Math.abs(localX) <= hitbox.halfWidth &&
+      Math.abs(localY) <= hitbox.halfHeight
+    );
   }
 
   function bounceOffWalls(block, viewportWidth, viewportHeight) {
@@ -342,6 +422,149 @@
     };
   }
 
+  function createLogoLetterObjects(landingLogoText) {
+    if (!landingLogoText) {
+      return [];
+    }
+
+    return Array.from(landingLogoText.querySelectorAll('.logo-letter')).map((element) => {
+      const character = element.dataset.letter || element.textContent.trim();
+      element.dataset.letter = character;
+
+      if (!element.querySelector('.logo-letter-fill')) {
+        const shadowElement = document.createElement('span');
+        shadowElement.className = 'logo-letter-shadow';
+        shadowElement.setAttribute('aria-hidden', 'true');
+        shadowElement.textContent = character;
+
+        const fillElement = document.createElement('span');
+        fillElement.className = 'logo-letter-fill';
+        fillElement.setAttribute('aria-hidden', 'true');
+        fillElement.textContent = character;
+
+        element.textContent = '';
+        element.append(shadowElement, fillElement);
+      }
+
+      return {
+        element,
+        fillElement: element.querySelector('.logo-letter-fill'),
+        bounds: null,
+        character,
+        maskCanvas: document.createElement('canvas'),
+        maskAlpha: null,
+        maskScale: 1,
+        maskWidth: 0,
+        maskHeight: 0,
+        lastPaintedAt: -Infinity,
+        lastPaintColor: null
+      };
+    });
+  }
+
+  function getLogoFont(fillElement) {
+    const style = getComputedStyle(fillElement);
+    const fontStyle = style.fontStyle || 'normal';
+    const fontWeight = style.fontWeight || '400';
+    const fontSize = style.fontSize || '16px';
+    const fontFamily = style.fontFamily || 'sans-serif';
+
+    return `${fontStyle} ${fontWeight} ${fontSize} ${fontFamily}`;
+  }
+
+  function rebuildLogoLetterMask(letter) {
+    const bounds = letter.bounds;
+    if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
+      letter.maskAlpha = null;
+      letter.maskWidth = 0;
+      letter.maskHeight = 0;
+      return;
+    }
+
+    const dpr = window.devicePixelRatio || 1;
+    const canvasWidth = Math.max(1, Math.ceil(bounds.width * dpr));
+    const canvasHeight = Math.max(1, Math.ceil(bounds.height * dpr));
+    const canvas = letter.maskCanvas;
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) {
+      letter.maskAlpha = null;
+      letter.maskWidth = 0;
+      letter.maskHeight = 0;
+      return;
+    }
+
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    context.clearRect(0, 0, bounds.width, bounds.height);
+    context.font = getLogoFont(letter.fillElement);
+    context.textBaseline = 'alphabetic';
+    context.fillStyle = '#fff';
+
+    const metrics = context.measureText(letter.character);
+    const glyphWidth = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight;
+    const glyphHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+    const x =
+      ((bounds.width - glyphWidth) / 2) + metrics.actualBoundingBoxLeft;
+    const y =
+      ((bounds.height - glyphHeight) / 2) + metrics.actualBoundingBoxAscent;
+
+    context.fillText(letter.character, x, y);
+
+    letter.maskAlpha = context.getImageData(0, 0, canvasWidth, canvasHeight).data;
+    letter.maskScale = dpr;
+    letter.maskWidth = canvasWidth;
+    letter.maskHeight = canvasHeight;
+  }
+
+  function letterHasShapeOverlap(letter, hitbox, overlapLeft, overlapTop, overlapRight, overlapBottom) {
+    if (!letter.maskAlpha || !letter.bounds) {
+      return false;
+    }
+
+    const scale = letter.maskScale;
+    const startX = Math.max(0, Math.floor((overlapLeft - letter.bounds.left) * scale));
+    const endX = Math.min(letter.maskWidth, Math.ceil((overlapRight - letter.bounds.left) * scale));
+    const startY = Math.max(0, Math.floor((overlapTop - letter.bounds.top) * scale));
+    const endY = Math.min(letter.maskHeight, Math.ceil((overlapBottom - letter.bounds.top) * scale));
+
+    if (endX <= startX || endY <= startY) {
+      return false;
+    }
+
+    const sampleStep = Math.max(
+      1,
+      Math.floor(Math.min(endX - startX, endY - startY) / logoPaintConfig.maskSampleDivisions)
+    );
+
+    for (let y = startY; y < endY; y += sampleStep) {
+      for (let x = startX; x < endX; x += sampleStep) {
+        const viewportX = letter.bounds.left + (x / scale);
+        const viewportY = letter.bounds.top + (y / scale);
+        if (!pointInRotatedHitbox(hitbox, viewportX, viewportY)) {
+          continue;
+        }
+
+        const alphaIndex = ((y * letter.maskWidth) + x) * 4 + 3;
+        if (letter.maskAlpha[alphaIndex] >= logoPaintConfig.alphaThreshold) {
+          return true;
+        }
+      }
+    }
+
+    const centerX = Math.floor((startX + endX - 1) / 2);
+    const centerY = Math.floor((startY + endY - 1) / 2);
+    const centerViewportX = letter.bounds.left + (centerX / scale);
+    const centerViewportY = letter.bounds.top + (centerY / scale);
+    if (!pointInRotatedHitbox(hitbox, centerViewportX, centerViewportY)) {
+      return false;
+    }
+
+    const centerIndex = ((centerY * letter.maskWidth) + centerX) * 4 + 3;
+    return letter.maskAlpha[centerIndex] >= logoPaintConfig.alphaThreshold;
+  }
+
   function initBackgroundBlocks(containerId = 'background-block-layer') {
     const container = document.getElementById(containerId);
     if (!container || container.dataset.initialized === 'true') {
@@ -376,14 +599,7 @@
     const ripples = [];
     let rippleIndex = 0;
     const landingLogoText = document.getElementById('landing-logo-text');
-    const logoLetters = landingLogoText
-      ? Array.from(landingLogoText.querySelectorAll('.logo-letter')).map((element) => ({
-          element,
-          bounds: null,
-          lastPaintedAt: -Infinity,
-          lastPaintColor: null
-        }))
-      : [];
+    const logoLetters = createLogoLetterObjects(landingLogoText);
     const defaultLogoFill = hexToRgb(getComputedStyle(document.documentElement).getPropertyValue('--punch'));
     const defaultLogoShadow = darkenColor(defaultLogoFill, logoPaintConfig.shadowDarkness);
     let logoBoundsRaf = 0;
@@ -396,6 +612,7 @@
     const blocks = swatchConfigs.map((config) => {
       const element = container.querySelector(config.selector);
       const { width, height } = generateBlockSize(shapeModes.pop());
+      const baseRadius = parseFloat(getComputedStyle(element).borderTopLeftRadius) || 0;
 
       element.style.width = `${width}px`;
       element.style.height = `${height}px`;
@@ -407,7 +624,8 @@
         baseWidth: width,
         baseHeight: height,
         color: getComputedStyle(element).backgroundColor,
-        radius: parseFloat(getComputedStyle(element).borderTopLeftRadius) || 0,
+        radius: baseRadius,
+        baseRadius,
         x: 0,
         y: 0,
         vx: config.vx,
@@ -429,7 +647,8 @@
     });
     function updateLogoLetterBounds() {
       logoLetters.forEach((letter) => {
-        letter.bounds = letter.element.getBoundingClientRect();
+        letter.bounds = letter.fillElement.getBoundingClientRect();
+        rebuildLogoLetterMask(letter);
       });
     }
 
@@ -483,6 +702,15 @@
           const overlapHeight = Math.min(blockBottom, effectiveBottom) - Math.max(blockTop, effectiveTop);
 
           if (overlapWidth <= 0 || overlapHeight <= 0) {
+            return;
+          }
+
+          const overlapLeft = Math.max(blockLeft, effectiveLeft);
+          const overlapTop = Math.max(blockTop, effectiveTop);
+          const overlapRight = Math.min(blockRight, effectiveRight);
+          const overlapBottom = Math.min(blockBottom, effectiveBottom);
+
+          if (!letterHasShapeOverlap(letter, hitbox, overlapLeft, overlapTop, overlapRight, overlapBottom)) {
             return;
           }
 
@@ -547,13 +775,20 @@
     }
 
     function updateResponsiveLayout() {
-      const { viewportScale, speedScale } = getResponsiveMetrics();
+      const { viewportScale, speedScale, radiusScale } = getResponsiveMetrics();
 
       blocks.forEach((block) => {
         block.width = Math.round(block.baseWidth * viewportScale);
         block.height = Math.round(block.baseHeight * viewportScale);
+        const shortestSide = Math.min(block.width, block.height);
+        const scaledRadius = block.baseRadius * radiusScale;
+        block.radius = Math.min(
+          scaledRadius,
+          Math.max(8, shortestSide * sizeRanges.radiusShortSideClamp)
+        );
         block.element.style.width = `${block.width}px`;
         block.element.style.height = `${block.height}px`;
+        block.element.style.borderRadius = `${block.radius}px`;
         block.vx = Math.sign(block.vx || block.baseVx) * Math.abs(block.baseVx * speedScale);
         block.vy = Math.sign(block.vy || block.baseVy) * Math.abs(block.baseVy * speedScale);
       });

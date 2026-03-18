@@ -288,8 +288,27 @@ header h1 {
   position: relative;
   display: inline-block;
   color: var(--logo-fill);
-  text-shadow: 0 5px 0 var(--logo-shadow);
-  transition: color 0.17s linear, text-shadow 0.17s linear;
+  vertical-align: top;
+}
+.logo-letter-fill,
+.logo-letter-shadow {
+  display: block;
+  font: inherit;
+  line-height: 1;
+  transition: color 0.17s linear;
+}
+.logo-letter-shadow {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  color: var(--logo-shadow);
+  pointer-events: none;
+  z-index: 0;
+}
+.logo-letter-fill {
+  position: relative;
+  color: var(--logo-fill);
+  z-index: 1;
 }
 
 /* ── Connect form field ── */
@@ -331,6 +350,14 @@ header h1 {
   display: flex; flex-direction: column; align-items: center; gap: 10px;
   width: 100%;
   margin: 4px 0 2px;
+}
+
+.moop-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
 }
 
 .moop-preview-frame {
@@ -395,6 +422,12 @@ header h1 {
   align-self: center;
 }
 .btn-customize:hover { border-color: var(--lavender); color: var(--lavender); transform: translateY(-2px); }
+.btn-customize-random {
+  min-width: 36px;
+  width: 36px;
+  padding: 6px 0;
+  text-align: center;
+}
 
 /* ── Moop customizer modal ── */
 .moop-modal-overlay {
@@ -409,25 +442,72 @@ header h1 {
 .moop-stage-modal { position: relative; width: 180px; height: 180px; animation: wobble 3s ease-in-out infinite; }
 
 .slot-panel {
+  --slot-tab-indicator-x: 0px;
+  --slot-tab-indicator-width: 0px;
   width: 100%; background: rgba(42, 18, 32, 0.85); border: 3px solid var(--eggplant);
   border-radius: 20px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.35); overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 430px;
+  height: clamp(430px, 52vh, 520px);
 }
-.slot-tabs { display: flex; border-bottom: 2px solid rgba(130, 13, 81, 0.4); }
+.slot-tabs {
+  display: flex;
+  border-bottom: 2px solid rgba(130, 13, 81, 0.4);
+  position: relative;
+  isolation: isolate;
+}
+.slot-tabs::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: var(--slot-tab-indicator-width);
+  height: 3px;
+  background: var(--mint);
+  border-radius: 999px 999px 0 0;
+  transform: translateX(var(--slot-tab-indicator-x));
+  transition: transform 0.28s ease, width 0.28s ease, opacity 0.2s ease;
+  opacity: 1;
+}
 .slot-tab {
   flex: 1; padding: 12px 4px; background: none; border: none;
   font-family: 'Fredoka', sans-serif; font-size: 0.75rem; font-weight: 600;
-  color: #7A5068; cursor: pointer; transition: color 0.15s, background 0.15s;
+  color: #7A5068; cursor: pointer; transition: color 0.2s, background 0.2s;
   text-align: center; position: relative;
+  z-index: 1;
 }
 .slot-tab:hover { color: var(--peach); background: rgba(130, 13, 81, 0.15); }
 .slot-tab.active { color: var(--mint); background: rgba(135, 220, 171, 0.08); }
-.slot-tab.active::after {
-  content: ''; position: absolute; bottom: -2px; left: 20%; right: 20%;
-  height: 3px; background: var(--mint); border-radius: 3px 3px 0 0;
+.slot-grid-stage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
 }
-.slot-items { padding: 16px; display: none; gap: 10px; }
-.slot-items.active { display: grid; grid-template-columns: repeat(4, 1fr); }
+.slot-items {
+  position: absolute;
+  inset: 0;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-content: start;
+  gap: 10px;
+  overflow-y: auto;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.24s ease, visibility 0s linear 0.24s;
+  scrollbar-gutter: stable;
+}
+.slot-items.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+  transition: opacity 0.2s ease, transform 0.24s ease;
+}
 .slot-item {
   aspect-ratio: 1; background: rgba(153, 135, 144, 0.7); border: 2px solid #5A2848;
   border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -469,12 +549,130 @@ header h1 {
   .moop-sidebar {
     gap: 10px; margin: 2px 0 0;
   }
+  .moop-action-row { gap: 7px; }
   .moop-preview-frame { width: 140px; height: 140px; }
   .moop-preview-frame::before { width: 126px; height: 126px; }
   .moop-preview { width: 135px; height: 135px; }
   .moop-stage-modal { width: 150px; height: 150px; }
-  .slot-items.active { grid-template-columns: repeat(3, 1fr); }
+  .slot-panel { min-height: 392px; height: clamp(392px, 50vh, 460px); }
+  .slot-items { grid-template-columns: repeat(3, 1fr); }
   .slot-tab { font-size: 0.65rem; padding: 10px 2px; }
+  .btn-customize-random {
+    min-width: 34px;
+    width: 34px;
+  }
+}
+
+@media (max-width: 430px) and (hover: none) and (pointer: coarse) {
+  body.is-landing {
+    min-height: 100svh;
+    padding: 12px 14px 10px;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .logo-area {
+    margin-top: 18px;
+    margin-bottom: 4px;
+  }
+
+  .logo {
+    font-size: clamp(3.5rem, 15vw, 4.4rem);
+    gap: 2px;
+  }
+
+  .logo-letter-shadow {
+    top: 4px;
+  }
+
+  .card-row {
+    max-width: 360px;
+    margin: 12px auto 10px;
+  }
+
+  #panel-connect {
+    padding: 20px 18px 18px;
+    border-radius: 18px;
+    gap: 10px;
+  }
+
+  .connect-field input,
+  .connect-join-row input,
+  .connect-join-row button,
+  .btn-create-lobby {
+    min-height: 44px;
+  }
+
+  .connect-divider {
+    margin: 0;
+    font-size: 0.7rem;
+    gap: 10px;
+  }
+
+  .moop-sidebar {
+    gap: 8px;
+    margin: 0;
+  }
+
+  .moop-action-row {
+    gap: 6px;
+  }
+
+  .moop-preview-frame {
+    width: 120px;
+    height: 120px;
+    border-radius: 20px;
+  }
+
+  .moop-preview-frame::before {
+    width: 108px;
+    height: 108px;
+  }
+
+  .moop-preview {
+    width: 118px;
+    height: 118px;
+  }
+
+  .btn-customize {
+    font-size: 0.68rem;
+    padding: 5px 12px;
+  }
+
+  .btn-customize-random {
+    min-width: 32px;
+    width: 32px;
+    padding: 5px 0;
+  }
+
+  #landing-meta-panel {
+    margin-top: 10px;
+    max-width: 360px;
+  }
+
+  body.is-landing #landing-meta-panel {
+    padding: 8px 12px 9px;
+    border-radius: 16px;
+  }
+
+  .connect-footer {
+    gap: 12px;
+  }
+
+  .connect-footer button {
+    font-size: 0.74rem;
+    padding: 2px 0;
+  }
+
+  #log-toggle {
+    font-size: 0.72rem;
+  }
+
+  #credits-btn {
+    bottom: 10px;
+    right: 10px;
+    padding: 5px 9px;
+  }
 }
 
 #landing-meta-panel {

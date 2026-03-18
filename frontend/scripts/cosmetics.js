@@ -2,6 +2,7 @@ import { COSMETICS } from './constants.js';
 
 // ─── Cosmetics ─────────────────────────────────────────────────────────────────
 const equipped = { colors: 'trumskin', hats: 'none', eyes: 'eyes', face: 'none', accessories: 'none' };
+let customizerElements = null;
 
 // Load from localStorage if available
 try { Object.assign(equipped, JSON.parse(localStorage.getItem('moop_cosmetics') || '{}')); } catch {}
@@ -48,6 +49,37 @@ function renderMoopPreviews() {
   if (stage) renderMoopInto(stage, equipped);
 }
 
+function getCustomizerElements() {
+  if (customizerElements) return customizerElements;
+
+  return {
+    panel: document.querySelector('.slot-panel'),
+    tabs: Array.from(document.querySelectorAll('.slot-tab')),
+    grids: Array.from(document.querySelectorAll('.slot-items'))
+  };
+}
+
+function getActiveCustomizerTab() {
+  return getCustomizerElements().tabs.find(tab => tab.classList.contains('active')) || null;
+}
+
+function saveEquippedCosmetics() {
+  localStorage.setItem('moop_cosmetics', JSON.stringify(equipped));
+}
+
+function persistAndRefreshCosmetics(activeCategory = null) {
+  saveEquippedCosmetics();
+  renderMoopPreviews();
+
+  if (!activeCategory) return;
+
+  renderCosmeticGrid(activeCategory);
+  const activeTab = getActiveCustomizerTab();
+  if (activeTab?.dataset.tab === activeCategory) {
+    activateCustomizerTab(activeTab, { preserveScroll: true });
+  }
+}
+
 function renderCosmeticGrid(category) {
   const grid = document.getElementById(`grid-${category}`);
   if (!grid) return;
@@ -79,12 +111,48 @@ function renderCosmeticGrid(category) {
     }
     el.onclick = () => {
       equipped[category] = item.id;
-      localStorage.setItem('moop_cosmetics', JSON.stringify(equipped));
-      renderMoopPreviews();
-      renderCosmeticGrid(category);
+      persistAndRefreshCosmetics(category);
     };
     grid.appendChild(el);
   });
+}
+
+function updateActiveTabIndicator(panel, activeTab) {
+  if (!panel || !activeTab) return;
+
+  const tabsRect = activeTab.parentElement.getBoundingClientRect();
+  const activeRect = activeTab.getBoundingClientRect();
+  panel.style.setProperty('--slot-tab-indicator-x', `${activeRect.left - tabsRect.left}px`);
+  panel.style.setProperty('--slot-tab-indicator-width', `${activeRect.width}px`);
+}
+
+function activateCustomizerTab(tab, options = {}) {
+  const { preserveScroll = false } = options;
+  if (!tab) return;
+
+  const { panel, tabs, grids } = getCustomizerElements();
+  const nextGrid = document.getElementById(`grid-${tab.dataset.tab}`);
+  if (!nextGrid) return;
+
+  tabs.forEach(t => t.classList.toggle('active', t === tab));
+  grids.forEach(grid => {
+    const isActive = grid === nextGrid;
+    grid.classList.toggle('active', isActive);
+    if (isActive && !preserveScroll) {
+      grid.scrollTop = 0;
+    }
+  });
+
+  updateActiveTabIndicator(panel, tab);
+}
+
+export function randomizeMoopCosmetics() {
+  Object.keys(COSMETICS).forEach(cat => {
+    const items = COSMETICS[cat];
+    equipped[cat] = items[Math.floor(Math.random() * items.length)].id;
+  });
+
+  persistAndRefreshCosmetics(getActiveCustomizerTab()?.dataset.tab ?? null);
 }
 
 export function initMoopCustomizer() {
@@ -92,27 +160,40 @@ export function initMoopCustomizer() {
   renderMoopPreviews();
 
   const modal = document.getElementById('moop-modal');
+  customizerElements = {
+    panel: document.querySelector('.slot-panel'),
+    tabs: Array.from(document.querySelectorAll('.slot-tab')),
+    grids: Array.from(document.querySelectorAll('.slot-items')),
+    landingRandomizeButton: document.getElementById('moop-random-btn'),
+    modalRandomizeButton: document.getElementById('randomize-btn')
+  };
   document.getElementById('moop-btn').addEventListener('click', () => modal.classList.add('open'));
   document.getElementById('moop-done-btn').addEventListener('click', () => modal.classList.remove('open'));
   modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
 
-  document.querySelectorAll('.slot-tab').forEach(tab => {
+  customizerElements.tabs.forEach(tab => {
     tab.addEventListener('click', () => {
-      document.querySelectorAll('.slot-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.slot-items').forEach(g => g.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById(`grid-${tab.dataset.tab}`).classList.add('active');
+      activateCustomizerTab(tab);
     });
   });
 
-  document.getElementById('randomize-btn').addEventListener('click', () => {
-    Object.keys(COSMETICS).forEach(cat => {
-      const items = COSMETICS[cat];
-      equipped[cat] = items[Math.floor(Math.random() * items.length)].id;
-    });
-    localStorage.setItem('moop_cosmetics', JSON.stringify(equipped));
-    renderMoopPreviews();
-    const activeTab = document.querySelector('.slot-tab.active');
-    if (activeTab) renderCosmeticGrid(activeTab.dataset.tab);
+  const activeTab = getActiveCustomizerTab();
+  if (activeTab) {
+    activateCustomizerTab(activeTab, { preserveScroll: true });
+  }
+
+  window.addEventListener('resize', () => {
+    updateActiveTabIndicator(
+      customizerElements?.panel,
+      getActiveCustomizerTab()
+    );
   });
+
+  if (customizerElements.landingRandomizeButton) {
+    customizerElements.landingRandomizeButton.addEventListener('click', randomizeMoopCosmetics);
+  }
+
+  if (customizerElements.modalRandomizeButton) {
+    customizerElements.modalRandomizeButton.addEventListener('click', randomizeMoopCosmetics);
+  }
 }
