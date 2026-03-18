@@ -23,13 +23,40 @@
     rectStretchMin: 30,
     rectStretchMax: 105,
     minSide: 150,
-    responsiveMinScale: 0.36,
-    responsiveMaxScale: 1,
+    responsiveMinScale: 0.306,
+    responsiveMaxScale: 1.035,
+    baseCurvePower: 1.8,
     narrowViewportWidth: 430,
     narrowViewportMinBoost: 0.14,
-    referenceWidth: 1440,
-    referenceHeight: 900
+    radiusMinScale: 0.82,
+    radiusMaxScale: 1.04,
+    radiusShortSideClamp: 0.19,
+    referenceWidth: 1680,
+    referenceHeight: 980
   };
+  const responsiveBoostTiers = [
+    {
+      startWidth: 700,
+      startHeight: 960,
+      targetWidth: 820,
+      targetHeight: 1180,
+      boost: 1.08
+    },
+    {
+      startWidth: sizeRanges.referenceWidth,
+      startHeight: sizeRanges.referenceHeight,
+      targetWidth: 2560,
+      targetHeight: 1440,
+      boost: 1.15
+    },
+    {
+      startWidth: 2560,
+      startHeight: 1440,
+      targetWidth: 3840,
+      targetHeight: 2160,
+      boost: 1.3
+    }
+  ];
   const motionRanges = {
     responsiveMinSpeedScale: 0.72,
     responsiveMaxSpeedScale: 1
@@ -83,6 +110,34 @@
     return 1 - (1 - value) ** 3;
   }
 
+  function smootherstep(value) {
+    const clamped = clamp(value, 0, 1);
+    return clamped * clamped * clamped * (clamped * (clamped * 6 - 15) + 10);
+  }
+
+  function getViewportRatio(targetWidth, targetHeight) {
+    return Math.min(window.innerWidth / targetWidth, window.innerHeight / targetHeight);
+  }
+
+  function getTierBoost() {
+    let boost = 1;
+
+    responsiveBoostTiers.forEach((tier) => {
+      const startRatio = Math.min(
+        tier.startWidth / tier.targetWidth,
+        tier.startHeight / tier.targetHeight
+      );
+      const targetRatio = getViewportRatio(tier.targetWidth, tier.targetHeight);
+      const progress = smootherstep(
+        clamp((targetRatio - startRatio) / (1 - startRatio), 0, 1)
+      );
+
+      boost = lerp(boost, tier.boost, progress);
+    });
+
+    return boost;
+  }
+
   function shuffle(values) {
     const copy = [...values];
 
@@ -130,24 +185,33 @@
     const normalizedScale =
       (rawScale - sizeRanges.responsiveMinScale) /
       (sizeRanges.responsiveMaxScale - sizeRanges.responsiveMinScale);
+    const smoothedScale = smootherstep(normalizedScale);
+    const sizeCurveScale = smoothedScale ** sizeRanges.baseCurvePower;
     const narrowViewportRatio = clamp(window.innerWidth / sizeRanges.narrowViewportWidth, 0, 1);
     const narrowViewportAdjustment =
-      (1 - narrowViewportRatio) * sizeRanges.narrowViewportMinBoost;
-    const viewportScale = clamp(
+      smootherstep(1 - narrowViewportRatio) * sizeRanges.narrowViewportMinBoost;
+    const baseViewportScale = clamp(
       sizeRanges.responsiveMinScale +
-        (sizeRanges.responsiveMaxScale - sizeRanges.responsiveMinScale) * normalizedScale ** 1.15 -
+        (sizeRanges.responsiveMaxScale - sizeRanges.responsiveMinScale) * sizeCurveScale -
         narrowViewportAdjustment,
       sizeRanges.responsiveMinScale,
       sizeRanges.responsiveMaxScale
     );
+    const viewportScale = baseViewportScale * getTierBoost();
     const speedScale = clamp(
       motionRanges.responsiveMinSpeedScale +
         (motionRanges.responsiveMaxSpeedScale - motionRanges.responsiveMinSpeedScale) * normalizedScale,
       motionRanges.responsiveMinSpeedScale,
       motionRanges.responsiveMaxSpeedScale
     );
+    const radiusScale = clamp(
+      sizeRanges.radiusMinScale +
+        (sizeRanges.radiusMaxScale - sizeRanges.radiusMinScale) * smoothedScale ** 1.15,
+      sizeRanges.radiusMinScale,
+      sizeRanges.radiusMaxScale
+    );
 
-    return { viewportScale, speedScale };
+    return { viewportScale, speedScale, radiusScale };
   }
 
   function getHitbox(block) {
@@ -388,7 +452,6 @@
         bounds: null,
         character,
         maskCanvas: document.createElement('canvas'),
-        maskContext: null,
         maskAlpha: null,
         maskScale: 1,
         maskWidth: 0,
@@ -428,7 +491,6 @@
     const context = canvas.getContext('2d', { willReadFrequently: true });
     if (!context) {
       letter.maskAlpha = null;
-      letter.maskContext = null;
       letter.maskWidth = 0;
       letter.maskHeight = 0;
       return;
@@ -450,7 +512,6 @@
 
     context.fillText(letter.character, x, y);
 
-    letter.maskContext = context;
     letter.maskAlpha = context.getImageData(0, 0, canvasWidth, canvasHeight).data;
     letter.maskScale = dpr;
     letter.maskWidth = canvasWidth;
@@ -551,6 +612,7 @@
     const blocks = swatchConfigs.map((config) => {
       const element = container.querySelector(config.selector);
       const { width, height } = generateBlockSize(shapeModes.pop());
+      const baseRadius = parseFloat(getComputedStyle(element).borderTopLeftRadius) || 0;
 
       element.style.width = `${width}px`;
       element.style.height = `${height}px`;
@@ -562,7 +624,8 @@
         baseWidth: width,
         baseHeight: height,
         color: getComputedStyle(element).backgroundColor,
-        radius: parseFloat(getComputedStyle(element).borderTopLeftRadius) || 0,
+        radius: baseRadius,
+        baseRadius,
         x: 0,
         y: 0,
         vx: config.vx,
@@ -712,13 +775,20 @@
     }
 
     function updateResponsiveLayout() {
-      const { viewportScale, speedScale } = getResponsiveMetrics();
+      const { viewportScale, speedScale, radiusScale } = getResponsiveMetrics();
 
       blocks.forEach((block) => {
         block.width = Math.round(block.baseWidth * viewportScale);
         block.height = Math.round(block.baseHeight * viewportScale);
+        const shortestSide = Math.min(block.width, block.height);
+        const scaledRadius = block.baseRadius * radiusScale;
+        block.radius = Math.min(
+          scaledRadius,
+          Math.max(8, shortestSide * sizeRanges.radiusShortSideClamp)
+        );
         block.element.style.width = `${block.width}px`;
         block.element.style.height = `${block.height}px`;
+        block.element.style.borderRadius = `${block.radius}px`;
         block.vx = Math.sign(block.vx || block.baseVx) * Math.abs(block.baseVx * speedScale);
         block.vy = Math.sign(block.vy || block.baseVy) * Math.abs(block.baseVy * speedScale);
       });
