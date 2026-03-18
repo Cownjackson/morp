@@ -68,7 +68,8 @@
     impulseStrength: 150,
     rippleLifetime: 950,
     rippleStartRadius: 10,
-    rippleEndRadius: 120
+    rippleEndRadius: 120,
+    cornerRippleWindow: 180
   };
   const collisionJiggleConfig = {
     maxTilt: 0.72,
@@ -78,7 +79,8 @@
   };
   const spinConfig = {
     couplingFactor: 0.06,
-    maxSpeed: 24
+    maxSpeed: 24,
+    decayPerSecond: 0.98
   };
   const ripplePalette = [
     '--mint',
@@ -666,7 +668,11 @@
         jiggleScaleX: 1,
         jiggleScaleY: 1,
         xRatio: config.xRatio,
-        yRatio: config.yRatio
+        yRatio: config.yRatio,
+        lastWallHitX: -Infinity,
+        lastWallHitNX: 0,
+        lastWallHitY: -Infinity,
+        lastWallHitNY: 0
       };
     });
     function updateLogoLetterBounds() {
@@ -959,6 +965,7 @@
         block.x += block.vx * delta;
         block.y += block.vy * delta;
         block.angle += block.spin * delta;
+        block.spin *= spinConfig.decayPerSecond ** delta;
       });
 
       // Block-block collision — two passes: first applies impulse + jiggle,
@@ -975,12 +982,29 @@
         }
       }
 
-      // Wall bounce — single pass after collision resolution, with jiggle
+      // Wall bounce — single pass after collision resolution, with jiggle + corner ripple
       blocks.forEach((block) => {
         const wallHit = bounceOffWalls(block, viewportWidth, viewportHeight);
         if (wallHit) {
           const speed = Math.hypot(block.vx, block.vy);
           applyCollisionJiggle(block, wallHit.normalX, wallHit.normalY, speed * 0.4);
+
+          if (wallHit.normalX !== 0) {
+            block.lastWallHitX = now;
+            block.lastWallHitNX = wallHit.normalX;
+          }
+          if (wallHit.normalY !== 0) {
+            block.lastWallHitY = now;
+            block.lastWallHitNY = wallHit.normalY;
+          }
+          if (now - block.lastWallHitX < interactionConfig.cornerRippleWindow &&
+              now - block.lastWallHitY < interactionConfig.cornerRippleWindow) {
+            const cornerX = block.lastWallHitNX < 0 ? viewportWidth : 0;
+            const cornerY = block.lastWallHitNY < 0 ? viewportHeight : 0;
+            spawnRipple(cornerX, cornerY);
+            block.lastWallHitX = -Infinity;
+            block.lastWallHitY = -Infinity;
+          }
         }
       });
 
