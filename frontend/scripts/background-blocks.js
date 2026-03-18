@@ -1,18 +1,18 @@
 (function () {
   const swatchConfigs = [
-    { selector: '.swatch-1', xRatio: 0.03, yRatio: 0.05, vx: 92, vy: 76, rotation: 4, spin: 7 },
-    { selector: '.swatch-2', xRatio: 0.58, yRatio: 0.04, vx: -88, vy: 72, rotation: -5, spin: -6 },
-    { selector: '.swatch-3', xRatio: 0.04, yRatio: 0.46, vx: 96, vy: -70, rotation: 3, spin: 8 },
-    { selector: '.swatch-4', xRatio: 0.57, yRatio: 0.58, vx: -82, vy: -90, rotation: -4, spin: -7 },
-    { selector: '.swatch-5', xRatio: 0.12, yRatio: 0.7, vx: 86, vy: -84, rotation: 5, spin: 6 },
-    { selector: '.swatch-6', xRatio: 0.42, yRatio: 0.16, vx: 78, vy: 88, rotation: -3, spin: -9 },
-    { selector: '.swatch-7', xRatio: 0.74, yRatio: 0.36, vx: -94, vy: 74, rotation: 6, spin: 7 },
-    { selector: '.swatch-8', xRatio: 0.29, yRatio: 0.74, vx: 90, vy: -96, rotation: -6, spin: -8 }
+    { selector: '.swatch-1', xRatio: 0.03, yRatio: 0.05, vx: 55, vy: 46, rotation: 4, spin: 7 },
+    { selector: '.swatch-2', xRatio: 0.58, yRatio: 0.04, vx: -53, vy: 43, rotation: -5, spin: -6 },
+    { selector: '.swatch-3', xRatio: 0.04, yRatio: 0.46, vx: 58, vy: -42, rotation: 3, spin: 8 },
+    { selector: '.swatch-4', xRatio: 0.57, yRatio: 0.58, vx: -49, vy: -54, rotation: -4, spin: -7 },
+    { selector: '.swatch-5', xRatio: 0.12, yRatio: 0.7, vx: 52, vy: -50, rotation: 5, spin: 6 },
+    { selector: '.swatch-6', xRatio: 0.42, yRatio: 0.16, vx: 47, vy: 53, rotation: -3, spin: -9 },
+    { selector: '.swatch-7', xRatio: 0.74, yRatio: 0.36, vx: -56, vy: 44, rotation: 6, spin: 7 },
+    { selector: '.swatch-8', xRatio: 0.29, yRatio: 0.74, vx: 54, vy: -58, rotation: -6, spin: -8 }
   ];
 
   const restitution = 0.98;
-  const minSpeed = 70;
-  const maxSpeed = 225;
+  const minSpeed = 42;
+  const maxSpeed = 135;
   const hitboxScale = 0.95;
   const sizeRanges = {
     squareMin: 170,
@@ -32,7 +32,9 @@
     radiusMaxScale: 1.04,
     radiusShortSideClamp: 0.19,
     referenceWidth: 1680,
-    referenceHeight: 980
+    referenceHeight: 980,
+    mobileBreakpoint: 960,
+    mobileSizeBoost: 1.5
   };
   const responsiveBoostTiers = [
     {
@@ -69,11 +71,9 @@
     rippleEndRadius: 120
   };
   const collisionJiggleConfig = {
-    maxTilt: 1.2,
-    maxStretch: 0.06,
-    oscillationPeriod: 0.4,
-    settleDuration: 1.15,
-    dampingPower: 2.2,
+    maxTilt: 0.72,
+    maxStretch: 0.036,
+    settleDuration: 0.5,
     speedToStretch: 0.028
   };
   const ripplePalette = [
@@ -197,7 +197,8 @@
       sizeRanges.responsiveMinScale,
       sizeRanges.responsiveMaxScale
     );
-    const viewportScale = baseViewportScale * getTierBoost();
+    const mobileSizeBoost = window.innerWidth < sizeRanges.mobileBreakpoint ? sizeRanges.mobileSizeBoost : 1;
+    const viewportScale = baseViewportScale * getTierBoost() * mobileSizeBoost;
     const speedScale = clamp(
       motionRanges.responsiveMinSpeedScale +
         (motionRanges.responsiveMaxSpeedScale - motionRanges.responsiveMinSpeedScale) * normalizedScale,
@@ -753,16 +754,14 @@
       const jiggleStrength = Math.min(impact * collisionJiggleConfig.speedToStretch, 1);
       const compressionX = Math.abs(normalX) * collisionJiggleConfig.maxStretch * jiggleStrength;
       const compressionY = Math.abs(normalY) * collisionJiggleConfig.maxStretch * jiggleStrength;
-      const reboundX = Math.abs(normalY) * collisionJiggleConfig.maxStretch * jiggleStrength * 0.2;
-      const reboundY = Math.abs(normalX) * collisionJiggleConfig.maxStretch * jiggleStrength * 0.2;
 
       block.jiggleCompressionX = clamp(
-        block.jiggleCompressionX + compressionX - reboundX,
+        block.jiggleCompressionX + compressionX,
         0,
         collisionJiggleConfig.maxStretch
       );
       block.jiggleCompressionY = clamp(
-        block.jiggleCompressionY + compressionY - reboundY,
+        block.jiggleCompressionY + compressionY,
         0,
         collisionJiggleConfig.maxStretch
       );
@@ -869,14 +868,11 @@
         }
 
         const progress = block.jiggleTime / collisionJiggleConfig.settleDuration;
-        const decay = (1 - progress) ** collisionJiggleConfig.dampingPower;
-        const oscillation =
-          -Math.cos((block.jiggleTime / collisionJiggleConfig.oscillationPeriod) * Math.PI * 2);
-        const amount = Math.max(oscillation, 0) * decay;
+        const amount = Math.sin(progress * Math.PI);
 
-        block.jiggleScaleX = 1 - block.jiggleCompressionX * amount;
-        block.jiggleScaleY = 1 - block.jiggleCompressionY * amount;
-        block.jiggleAngle = block.jiggleTiltAmplitude * oscillation * decay;
+        block.jiggleScaleX = 1 - block.jiggleCompressionX * amount + block.jiggleCompressionY * amount;
+        block.jiggleScaleY = 1 - block.jiggleCompressionY * amount + block.jiggleCompressionX * amount;
+        block.jiggleAngle = block.jiggleTiltAmplitude * Math.sin(progress * Math.PI * 2);
       });
     }
 
