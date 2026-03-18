@@ -1,0 +1,104 @@
+# Emotions
+joy, anger, fear, sadness, surprise,
+disgust, love, boredom, anxiety, excitement,
+pride, guilt, shame, envy, nostalgia,
+awe, frustration, confusion, relief, hope,
+loneliness, jealousy, embarrassment, gratitude, curiosity,
+
+# Popular TV shows
+Breaking Bad, Game of Thrones, Friends, The Office, Stranger Things,
+The Simpsons, South Park, Seinfeld, The Wire, The Sopranos,
+Grey's Anatomy, Lost, Dexter, Sherlock, Black Mirror,
+Parks and Recreation, Better Call Saul, The Crown, Succession, Ted Lasso,
+House, Arrested Development, It's Always Sunny, How I Met Your Mother, Westworld,
+
+# Popular websites & apps
+YouTube, Instagram, Twitter, TikTok, Reddit,
+Netflix, Spotify, Amazon, Google, Facebook,
+Pinterest, Snapchat, LinkedIn, Discord, Twitch,
+WhatsApp, Duolingo, Airbnb, Wikipedia, eBay,
+PayPal, Zoom, GitHub, Venmo, Shazam,
+
+# Olympic sports
+Archery, Diving, Fencing, Gymnastics, Hurdles,
+Javelin, Judo, Kayaking, Marathon, Pole vault,
+Rowing, Skateboarding, Surfing, Swimming, Weightlifting,
+Wrestling, Curling, Discus, Shot put, Boxing,
+Volleyball, High jump, Bobsled, Hammer throw, Triathlon,
+
+# Things at a carnival
+Ferris wheel, Roller coaster, Cotton candy, Popcorn, Clown,
+Juggler, Ring toss, Bumper cars, Carousel, Funnel cake,
+Balloon animal, Dunk tank, Haunted house, Fortune teller, Ticket booth,
+Hammer game, Lemonade stand, Corn dog, Tilt-a-whirl, Face paint,
+Fireworks, Giant teddy bear, Stilts, Magician, Balloon dart,
+
+# Popular video games
+Minecraft, Fortnite, League of Legends, Grand Theft Auto, Call of Duty,
+Among Us, Overwatch, The Sims, Animal Crossing, Stardew Valley,
+Pokémon, Mario Kart, Tetris, Roblox, FIFA,
+Halo, Skyrim, Apex Legends, Valorant, Elden Ring,
+Zelda, Fall Guys, Rocket League, Candy Crush, Clash of Clans,
+
+# Camping essentials
+Tent, Campfire, Sleeping bag, Lantern, Marshmallow,
+Hiking boots, Compass, Canteen, Axe, S'mores,
+Hammock, Flashlight, Bear, Map, Firewood,
+Bug spray, Cooler, Fishing rod, Binoculars, Trail mix,
+Whistle, Pine tree, Camp chair, Dutch oven, Bear spray,
+
+# Outer space
+Astronaut, Rocket, Black hole, Nebula, Comet,
+Meteor, Satellite, Crater, Galaxy, Asteroid,
+Moon, Mars, Jupiter, Telescope, Spacewalk,
+Solar flare, Supernova, Aurora, Space station, Rover,
+Alien, Wormhole, Saturn, Shooting star, Space shuttle,
+
+# Fast food favorites
+Burger, Fries, Nuggets, Milkshake, Hot dog,
+Taco, Burrito, Nachos, Onion rings, Corn dog,
+Soft drink, Ketchup, Mustard, Pickle, Bacon,
+Drive-through, Happy meal, Straw, Paper bag, Slushie,
+Pizza slice, Sub sandwich, Wrap, Churro, Waffle fries,
+
+# 90s nostalgia
+Tamagotchi, Game Boy, Walkman, Pager, Floppy disk,
+VHS tape, Beanie Baby, Skip-It, Slap bracelet, Bop It,
+Pogs, Blockbuster, Discman, Rollerblades, Furby,
+Troll doll, Easy-Bake Oven, Power Rangers, N64, Spice Girls,
+Dial-up modem, Butterfly clips, Scrunchie, Polaroid camera, Lunchable,
+
+# Jobs & professions
+Doctor, Firefighter, Pilot, Chef, Lawyer,
+Teacher, Astronaut, Detective, Lifeguard, Plumber,
+Electrician, Dentist, Nurse, Carpenter, Architect,
+Veterinarian, Librarian, Barista, Surgeon, Farmer,
+Scientist, Journalist, Police officer, Therapist, Accountant,
+
+# Gym & fitness
+Treadmill, Barbell, Dumbbell, Squat rack, Bench press,
+Pull-up bar, Rowing machine, Elliptical, Yoga mat, Kettlebell,
+Jump rope, Punching bag, Resistance band, Medicine ball, Foam roller,
+Locker, Mirror, Protein shake, Chalk, Weight plate,
+Spin bike, Cable machine, Spotter, Water bottle, Push-up,
+
+# Popular anime
+Naruto, Dragon Ball Z, One Piece, Attack on Titan, Demon Slayer,
+My Hero Academia, Death Note, Fullmetal Alchemist, Bleach, Hunter x Hunter,
+Tokyo Ghoul, Jujutsu Kaisen, One Punch Man, Fairy Tail, Sword Art Online,
+Spy x Family, Chainsaw Man, Mob Psycho 100, Re:Zero, Cowboy Bebop,
+Steins Gate, Neon Genesis Evangelion, Vinland Saga, Blue Exorcist, Overlord,
+
+# Popular movies
+Avatar, Titanic, Avengers: Endgame, Jurassic Park, Star Wars,
+The Dark Knight, Inception, Interstellar, The Godfather, Pulp Fiction,
+Forrest Gump, The Matrix, Fight Club, The Shawshank Redemption, The Lion King,
+Spider-Man, Jaws, E.T., Home Alone, Back to the Future,
+Toy Story, Finding Nemo, Up, Parasite, Get Out,
+
+# Outdoor activities
+Hiking, Rock climbing, Cycling, Skiing, Snowboarding,
+Fishing, Bird watching, Picnic, Kite flying, Frisbee,
+Tennis, Golf, Jogging, Yoga, Gardening,
+Barbecue, Zip-lining, Mountain biking, Paddleboarding, Horseback riding,
+Bungee jumping, Paragliding, Whitewater rafting, Stargazing, Snorkeling,
