@@ -172,7 +172,10 @@
       <div class="moop-preview-frame">
         <div class="moop-preview" id="moop-preview"></div>
       </div>
-      <button class="btn-customize" id="moop-btn">customize</button>
+      <div class="moop-action-row">
+        <button class="btn-customize" id="moop-btn" type="button">customize</button>
+        <button class="btn-customize btn-customize-random" id="moop-random-btn" type="button" title="randomize moop" aria-label="randomize moop">?</button>
+      </div>
     </div>
     <button class="btn-create-lobby" onclick="createLobby()">Create Lobby</button>
     <div class="connect-divider"><span>or</span></div>
@@ -196,11 +199,13 @@
         <button class="slot-tab" data-tab="face">face</button>
         <button class="slot-tab" data-tab="accessories">acc</button>
       </div>
-      <div class="slot-items active" id="grid-colors"></div>
-      <div class="slot-items" id="grid-hats"></div>
-      <div class="slot-items" id="grid-eyes"></div>
-      <div class="slot-items" id="grid-face"></div>
-      <div class="slot-items" id="grid-accessories"></div>
+      <div class="slot-grid-stage">
+        <div class="slot-items active" id="grid-colors"></div>
+        <div class="slot-items" id="grid-hats"></div>
+        <div class="slot-items" id="grid-eyes"></div>
+        <div class="slot-items" id="grid-face"></div>
+        <div class="slot-items" id="grid-accessories"></div>
+      </div>
     </div>
     <div class="moop-modal-buttons">
       <button class="btn btn-randomize" id="randomize-btn">randomize</button>
