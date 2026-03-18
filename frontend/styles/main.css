@@ -286,6 +286,7 @@ header h1 {
   line-height: 1;
   cursor: default;
   user-select: none;
+  -webkit-user-drag: none;
 }
 .logo-letter {
   --logo-fill: var(--punch);
