@@ -643,6 +643,14 @@
       element.style.width = `${width}px`;
       element.style.height = `${height}px`;
 
+      const dvdImg = document.createElement('img');
+      dvdImg.src = 'assets/dvd_logo.png';
+      dvdImg.className = 'swatch-dvd-logo';
+      dvdImg.setAttribute('aria-hidden', 'true');
+      dvdImg.setAttribute('draggable', 'false');
+      dvdImg.style.opacity = '0';
+      element.appendChild(dvdImg);
+
       return {
         element,
         width,
@@ -672,9 +680,23 @@
         lastWallHitX: -Infinity,
         lastWallHitNX: 0,
         lastWallHitY: -Infinity,
-        lastWallHitNY: 0
+        lastWallHitNY: 0,
+        dvdImg,
+        dvdTimeout: null
       };
     });
+    function triggerCornerFanfare(block) {
+      block.element.classList.remove('corner-flash');
+      void block.element.offsetWidth;
+      block.element.classList.add('corner-flash');
+
+      block.dvdImg.style.opacity = '1';
+      clearTimeout(block.dvdTimeout);
+      block.dvdTimeout = setTimeout(() => {
+        block.dvdImg.style.opacity = '0';
+      }, 10000);
+    }
+
     function updateLogoLetterBounds() {
       logoLetters.forEach((letter) => {
         letter.bounds = letter.fillElement.getBoundingClientRect();
@@ -1002,6 +1024,7 @@
             const cornerX = block.lastWallHitNX < 0 ? viewportWidth : 0;
             const cornerY = block.lastWallHitNY < 0 ? viewportHeight : 0;
             spawnRipple(cornerX, cornerY);
+            triggerCornerFanfare(block);
             block.lastWallHitX = -Infinity;
             block.lastWallHitY = -Infinity;
           }

@@ -48,6 +48,28 @@
   pointer-events: none;
 }
 
+@keyframes corner-flash {
+  0%   { filter: brightness(1) saturate(1); }
+  15%  { filter: brightness(2.6) saturate(2); }
+  100% { filter: brightness(1) saturate(1); }
+}
+.corner-flash {
+  animation: corner-flash 1s ease-out forwards;
+}
+
+.swatch-dvd-logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40%;
+  height: 40%;
+  object-fit: contain;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
 .swatch-1 {
   width: 480px;
   height: 420px;
