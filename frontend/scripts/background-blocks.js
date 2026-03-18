@@ -34,7 +34,7 @@
     referenceWidth: 1680,
     referenceHeight: 980,
     mobileBreakpoint: 960,
-    mobileSizeBoost: 1.5
+    mobileSizeBoost: 1.25
   };
   const responsiveBoostTiers = [
     {
@@ -219,13 +219,17 @@
     return { viewportScale, speedScale, radiusScale };
   }
 
-  function getHitbox(block) {
+  function getHitbox(block, visual = false) {
+    const angle = visual ? block.angle + block.jiggleAngle : block.angle;
+    const scaleX = visual ? block.jiggleScaleX : 1;
+    const scaleY = visual ? block.jiggleScaleY : 1;
+
     return {
       centerX: block.x + block.width / 2,
       centerY: block.y + block.height / 2,
-      halfWidth: (block.width * hitboxScale) / 2,
-      halfHeight: (block.height * hitboxScale) / 2,
-      angle: (block.angle * Math.PI) / 180
+      halfWidth: (block.width * scaleX * hitboxScale) / 2,
+      halfHeight: (block.height * scaleY * hitboxScale) / 2,
+      angle: (angle * Math.PI) / 180
     };
   }
 
@@ -698,7 +702,7 @@
       const bestByLetter = logoLetters.map(() => ({ score: 0, color: null }));
 
       blocks.forEach((block) => {
-        const hitbox = getHitbox(block);
+        const hitbox = getHitbox(block, true);
         const extents = getRotatedExtents(hitbox);
         const blockLeft = hitbox.centerX - extents.x;
         const blockRight = hitbox.centerX + extents.x;
