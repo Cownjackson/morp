@@ -86,8 +86,8 @@ header h1 {
   top: 14px; right: 14px;
   z-index: 50;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0;
 }
 #volume-btn {
   background: none; border: 1px solid rgba(58, 40, 72, 0.6);
@@ -104,19 +104,22 @@ header h1 {
 #volume-btn.muted { color: #5A3848; border-color: rgba(58, 40, 72, 0.3); }
 
 #volume-slider-track {
-  width: 0; overflow: hidden;
-  transition: width 0.25s ease;
-  display: flex; align-items: center;
+  height: 0; overflow: hidden;
+  transition: height 0.25s ease;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 4px;
 }
 #volume-wrap.open #volume-slider-track {
-  width: 90px;
+  height: 100px;
 }
 #volume-slider {
-  -webkit-appearance: none; appearance: none;
-  width: 80px; height: 6px;
+  -webkit-appearance: slider-vertical; appearance: slider-vertical;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 6px; height: 80px;
   background: rgba(90, 56, 72, 0.5);
   border-radius: 3px; outline: none;
-  margin-left: 8px; cursor: pointer;
+  margin-top: 6px; cursor: pointer;
 }
 #volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
@@ -130,9 +133,6 @@ header h1 {
   background: var(--pinky); border-radius: 50%;
   border: 2px solid var(--raspberry-wine);
   cursor: pointer;
-}
-#volume-slider::-webkit-slider-runnable-track {
-  height: 6px; border-radius: 3px;
 }
 /* On touch devices, hide the slider — just use tap to mute */
 @media (hover: none) and (pointer: coarse) {
