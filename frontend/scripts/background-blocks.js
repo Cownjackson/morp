@@ -437,18 +437,13 @@
         shadowElement.setAttribute('aria-hidden', 'true');
         shadowElement.textContent = character;
 
-        const shadowLeftElement = document.createElement('span');
-        shadowLeftElement.className = 'logo-letter-shadow logo-letter-shadow-left';
-        shadowLeftElement.setAttribute('aria-hidden', 'true');
-        shadowLeftElement.textContent = character;
-
         const fillElement = document.createElement('span');
         fillElement.className = 'logo-letter-fill';
         fillElement.setAttribute('aria-hidden', 'true');
         fillElement.textContent = character;
 
         element.textContent = '';
-        element.append(shadowElement, shadowLeftElement, fillElement);
+        element.append(shadowElement, fillElement);
       }
 
       return {
