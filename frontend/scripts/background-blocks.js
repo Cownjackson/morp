@@ -76,6 +76,10 @@
     settleDuration: 0.5,
     speedToStretch: 0.028
   };
+  const spinConfig = {
+    couplingFactor: 0.06,
+    maxSpeed: 24
+  };
   const ripplePalette = [
     '--mint',
     '--pinky',
@@ -280,21 +284,30 @@
     const minY = hitbox.centerY - extents.y;
     const maxY = hitbox.centerY + extents.y;
 
+    let normalX = 0;
+    let normalY = 0;
+
     if (minX <= 0) {
       block.x += -minX;
       block.vx = Math.abs(block.vx) * restitution;
+      normalX = 1;
     } else if (maxX >= viewportWidth) {
       block.x -= maxX - viewportWidth;
       block.vx = -Math.abs(block.vx) * restitution;
+      normalX = -1;
     }
 
     if (minY <= 0) {
       block.y += -minY;
       block.vy = Math.abs(block.vy) * restitution;
+      normalY = 1;
     } else if (maxY >= viewportHeight) {
       block.y -= maxY - viewportHeight;
       block.vy = -Math.abs(block.vy) * restitution;
+      normalY = -1;
     }
+
+    return (normalX !== 0 || normalY !== 0) ? { normalX, normalY } : null;
   }
 
   function resolveCollision(a, b) {
@@ -309,9 +322,7 @@
       const projectionB = projectHitbox(hitboxB, axis);
       const overlap = Math.min(projectionA.max, projectionB.max) - Math.max(projectionA.min, projectionB.min);
 
-      if (overlap <= 0) {
-        return;
-      }
+      if (overlap <= 0) return null;
 
       if (overlap < smallestOverlap) {
         smallestOverlap = overlap;
@@ -329,28 +340,36 @@
       normalY *= -1;
     }
 
-    const separationX = normalX * (smallestOverlap / 2);
-    const separationY = normalY * (smallestOverlap / 2);
+    // Positional correction: push each block out by half the overlap
+    const half = smallestOverlap * 0.5;
+    a.x -= normalX * half;
+    a.y -= normalY * half;
+    b.x += normalX * half;
+    b.y += normalY * half;
 
-    a.x -= separationX;
-    a.y -= separationY;
-    b.x += separationX;
-    b.y += separationY;
+    // Velocity impulse (equal mass elastic collision along normal)
+    const relVx = b.vx - a.vx;
+    const relVy = b.vy - a.vy;
+    const approachSpeed = relVx * normalX + relVy * normalY;
 
-    const relativeVelocityX = b.vx - a.vx;
-    const relativeVelocityY = b.vy - a.vy;
-    const approachSpeed = relativeVelocityX * normalX + relativeVelocityY * normalY;
+    if (approachSpeed >= 0) return null;
 
-    if (approachSpeed >= 0) {
-      return;
-    }
-
-    const impulse = (-(1 + restitution) * approachSpeed) / 2;
+    const impulse = -(1 + restitution) * approachSpeed * 0.5;
 
     a.vx -= impulse * normalX;
     a.vy -= impulse * normalY;
     b.vx += impulse * normalX;
     b.vy += impulse * normalY;
+
+    // Spin coupling: tangential relative velocity bleeds into angular velocity
+    const tx = -normalY;
+    const ty = normalX;
+    const relTangential = relVx * tx + relVy * ty;
+    const spinDelta = relTangential * spinConfig.couplingFactor;
+    a.spin = clamp(a.spin + spinDelta, -spinConfig.maxSpeed, spinConfig.maxSpeed);
+    b.spin = clamp(b.spin - spinDelta, -spinConfig.maxSpeed, spinConfig.maxSpeed);
+
+    return { normalX, normalY, impulse };
   }
 
   function keepMomentum(block) {
@@ -931,40 +950,39 @@
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
 
+      // Integrate positions
       blocks.forEach((block) => {
         block.x += block.vx * delta;
         block.y += block.vy * delta;
         block.angle += block.spin * delta;
-        bounceOffWalls(block, viewportWidth, viewportHeight);
       });
 
-      for (let i = 0; i < blocks.length; i += 1) {
-        for (let j = i + 1; j < blocks.length; j += 1) {
-          const beforeAx = blocks[i].vx;
-          const beforeAy = blocks[i].vy;
-          const beforeBx = blocks[j].vx;
-          const beforeBy = blocks[j].vy;
-          resolveCollision(blocks[i], blocks[j]);
-          const impactA = Math.hypot(blocks[i].vx - beforeAx, blocks[i].vy - beforeAy);
-          const impactB = Math.hypot(blocks[j].vx - beforeBx, blocks[j].vy - beforeBy);
-
-          if (impactA > 0.5 || impactB > 0.5) {
-            const dx = (blocks[j].x + blocks[j].width / 2) - (blocks[i].x + blocks[i].width / 2);
-            const dy = (blocks[j].y + blocks[j].height / 2) - (blocks[i].y + blocks[i].height / 2);
-            const distance = Math.hypot(dx, dy) || 1;
-            const normalX = dx / distance;
-            const normalY = dy / distance;
-
-            applyCollisionJiggle(blocks[i], normalX, normalY, impactA);
-            applyCollisionJiggle(blocks[j], -normalX, -normalY, impactB);
+      // Block-block collision — two passes: first applies impulse + jiggle,
+      // second cleans up any residual overlap without re-triggering jiggle
+      for (let pass = 0; pass < 2; pass += 1) {
+        for (let i = 0; i < blocks.length; i += 1) {
+          for (let j = i + 1; j < blocks.length; j += 1) {
+            const hit = resolveCollision(blocks[i], blocks[j]);
+            if (hit && hit.impulse > 0.5 && pass === 0) {
+              applyCollisionJiggle(blocks[i], -hit.normalX, -hit.normalY, hit.impulse);
+              applyCollisionJiggle(blocks[j], hit.normalX, hit.normalY, hit.impulse);
+            }
           }
         }
       }
 
-      updateCollisionJiggle(delta);
-
+      // Wall bounce — single pass after collision resolution, with jiggle
       blocks.forEach((block) => {
-        bounceOffWalls(block, viewportWidth, viewportHeight);
+        const wallHit = bounceOffWalls(block, viewportWidth, viewportHeight);
+        if (wallHit) {
+          const speed = Math.hypot(block.vx, block.vy);
+          applyCollisionJiggle(block, wallHit.normalX, wallHit.normalY, speed * 0.4);
+        }
+      });
+
+      // Update jiggle animation, clamp speeds, render
+      updateCollisionJiggle(delta);
+      blocks.forEach((block) => {
         keepMomentum(block);
         renderBlock(block);
       });
