@@ -496,6 +496,108 @@ header h1 {
   .slot-tab { font-size: 0.65rem; padding: 10px 2px; }
 }
 
+@media (max-width: 430px) and (hover: none) and (pointer: coarse) {
+  body.is-landing {
+    min-height: 100svh;
+    padding: 12px 14px 10px;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .logo-area {
+    margin-top: 18px;
+    margin-bottom: 4px;
+  }
+
+  .logo {
+    font-size: clamp(3.5rem, 15vw, 4.4rem);
+    gap: 2px;
+  }
+
+  .logo-letter-shadow {
+    top: 4px;
+  }
+
+  .card-row {
+    max-width: 360px;
+    margin: 12px auto 10px;
+  }
+
+  #panel-connect {
+    padding: 20px 18px 18px;
+    border-radius: 18px;
+    gap: 10px;
+  }
+
+  .connect-field input,
+  .connect-join-row input,
+  .connect-join-row button,
+  .btn-create-lobby {
+    min-height: 44px;
+  }
+
+  .connect-divider {
+    margin: 0;
+    font-size: 0.7rem;
+    gap: 10px;
+  }
+
+  .moop-sidebar {
+    gap: 8px;
+    margin: 0;
+  }
+
+  .moop-preview-frame {
+    width: 120px;
+    height: 120px;
+    border-radius: 20px;
+  }
+
+  .moop-preview-frame::before {
+    width: 108px;
+    height: 108px;
+  }
+
+  .moop-preview {
+    width: 118px;
+    height: 118px;
+  }
+
+  .btn-customize {
+    font-size: 0.68rem;
+    padding: 5px 12px;
+  }
+
+  #landing-meta-panel {
+    margin-top: 10px;
+    max-width: 360px;
+  }
+
+  body.is-landing #landing-meta-panel {
+    padding: 8px 12px 9px;
+    border-radius: 16px;
+  }
+
+  .connect-footer {
+    gap: 12px;
+  }
+
+  .connect-footer button {
+    font-size: 0.74rem;
+    padding: 2px 0;
+  }
+
+  #log-toggle {
+    font-size: 0.72rem;
+  }
+
+  #credits-btn {
+    bottom: 10px;
+    right: 10px;
+    padding: 5px 9px;
+  }
+}
+
 #landing-meta-panel {
   margin-top: 16px;
   position: relative;
