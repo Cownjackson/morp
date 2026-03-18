@@ -24,11 +24,16 @@
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html {
+  overscroll-behavior: none;
+}
+
 body {
   font-family: 'Fredoka', sans-serif;
   background: var(--raspberry-wine);
   color: var(--white);
-  min-height: 100vh;
+  min-height: 100dvh;
+  overscroll-behavior: none;
   display: flex;
   flex-direction: column;
   max-width: 960px;
@@ -567,7 +572,7 @@ header h1 {
 
 @media (max-width: 430px) and (hover: none) and (pointer: coarse) {
   body.is-landing {
-    min-height: 100svh;
+    min-height: 100dvh;
     padding: 12px 14px 10px;
     justify-content: center;
     gap: 0;
