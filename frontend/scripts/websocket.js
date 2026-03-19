@@ -1,6 +1,7 @@
 import { state, send } from './state.js';
 import { log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showScreen } from './helpers.js';
 import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, renderVoteButtons, renderAccusation, renderDamageButtons, checkYourTurn, renderChat } from './rendering.js';
+import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
 import { _drawState, clearCanvas } from './drawing.js';
@@ -441,6 +442,10 @@ function handleMessage(msg) {
     case 'game_reset':
       _localResetToLobby();
       log('Game reset. Back in lobby.', 'ok');
+      break;
+
+    case 'interaction':
+      handleInteraction(msg);
       break;
 
     case 'chat': {

@@ -78,6 +78,7 @@ function renderPlayerOrbit(containerId, { showTable = false } = {}) {
 
     const wrap = document.createElement('div');
     wrap.className = 'avatar-wrap';
+    wrap.dataset.playerId = p.id;
     wrap.style.left = x + 'px';
     wrap.style.top  = y + 'px';
 
