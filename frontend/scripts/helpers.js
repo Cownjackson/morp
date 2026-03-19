@@ -60,6 +60,7 @@ export function showLanding(show) {
   document.querySelector('header').classList[show ? 'add' : 'remove']('landing-mode');
   document.body.classList[show ? 'add' : 'remove']('is-landing');
   document.querySelector('.card-row').classList[method]('hidden');
+  document.getElementById('chat-wrap').classList.toggle('hidden', show);
   if (show) {
     document.getElementById('pregame-layout').classList.add('hidden');
     document.getElementById('game-layout').classList.add('hidden');

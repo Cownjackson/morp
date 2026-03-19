@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, renderVoteButtons, renderAccusation, renderDamageButtons, checkYourTurn, renderChatPanels } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, renderVoteButtons, renderAccusation, renderDamageButtons, checkYourTurn, renderChat } from './rendering.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
 import { _drawState, clearCanvas } from './drawing.js';
@@ -61,7 +61,7 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
     } else {
       renderPregameLobby();
     }
-    renderChatPanels();
+    renderChat();
   };
 
   state.ws.onmessage = e => handleMessage(JSON.parse(e.data));
@@ -163,7 +163,7 @@ function handleMessage(msg) {
       state.endgameTargetWord = null;
       renderBoard();
       renderInGamePlayerRow();
-      renderChatPanels();
+      renderChat();
       document.getElementById('board-area').classList.remove('hidden');
       checkYourTurn();
       showAction('hint');
@@ -289,7 +289,7 @@ function handleMessage(msg) {
       state.targetWord = state.endgameTargetWord;
       renderBoard();
       renderInGamePlayerRow();
-      renderChatPanels();
+      renderChat();
       document.getElementById('board-area').classList.remove('hidden');
 
       const isGhost = (msg.ghost_ids || []).includes(state.playerId);
@@ -449,7 +449,7 @@ function handleMessage(msg) {
         name: msg.name,
         text: msg.text,
       });
-      renderChatPanels();
+      renderChat();
       break;
     }
 

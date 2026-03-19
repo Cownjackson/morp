@@ -53,6 +53,5 @@ document.addEventListener('keydown', e => {
   if (id === 'endgame-ghost-hint-input') submitEndgameGhostHint();
   if (id === 'endgame-guess-input')      submitEndgameGuess();
   if (id === 'join-code')                joinLobby();
-  if (id === 'pregame-chat-input')       sendChat();
-  if (id === 'game-chat-input')          sendChat();
+  if (id === 'chat-input')               sendChat();
 });

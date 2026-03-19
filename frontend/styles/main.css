@@ -994,6 +994,8 @@ body.is-landing #log-toggle:hover { color: var(--pinky); }
 .chat-panel {
   border-top: 1px solid #180D1E;
   margin-top: 6px; flex-shrink: 0;
+  position: relative;
+  z-index: 3;
 }
 .chat-messages {
   height: 110px; overflow-y: auto;

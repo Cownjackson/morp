@@ -181,13 +181,8 @@ export function renderPregameLobby() {
     !state.isHost || state.lobbyStarted || Object.values(state.players).length < 3;
 }
 
-export function renderChatPanels() {
-  renderChatPanel('pregame-chat-messages');
-  renderChatPanel('game-chat-messages');
-}
-
-function renderChatPanel(containerId) {
-  const chatEl = document.getElementById(containerId);
+export function renderChat() {
+  const chatEl = document.getElementById('chat-messages');
   if (!chatEl) return;
   chatEl.innerHTML = '';
   for (const msg of state.chatMessages) {

@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { showScreen, setPhaseLabel } from './helpers.js';
-import { renderRoleBanner, renderPregameLobby, renderChatPanels } from './rendering.js';
+import { renderRoleBanner, renderPregameLobby, renderChat } from './rendering.js';
 import { _drawState, clearCanvas } from './drawing.js';
 import { _timers, clearTimer } from './timers.js';
 
@@ -82,7 +82,7 @@ export function _localResetToLobby() {
   document.getElementById('board-area').classList.add('hidden');
   showScreen('pregame');
   renderPregameLobby();
-  renderChatPanels();
+  renderChat();
   setPhaseLabel('WAITING');
 }
 
@@ -95,14 +95,13 @@ let _chatCooldown = false;
 
 export function sendChat() {
   if (_chatCooldown) return;
-  const isPregame = state.screen === 'pregame';
-  const input = document.getElementById(isPregame ? 'pregame-chat-input' : 'game-chat-input');
+  const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if (!text) return;
   send({ type: 'chat', text });
   input.value = '';
   _chatCooldown = true;
-  const btn = document.getElementById(isPregame ? 'pregame-btn-chat-send' : 'game-btn-chat-send');
+  const btn = document.getElementById('btn-chat-send');
   btn.disabled = true;
   setTimeout(() => {
     _chatCooldown = false;

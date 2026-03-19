@@ -259,13 +259,6 @@
 
   <div id="pregame-player-row" class="player-orbit"></div>
 
-  <div id="pregame-chat-wrap" class="chat-panel">
-    <div id="pregame-chat-messages" class="chat-messages"></div>
-    <div id="pregame-chat-input-row" class="chat-input-row">
-      <input type="text" id="pregame-chat-input" class="chat-input" placeholder="Chat…" maxlength="150" autocomplete="off">
-      <button id="pregame-btn-chat-send" class="chat-send-btn" onclick="sendChat()">Send</button>
-    </div>
-  </div>
 </div>
 
 <!-- Main game layout (shown once a round starts) -->
@@ -521,16 +514,17 @@
   <!-- Player avatar row -->
   <div id="game-player-row" class="player-orbit"></div>
 
-  <!-- Chat -->
-  <div id="game-chat-wrap" class="chat-panel">
-    <div id="game-chat-messages" class="chat-messages"></div>
-    <div id="game-chat-input-row" class="chat-input-row">
-      <input type="text" id="game-chat-input" class="chat-input" placeholder="Chat…" maxlength="150" autocomplete="off">
-      <button id="game-btn-chat-send" class="chat-send-btn" onclick="sendChat()">Send</button>
-    </div>
-  </div>
 
 </div><!-- /game-layout -->
+
+<!-- Shared chat (visible across pregame and ingame screens) -->
+<div id="chat-wrap" class="chat-panel hidden">
+  <div id="chat-messages" class="chat-messages"></div>
+  <div id="chat-input-row" class="chat-input-row">
+    <input type="text" id="chat-input" class="chat-input" placeholder="Chat…" maxlength="150" autocomplete="off">
+    <button id="btn-chat-send" class="chat-send-btn" onclick="sendChat()">Send</button>
+  </div>
+</div>
 
 <script type="module" src="scripts/app.js"></script>
 </body>
