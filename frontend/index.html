@@ -7,9 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/background-blocks.css?v=bg-interaction-3">
-  <link rel="stylesheet" href="styles/main.css?v=bg-interaction-2">
-  <script defer src="scripts/background-blocks.js?v=bg-interaction-3"></script>
+  <link rel="stylesheet" href="styles/background-blocks.css?v=bg-interaction-9">
+  <link rel="stylesheet" href="styles/main.css?v=bg-interaction-9">
+  <script defer src="scripts/background-blocks.js?v=bg-interaction-9"></script>
 </head>
 <body>
 
@@ -232,27 +232,38 @@
 <!-- Pre-game lobby layout (shown after connecting, before the game starts) -->
 <div id="pregame-layout" class="stage-layout lobby-stage hidden">
   <div id="pregame-action-area" class="action-area-card">
-    <div id="pregame-host-controls" class="hidden">
-      <div class="toggle-row" style="margin-bottom:6px">
-        <input type="checkbox" id="timers-toggle" checked>
-        <label for="timers-toggle">Timers enabled (30 s morp guess / endgame guess)</label>
-      </div>
-      <div class="toggle-row" style="margin-bottom:10px">
-        <input type="checkbox" id="drawing-hints-toggle" checked>
-        <label for="drawing-hints-toggle">Drawing hints (players draw instead of type)</label>
-      </div>
-      <div style="margin-bottom:10px">
-        <div style="font-size:0.85em;color:#907880;margin-bottom:4px">
-          Custom boards (JSON array). Leave blank to use defaults:
-        </div>
-        <textarea id="custom-boards-input" rows="4" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:0.8em;background:#140A18;color:#E8C8DC;border:1px solid #3A2848;border-radius:4px;padding:6px;resize:vertical" placeholder='[{"board_hint":"Theme…","words":["word1","word2"]}]'></textarea>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-          <button onclick="setCustomBoards()">Set Boards</button>
-          <button onclick="copyBoardTemplate()" id="copy-template-btn" style="background:#0A1A14;border-color:#2A6A5A;color:#87DCAB">Copy template</button>
-          <span id="custom-boards-status" style="font-size:0.82em;color:#907880">using defaults</span>
+    <div id="pregame-host-controls" class="pregame-host-controls hidden">
+      <div class="pregame-controls-top">
+        <div id="pregame-options-menu" class="pregame-menu">
+          <button type="button" id="pregame-options-btn" class="pregame-menu-trigger">Game Options</button>
+          <div id="pregame-options-panel" class="pregame-menu-panel hidden">
+            <label class="pregame-menu-option" for="timers-toggle">
+              <input type="checkbox" id="timers-toggle" checked>
+              <span>Timers enabled (30 s morp guess / endgame guess)</span>
+            </label>
+            <label class="pregame-menu-option" for="drawing-hints-toggle">
+              <input type="checkbox" id="drawing-hints-toggle" checked>
+              <span>Drawing hints (players draw instead of type)</span>
+            </label>
+          </div>
         </div>
       </div>
-      <button id="btn-start" onclick="startGame()" disabled>Start Game</button>
+      <div class="pregame-panel-section pregame-boards-panel">
+        <div class="pregame-panel-heading">
+          <span class="pregame-boards-title">Custom Boards</span>
+        </div>
+        <textarea id="custom-boards-input" rows="4" placeholder='Paste a JSON array here, or leave it blank to use the default set. [{"board_hint":"Theme...","words":["word1","word2"]}]'></textarea>
+        <div class="pregame-boards-actions">
+          <div class="pregame-boards-buttons">
+            <button type="button" onclick="setCustomBoards()">Set Boards</button>
+            <button type="button" onclick="copyBoardTemplate()" id="copy-template-btn" class="btn-secondary-mint">Copy Template</button>
+          </div>
+          <span id="custom-boards-status" class="pregame-boards-status">using defaults</span>
+        </div>
+      </div>
+      <div class="pregame-panel-footer">
+        <button type="button" id="btn-start" onclick="startGame()" disabled>Start Game</button>
+      </div>
     </div>
     <p id="pregame-lobby-waiting" style="color:#3A2848;font-size:0.88em">Waiting for players…</p>
   </div>
@@ -526,6 +537,6 @@
   </div>
 </div>
 
-<script type="module" src="scripts/app.js"></script>
+<script type="module" src="scripts/app.js?v=bg-interaction-9"></script>
 </body>
 </html>
