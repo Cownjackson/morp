@@ -143,7 +143,11 @@ function _startCooldown() {
 // ─── Handle incoming interaction (server echo) ────────────────────────────────
 export function handleInteraction({ player_id, interaction, target_id }) {
   if (target_id) {
-    _playProjectile(player_id, target_id, interaction);
+    if (interaction === 'sticky_hand') {
+      _playStickyHand(player_id, target_id);
+    } else {
+      _playProjectile(player_id, target_id, interaction);
+    }
   } else {
     _playSelfAnim(player_id);
   }
@@ -194,6 +198,173 @@ function _playProjectile(fromId, toId, interaction) {
       _playHitReaction(toId);
     }
   }
+  requestAnimationFrame(step);
+}
+
+// ─── Sticky hand animation ────────────────────────────────────────────────────
+// Phases: WINDUP → WHIP → SMACK → STICK → RETRACT
+// The hand whips out in a fast crack from sender to target, slaps, sticks
+// for a beat, then snaps back. Band is a red stretchy tether from sender.
+function _playStickyHand(fromId, toId) {
+  const from = _avatarCenter(fromId);
+  const to   = _avatarCenter(toId);
+  if (!from || !to) return;
+
+  const layer = document.getElementById('interaction-anim-layer');
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  // Hand art points UP — rotate so fingers face the target direction
+  const angle = Math.atan2(dy, dx) + Math.PI / 2;
+
+  // Unit vectors: forward toward target, perpendicular for arc
+  const ux = dx / dist;
+  const uy = dy / dist;
+  const px = -uy;   // perpendicular
+  const py =  ux;
+
+  // Red elastic band tether
+  const band = document.createElement('div');
+  band.style.cssText = 'position:fixed;height:4px;'
+    + 'background:linear-gradient(90deg, rgba(200,30,30,0.95), rgba(230,50,50,0.7));'
+    + 'transform-origin:left center;pointer-events:none;z-index:24;border-radius:2px;';
+  layer.appendChild(band);
+
+  // Hand image
+  const hand = document.createElement('img');
+  hand.className = 'ix-sticky-hand';
+  hand.src = '/assets/sticky_hand.png';
+  hand.draggable = false;
+  layer.appendChild(hand);
+
+  // Slap sound — preload
+  const slapSfx = new Audio('/music/sticky_hand_slap.mp3');
+  slapSfx.volume = 0.6;
+
+  // Phase durations (ms)
+  const T_WINDUP  = 300;
+  const T_WHIP    = Math.max(200, Math.min(450, dist * 0.55));
+  const T_SMACK   = 200;
+  const T_STICK   = 550;
+  const T_RETRACT = Math.max(250, Math.min(500, dist * 0.6));
+
+  let hitFired  = false;
+  let pullFired = false;
+  const start = performance.now();
+
+  // Windup position: further behind sender + swept to the side for a big swing
+  const windBackDist = dist * 0.3;
+  const windSideDist = dist * 0.25;
+  const windX = from.x - ux * windBackDist + px * windSideDist;
+  const windY = from.y - uy * windBackDist + py * windSideDist;
+
+  function _setBand(hx, hy, opacity = 1) {
+    const bx  = hx - from.x;
+    const by  = hy - from.y;
+    const len = Math.sqrt(bx * bx + by * by);
+    const ang = Math.atan2(by, bx);
+    band.style.left      = from.x + 'px';
+    band.style.top       = from.y + 'px';
+    band.style.width     = len + 'px';
+    band.style.opacity   = String(opacity);
+    band.style.transform = `translateY(-50%) rotate(${ang}rad)`;
+  }
+
+  function _setHand(hx, hy, scale, rot = angle) {
+    hand.style.left      = hx + 'px';
+    hand.style.top       = hy + 'px';
+    hand.style.transform = `translate(-50%,-50%) rotate(${rot}rad) scale(${scale})`;
+  }
+
+  function step(now) {
+    const e = now - start;
+
+    if (e < T_WINDUP) {
+      // WINDUP — two-stage: fast snap back, then slow creeping tension
+      const t = e / T_WINDUP;
+      let ease;
+      if (t < 0.35) {
+        // First 35%: quick snap to ~70% of windup position
+        ease = (t / 0.35) * 0.7;
+        ease = 1 - Math.pow(1 - ease, 3);  // ease-out for snappy feel
+      } else {
+        // Last 65%: slow creep to final position (building tension)
+        const t2 = (t - 0.35) / 0.65;
+        ease = 0.7 + 0.3 * t2 * t2;  // ease-in: feels like coiling tighter
+      }
+      const hx = from.x + (windX - from.x) * ease;
+      const hy = from.y + (windY - from.y) * ease;
+      // Rotation: snaps back fast then creeps into full cock
+      const rot = -ease * 1.4 + Math.sin(t * Math.PI * 2) * 0.15 * (1 - t);
+      _setHand(hx, hy, 0.45 + 0.2 * ease, angle + rot);
+      _setBand(hx, hy);
+      requestAnimationFrame(step);
+
+    } else if (e < T_WINDUP + T_WHIP) {
+      // WHIP — explosive two-stage arc: wide sweeping swing then snap-to-target
+      const t = (e - T_WINDUP) / T_WHIP;
+      let ease;
+      if (t < 0.6) {
+        // First 60%: covers ~30% of distance but does the big wide sweep
+        const t2 = t / 0.6;
+        ease = 0.3 * (1 - Math.pow(1 - t2, 2));
+      } else {
+        // Last 40%: covers remaining 70% of distance — the snap
+        const t2 = (t - 0.6) / 0.4;
+        ease = 0.3 + 0.7 * (1 - Math.pow(1 - t2, 5));
+      }
+      // Arc peaks wide during the slow phase, collapses during the snap
+      const arcPhase = t < 0.6 ? Math.sin((t / 0.6) * Math.PI) : Math.sin(Math.PI + ((t - 0.6) / 0.4) * Math.PI * 0.3);
+      const lash = arcPhase * dist * 0.4;
+      const hx = windX + (to.x - windX) * ease + px * lash;
+      const hy = windY + (to.y - windY) * ease + py * lash;
+      // Spin: fast rotation during swing, snaps to target angle at end
+      const spin = (1 - ease) * 2.5 + Math.sin(t * Math.PI) * 0.4;
+      _setHand(hx, hy, 0.65 + 0.55 * ease, angle + spin);
+      _setBand(hx, hy);
+      requestAnimationFrame(step);
+
+    } else if (e < T_WINDUP + T_WHIP + T_SMACK) {
+      // SMACK — hand splats on impact
+      const t = (e - T_WINDUP - T_WHIP) / T_SMACK;
+      if (!hitFired) {
+        hitFired = true;
+        _playHitReaction(toId);
+        slapSfx.play().catch(() => {});
+      }
+      // Splat: scale squishes wide then settles
+      const scaleX = t < 0.3 ? 1.0 + 0.6 * (t / 0.3)     // 1.0 → 1.6 (splat wide)
+                   : t < 0.6 ? 1.6 - 0.8 * ((t-0.3)/0.3)  // 1.6 → 0.8 (recoil)
+                   :           0.8 + 0.2 * ((t-0.6)/0.4);   // 0.8 → 1.0 (settle)
+      _setHand(to.x, to.y, scaleX);
+      _setBand(to.x, to.y);
+      requestAnimationFrame(step);
+
+    } else if (e < T_WINDUP + T_WHIP + T_SMACK + T_STICK) {
+      // STICK — hand adheres, gentle wobble as if stuck
+      const t      = (e - T_WINDUP - T_WHIP - T_SMACK) / T_STICK;
+      const wobble = Math.sin(t * Math.PI * 5) * 0.04 * (1 - t);
+      _setHand(to.x, to.y, 1 + wobble);
+      _setBand(to.x, to.y);
+      requestAnimationFrame(step);
+
+    } else if (e < T_WINDUP + T_WHIP + T_SMACK + T_STICK + T_RETRACT) {
+      // RETRACT — snaps back with elastic rebound
+      const t    = (e - T_WINDUP - T_WHIP - T_SMACK - T_STICK) / T_RETRACT;
+      const ease = t * t * t;  // cubic ease-in: slow peel then SNAP
+      if (!pullFired) { pullFired = true; _applyAvatarClass(toId, 'ix-pull'); }
+      const hx = to.x + (from.x - to.x) * ease;
+      const hy = to.y + (from.y - to.y) * ease;
+      _setHand(hx, hy, 1 - 0.5 * ease, angle + ease * 0.8);
+      _setBand(hx, hy, 1 - ease * 0.9);
+      requestAnimationFrame(step);
+
+    } else {
+      hand.remove();
+      band.remove();
+    }
+  }
+
   requestAnimationFrame(step);
 }
 
