@@ -1,5 +1,6 @@
 import { state } from './state.js';
 import { AVATAR_COLORS, ACTIONS } from './constants.js';
+import { showInteractionTrigger } from './interactions.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const _colorMap = {};
@@ -34,6 +35,7 @@ export function showScreen(name) {
   state.screen = name;
   document.getElementById('pregame-layout').classList.toggle('hidden', name !== 'pregame');
   document.getElementById('game-layout').classList.toggle('hidden', name !== 'ingame');
+  showInteractionTrigger(name === 'ingame');
 }
 
 // ─── Logging ──────────────────────────────────────────────────────────────────
@@ -64,6 +66,7 @@ export function showLanding(show) {
   if (show) {
     document.getElementById('pregame-layout').classList.add('hidden');
     document.getElementById('game-layout').classList.add('hidden');
+    showInteractionTrigger(false);
   }
 }
 

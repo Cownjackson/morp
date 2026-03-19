@@ -42,8 +42,25 @@ export function renderBoard() {
   document.getElementById('half-board-note').style.display = halfSet ? 'block' : 'none';
 }
 
+// ─── Seat positions ────────────────────────────────────────────────────────────
+// Fixed per-scene seat layout: [left_frac, top_frac] normalized to container W × H.
+// Placeholder values — replace with artist-encoded coords once centerpiece art lands.
+// Up to 10 seats; players fill from seat 0 upward.
+const SEAT_POSITIONS = [
+  [0.500, 0.260],  // 0 — top center
+  [0.747, 0.306],  // 1 — top right
+  [0.900, 0.426],  // 2 — right upper
+  [0.900, 0.574],  // 3 — right lower
+  [0.747, 0.694],  // 4 — bottom right
+  [0.500, 0.740],  // 5 — bottom center
+  [0.253, 0.694],  // 6 — bottom left
+  [0.100, 0.574],  // 7 — left lower
+  [0.100, 0.426],  // 8 — left upper
+  [0.253, 0.306],  // 9 — top left
+];
+
 // ─── Player row ───────────────────────────────────────────────────────────────
-function renderPlayerOrbit(containerId, { showTable = false } = {}) {
+function renderPlayers(containerId, { avatarSize = 80 } = {}) {
   const el = document.getElementById(containerId);
   if (!el) return;
   el.innerHTML = '';
@@ -53,20 +70,19 @@ function renderPlayerOrbit(containerId, { showTable = false } = {}) {
   const N = players.length;
   if (N === 0) return;
 
-  const W = el.clientWidth || 640;
-  const H = 560;
-  const cx = W * 0.50;
-  const cy = H * 0.50;
-  const rx = W * 0.42;
-  const ry = H * 0.24;
+  const W = el.clientWidth  || 640;
+  const H = el.clientHeight || 560;
 
   for (let idx = 0; idx < N; idx++) {
     const p = players[idx];
-    const angle = (2 * Math.PI * idx / N) - Math.PI / 2;
-    const x = cx + rx * Math.cos(angle);
-    const y = cy + ry * Math.sin(angle);
+    // Distribute N players evenly across the 10 seats so they never cluster
+    const seatIdx = Math.round(idx * SEAT_POSITIONS.length / N) % SEAT_POSITIONS.length;
+    const [xf, yf] = SEAT_POSITIONS[seatIdx];
+    const x = W * xf;
+    const y = H * yf;
+
     const _p = Math.PI;
-    const _a = angle > _p ? angle - 2*_p : angle;
+    const _a = Math.atan2(y - H * 0.5, x - W * 0.5);
     const bubbleDir = _a > -5*_p/8 && _a <= -3*_p/8 ? 'above'
                     : _a > -3*_p/8 && _a <= -_p/8   ? 'above-right'
                     : _a > -_p/8   && _a <=  _p/8   ? 'right'
@@ -78,6 +94,7 @@ function renderPlayerOrbit(containerId, { showTable = false } = {}) {
 
     const wrap = document.createElement('div');
     wrap.className = 'avatar-wrap';
+    wrap.dataset.playerId = p.id;
     wrap.style.left = x + 'px';
     wrap.style.top  = y + 'px';
 
@@ -105,8 +122,8 @@ function renderPlayerOrbit(containerId, { showTable = false } = {}) {
     // Avatar moop
     const circle = document.createElement('div');
     circle.className = 'moop-avatar';
-    circle.style.width = '80px';
-    circle.style.height = '80px';
+    circle.style.width  = avatarSize + 'px';
+    circle.style.height = avatarSize + 'px';
     if (p.is_ghost)            circle.classList.add('is-ghost');
     if (p.id === state.playerId) circle.classList.add('is-you');
     if (p.id === currentTurnPid && !p.is_ghost) circle.classList.add('is-active');
@@ -155,22 +172,17 @@ function renderPlayerOrbit(containerId, { showTable = false } = {}) {
     el.appendChild(wrap);
   }
 
-  // Centre the poker table image
-  if (showTable) {
-    const tableImg = document.createElement('img');
-    tableImg.src = '/assets/poker-table-texas-hold-em-online-poker-poker-Photoroom.png';
-    tableImg.style.cssText = `position:absolute;pointer-events:none;opacity:0.22;`
-      + `transform:translate(-50%,-50%);left:${cx}px;top:${cy}px;width:${rx * 2 * 0.72}px`;
-    el.appendChild(tableImg);
-  }
 }
 
 export function renderPregamePlayerRow() {
-  renderPlayerOrbit('pregame-player-row', { showTable: true });
+  renderPlayers('pregame-player-row');
 }
 
 export function renderInGamePlayerRow() {
-  renderPlayerOrbit('game-player-row', { showTable: true });
+  const N = Object.values(state.players).length;
+  // 320px at 3 players, scales down to ~160px at 10 — keeps avatars from overlapping
+  const avatarSize = Math.max(160, Math.round(320 - Math.max(0, N - 3) * 22));
+  renderPlayers('game-player-row', { avatarSize });
 }
 
 export function renderPregameLobby() {

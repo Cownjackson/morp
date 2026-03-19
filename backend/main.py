@@ -43,6 +43,9 @@ app.add_middleware(
 manager = ConnectionManager()
 _engines: dict[str, GameEngine] = {}
 _timer_tasks: dict[str, asyncio.Task] = {}  # lobby_id -> active timer task
+_interaction_times: dict[str, float] = {}   # "lobby_id:player_id" -> last interaction timestamp
+
+_INTERACTION_COOLDOWN = 1.5
 
 _TIMER_SECONDS = 30  # duration for morp-guess and endgame-guess timers
 
@@ -305,6 +308,8 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
         if engine.all_disconnected():
             _cancel_timer(lobby_id)
             _engines.pop(lobby_id, None)
+            for k in [k for k in _interaction_times if k.startswith(f"{lobby_id}:")]:
+                del _interaction_times[k]
             return
 
         await manager.broadcast(lobby_id, _lobby_update(engine))
@@ -443,6 +448,26 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
             await manager.broadcast(lobby_id, _lobby_update(engine))
             if all_done:
                 await _check_round_end(lobby_id, engine)
+
+        elif msg_type == "interaction":
+            _key = f"{lobby_id}:{player_id}"
+            if time.time() - _interaction_times.get(_key, 0) < _INTERACTION_COOLDOWN:
+                return
+            interaction = data.get("interaction", "").strip()[:32]
+            target_id = data.get("target_id")
+            if not interaction:
+                raise ValueError("Missing interaction.")
+            if target_id:
+                target = engine.lobby.players.get(target_id)
+                if not target or not target.is_connected or target.is_ghost:
+                    raise ValueError("Target is not available.")
+            _interaction_times[_key] = time.time()
+            await manager.broadcast(lobby_id, {
+                "type": "interaction",
+                "player_id": player_id,
+                "interaction": interaction,
+                "target_id": target_id,
+            })
 
         elif msg_type == "chat":
             text = data.get("text", "").strip()[:150]
