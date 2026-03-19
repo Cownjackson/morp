@@ -717,7 +717,7 @@ body.is-landing #landing-meta-panel {
 .connect-footer .sep { color: #3A1828; font-size: 0.7rem; align-self: center; }
 
 /* ── Game layout ── */
-#game-layout {
+.stage-layout {
   display: flex; flex-direction: column;
   flex: 1; gap: 10px; padding-top: 10px;
   position: relative;
@@ -752,7 +752,8 @@ body.is-landing #landing-meta-panel {
 .word-cell.hidden-word { background: #100810; border-color: #180D1E; color: #221435; }
 
 /* ── Action area ── */
-#action-area {
+#action-area,
+.action-area-card {
   background: #100815; border: 2px solid #553010;
   border-radius: 8px; padding: 14px 16px;
   min-height: 72px; text-align: center;
@@ -809,7 +810,7 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
 .tag.ghost { background: #180D1E; color: #705060; border: 1px solid #2A1835; }
 
 /* ── Player row ── */
-#player-row {
+.player-orbit {
   position: relative;
   width: 100%;
   height: 560px;
@@ -990,30 +991,30 @@ body.is-landing #log-toggle:hover { color: var(--pinky); }
 #log div.error { color: #B21030; }
 
 /* ── Chat ── */
-#chat-wrap {
+.chat-panel {
   border-top: 1px solid #180D1E;
   margin-top: 6px; flex-shrink: 0;
 }
-#chat-messages {
+.chat-messages {
   height: 110px; overflow-y: auto;
   background: #080508; border: 1px solid #140A18;
   border-radius: 4px 4px 0 0;
   padding: 6px 8px; font-size: 0.8em; color: #C09AB8;
 }
-#chat-messages div { margin-bottom: 2px; line-height: 1.4; }
-#chat-messages .chat-name { font-weight: bold; }
-#chat-input-row {
+.chat-messages div { margin-bottom: 2px; line-height: 1.4; }
+.chat-messages .chat-name { font-weight: bold; }
+.chat-input-row {
   display: flex;
   border: 1px solid #140A18; border-top: none;
   border-radius: 0 0 4px 4px; overflow: hidden;
 }
-#chat-input {
+.chat-input {
   flex: 1; border: none; border-radius: 0;
   background: #0D0810; color: #E8C8DC;
   padding: 5px 8px; font-family: monospace; font-size: 0.8em;
 }
-#chat-input:focus { outline: none; }
-#btn-chat-send {
+.chat-input:focus { outline: none; }
+.chat-send-btn {
   border: none; border-left: 1px solid #2A1A40;
   border-radius: 0; margin: 0; padding: 5px 12px;
   font-size: 0.78em;

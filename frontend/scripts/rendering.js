@@ -1,7 +1,7 @@
 import { state, send } from './state.js';
 import { avatarColor, initials, playerName, httpBase, log } from './helpers.js';
 import { renderMoopInto } from './cosmetics.js';
-import { renderStrokesToCanvas, _drawState, clearCanvas } from './drawing.js';
+import { renderStrokesToCanvas, clearCanvas } from './drawing.js';
 
 // ─── Role banner ──────────────────────────────────────────────────────────────
 export function renderRoleBanner() {
@@ -43,8 +43,9 @@ export function renderBoard() {
 }
 
 // ─── Player row ───────────────────────────────────────────────────────────────
-export function renderPlayerRow() {
-  const el = document.getElementById('player-row');
+function renderPlayerOrbit(containerId, { showTable = false } = {}) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
   el.innerHTML = '';
   const currentTurnPid = state.turnOrder[state.hints.length];
 
@@ -155,11 +156,51 @@ export function renderPlayerRow() {
   }
 
   // Centre the poker table image
-  const tableImg = document.createElement('img');
-  tableImg.src = '/assets/poker-table-texas-hold-em-online-poker-poker-Photoroom.png';
-  tableImg.style.cssText = `position:absolute;pointer-events:none;opacity:0.22;`
-    + `transform:translate(-50%,-50%);left:${cx}px;top:${cy}px;width:${rx * 2 * 0.72}px`;
-  el.appendChild(tableImg);
+  if (showTable) {
+    const tableImg = document.createElement('img');
+    tableImg.src = '/assets/poker-table-texas-hold-em-online-poker-poker-Photoroom.png';
+    tableImg.style.cssText = `position:absolute;pointer-events:none;opacity:0.22;`
+      + `transform:translate(-50%,-50%);left:${cx}px;top:${cy}px;width:${rx * 2 * 0.72}px`;
+    el.appendChild(tableImg);
+  }
+}
+
+export function renderPregamePlayerRow() {
+  renderPlayerOrbit('pregame-player-row', { showTable: true });
+}
+
+export function renderInGamePlayerRow() {
+  renderPlayerOrbit('game-player-row', { showTable: true });
+}
+
+export function renderPregameLobby() {
+  renderPregamePlayerRow();
+  document.getElementById('pregame-host-controls').classList.toggle('hidden', !state.isHost);
+  document.getElementById('pregame-lobby-waiting').style.display = state.isHost ? 'none' : 'block';
+  document.getElementById('btn-start').disabled =
+    !state.isHost || state.lobbyStarted || Object.values(state.players).length < 3;
+}
+
+export function renderChatPanels() {
+  renderChatPanel('pregame-chat-messages');
+  renderChatPanel('game-chat-messages');
+}
+
+function renderChatPanel(containerId) {
+  const chatEl = document.getElementById(containerId);
+  if (!chatEl) return;
+  chatEl.innerHTML = '';
+  for (const msg of state.chatMessages) {
+    const d = document.createElement('div');
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'chat-name';
+    nameSpan.style.color = avatarColor(msg.player_id);
+    nameSpan.textContent = msg.name + ': ';
+    d.appendChild(nameSpan);
+    d.appendChild(document.createTextNode(msg.text));
+    chatEl.appendChild(d);
+  }
+  chatEl.scrollTop = chatEl.scrollHeight;
 }
 
 // ─── Hint phase ───────────────────────────────────────────────────────────────
@@ -180,7 +221,7 @@ export function checkYourTurn() {
   } else {
     indicator.textContent = `Waiting for ${playerName(currentPid)}…`; indicator.style.color = '#D1912A';
   }
-  renderPlayerRow();
+  renderInGamePlayerRow();
 }
 
 // ─── Voting ───────────────────────────────────────────────────────────────────
