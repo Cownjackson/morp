@@ -244,7 +244,8 @@ function _playStickyHand(fromId, toId) {
   slapSfx.volume = 0.6;
 
   // Phase durations (ms)
-  const T_SWING   = Math.max(700, Math.min(950, dist * 1.1));
+  const T_WINDUP  = Math.max(500, Math.min(700, dist * 0.7));
+  const T_THROW   = Math.max(150, Math.min(300, dist * 0.35));
   const T_SMACK   = 200;
   const T_STICK   = 550;
   const T_RETRACT = Math.max(250, Math.min(500, dist * 0.6));
@@ -274,63 +275,55 @@ function _playStickyHand(fromId, toId) {
   function step(now) {
     const e = now - start;
 
-    if (e < T_SWING) {
-      // ── SWING — figure-8 path ──────────────────────────────────────────
-      const tNorm = e / T_SWING;
+    if (e < T_WINDUP) {
+      // ── WINDUP — figure-8 back lobe, sender to peak (π → 3π/2) ────────
+      const t = e / T_WINDUP;
 
-      // Time warp: 60% of duration for the windup (back lobe),
-      //            40% for the whip (forward lobe) — more readable throw
-      let s;
-      if (tNorm < 0.6) {
-        s = (tNorm / 0.6) * (2 / 3);
-      } else {
-        const t2 = (tNorm - 0.6) / 0.4;
-        s = (2 / 3) + (1 - Math.pow(1 - t2, 2)) * (1 / 3);
-      }
+      // Lissajous half-lobe: parameter sweeps π → 3π/2
+      //   π    → (0,0)  = sender (start)
+      //   3π/2 → (-1,0) = windup peak (behind sender) — throw launches here
+      const param = Math.PI + t * (Math.PI / 2);
+      const fx = Math.sin(param);
+      const fy = Math.sin(2 * param) / 2;
 
-      // Lissajous figure-8: parameter sweeps π → 5π/2
-      //   π   → (0,0)  = sender (start)
-      //   3π/2→ (-1,0) = windup peak (behind sender)
-      //   2π  → (0,0)  = crossover (back through sender)
-      //   5π/2→ (1,0)  = target (arrival)
-      const param = Math.PI + s * 1.5 * Math.PI;
-      const fx = Math.sin(param);            // along sender→target axis
-      const fy = Math.sin(2 * param) / 2;    // lateral oscillation
-
-      // Asymmetric scaling via sigmoid so back lobe stays close (30% of dist)
-      // while front lobe reaches the full target distance
-      const blend = 1 / (1 + Math.exp(-fx * 10));
-      const xScale = dist * (0.3 + 0.7 * blend);
+      const xScale = dist * 0.3;
       const yScale = dist * 0.5;
 
       const hx = from.x + fx * xScale * ux + fy * yScale * px;
       const hy = from.y + fx * xScale * uy + fy * yScale * py;
 
-      // Rotation: follows curve tangent, blends toward target-facing at arrival
+      // Rotation follows the curve tangent naturally
       const tanFx = Math.cos(param);
       const tanFy = Math.cos(2 * param);
       const wTanX = tanFx * ux + tanFy * px;
       const wTanY = tanFx * uy + tanFy * py;
-      let handRot = Math.atan2(wTanY, wTanX) + Math.PI / 2;
+      const handRot = Math.atan2(wTanY, wTanX) + Math.PI / 2;
 
-      // Smooth blend toward faceAngle over the last 25% of the swing
-      if (s > 0.75) {
-        const b = (s - 0.75) / 0.25;
-        let diff = faceAngle - handRot;
-        while (diff >  Math.PI) diff -= 2 * Math.PI;
-        while (diff < -Math.PI) diff += 2 * Math.PI;
-        handRot += diff * b * b;
-      }
-
-      const handScale = 0.45 + 0.55 * s * s;
-
-      _setHand(hx, hy, handScale, handRot);
+      _setHand(hx, hy, 0.55 + 0.15 * t, handRot);
       _setBand(hx, hy);
       requestAnimationFrame(step);
 
-    } else if (e < T_SWING + T_SMACK) {
+    } else if (e < T_WINDUP + T_THROW) {
+      // ── THROW — from windup peak straight at target ────────────────────
+      const t = (e - T_WINDUP) / T_THROW;
+      const ease = 1 - Math.pow(1 - t, 3);  // ease-out: explosive start
+
+      // Launch point = windup peak (30% behind sender, no lateral offset)
+      const peakX = from.x - dist * 0.3 * ux;
+      const peakY = from.y - dist * 0.3 * uy;
+
+      // Subtle overhead arc
+      const arc = Math.sin(t * Math.PI) * dist * -0.08;
+      const hx = peakX + (to.x - peakX) * ease + px * arc;
+      const hy = peakY + (to.y - peakY) * ease + py * arc;
+
+      _setHand(hx, hy, 0.7 + 0.5 * ease, faceAngle);
+      _setBand(hx, hy);
+      requestAnimationFrame(step);
+
+    } else if (e < T_WINDUP + T_THROW + T_SMACK) {
       // ── SMACK — splat on impact ────────────────────────────────────────
-      const t = (e - T_SWING) / T_SMACK;
+      const t = (e - T_WINDUP - T_THROW) / T_SMACK;
       if (!hitFired) {
         hitFired = true;
         _playHitReaction(toId);
@@ -343,17 +336,17 @@ function _playStickyHand(fromId, toId) {
       _setBand(to.x, to.y);
       requestAnimationFrame(step);
 
-    } else if (e < T_SWING + T_SMACK + T_STICK) {
+    } else if (e < T_WINDUP + T_THROW + T_SMACK + T_STICK) {
       // ── STICK — adheres with wobble ────────────────────────────────────
-      const t      = (e - T_SWING - T_SMACK) / T_STICK;
+      const t      = (e - T_WINDUP - T_THROW - T_SMACK) / T_STICK;
       const wobble = Math.sin(t * Math.PI * 5) * 0.04 * (1 - t);
       _setHand(to.x, to.y, 1 + wobble, faceAngle);
       _setBand(to.x, to.y);
       requestAnimationFrame(step);
 
-    } else if (e < T_SWING + T_SMACK + T_STICK + T_RETRACT) {
+    } else if (e < T_WINDUP + T_THROW + T_SMACK + T_STICK + T_RETRACT) {
       // ── RETRACT — slow peel then elastic snap ──────────────────────────
-      const t    = (e - T_SWING - T_SMACK - T_STICK) / T_RETRACT;
+      const t    = (e - T_WINDUP - T_THROW - T_SMACK - T_STICK) / T_RETRACT;
       const ease = t * t * t;
       if (!pullFired) { pullFired = true; _applyAvatarClass(toId, 'ix-pull'); }
       const hx = to.x + (from.x - to.x) * ease;
