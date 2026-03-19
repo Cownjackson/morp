@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morp – Lobby Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --raspberry-wine: #500E2F;
+      --mint: #87DCAB;
+      --lavender: #D0BBF6;
+      --white: #FFFDFD;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Fredoka', sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      background: var(--raspberry-wine);
+    }
+
+    /* ── Room background (PNG) ── */
+    .room-bg {
+      position: fixed;
+      inset: 0;
+      background-image: url('new_lobby_concept.png');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+    }
+
+    /* ── Player seats (placeholder circles) ── */
+    .seats {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .seat {
+      position: absolute;
+      width: clamp(40px, 6vw, 62px);
+      height: clamp(40px, 6vw, 62px);
+      border-radius: 50%;
+      border: 3px solid rgba(208, 187, 246, 0.5);
+      background: rgba(26, 10, 30, 0.5);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--lavender);
+      font-size: clamp(11px, 1.4vw, 16px);
+      font-weight: 600;
+      transform: translate(-50%, -50%);
+      transition: border-color 0.3s, background 0.3s;
+    }
+
+    .seat.occupied {
+      border-color: var(--mint);
+      background: rgba(26, 10, 30, 0.7);
+      color: var(--mint);
+    }
+
+    .seat .seat-name {
+      position: absolute;
+      bottom: -20px;
+      white-space: nowrap;
+      font-size: clamp(9px, 1.1vw, 13px);
+      font-weight: 500;
+      color: var(--white);
+      opacity: 0.7;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+    }
+
+    /* ── Label overlay ── */
+    .mockup-label {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(26, 10, 30, 0.75);
+      backdrop-filter: blur(10px);
+      color: var(--lavender);
+      padding: 8px 20px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 100;
+      border: 1px solid rgba(208, 187, 246, 0.2);
+      letter-spacing: 0.5px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Room background from MS Paint placeholder -->
+  <div class="room-bg"></div>
+
+  <!-- Player seats (arranged elliptically around the table) -->
+  <div class="seats" id="seats"></div>
+
+  <div class="mockup-label">lobby mockup — resize to test</div>
+
+  <script>
+    const SEAT_COUNT = 6;
+    const seatNames = ['bean', 'frog', 'moop', 'slug', 'pingu', 'jax'];
+    const occupied = [true, true, false, true, false, true];
+
+    function layoutSeats() {
+      const container = document.getElementById('seats');
+      container.innerHTML = '';
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      // Ellipse center — roughly where the table is in the PNG
+      const cx = vw * 0.50;
+      const cy = vh * 0.52;
+
+      // Ellipse radii — responsive
+      const rx = Math.min(vw * 0.32, 380);
+      const ry = Math.min(vh * 0.22, 200);
+
+      for (let i = 0; i < SEAT_COUNT; i++) {
+        const angle = (2 * Math.PI * i / SEAT_COUNT) - Math.PI / 2;
+        const x = cx + rx * Math.cos(angle);
+        const y = cy + ry * Math.sin(angle);
+
+        const seat = document.createElement('div');
+        seat.className = 'seat' + (occupied[i] ? ' occupied' : '');
+        seat.style.left = x + 'px';
+        seat.style.top = y + 'px';
+
+        if (occupied[i]) {
+          seat.textContent = seatNames[i].slice(0, 2).toUpperCase();
+          const name = document.createElement('span');
+          name.className = 'seat-name';
+          name.textContent = seatNames[i];
+          seat.appendChild(name);
+        } else {
+          seat.textContent = '+';
+        }
+
+        container.appendChild(seat);
+      }
+    }
+
+    layoutSeats();
+    window.addEventListener('resize', layoutSeats);
+  </script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Room Layout Test</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Fredoka', sans-serif;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #1a0a1e;
+    }
+
+    /* ── Room background ── */
+    #room-bg {
+      position: fixed;
+      inset: 0;
+      background-image: url('guidelines.png');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+    }
+
+    /* ── Centerpiece ── */
+    #centerpiece {
+      position: fixed;
+      left: 50%;
+      top: 52%;
+      transform: translate(-50%, -50%);
+      width: clamp(260px, 55vmin, 640px);
+      aspect-ratio: 2 / 1;
+      background: rgba(139, 90, 60, 0.55);
+      border: 3px dashed rgba(255, 200, 140, 0.6);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 240, 200, 0.7);
+      font-size: clamp(11px, 1.5vmin, 16px);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      z-index: 5;
+    }
+
+    /* ── Seat markers ── */
+    #seats {
+      position: fixed;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+    }
+    .seat {
+      position: absolute;
+      width: clamp(32px, 5vmin, 52px);
+      height: clamp(32px, 5vmin, 52px);
+      border-radius: 50%;
+      background: rgba(26, 10, 30, 0.7);
+      border: 2px solid rgba(208, 187, 246, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(10px, 1.4vmin, 14px);
+      font-weight: 600;
+      color: rgba(208, 187, 246, 0.9);
+      transform: translate(-50%, -50%);
+    }
+
+    /* ── HUD ── */
+    #hud {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      background: rgba(10, 5, 15, 0.75);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(208, 187, 246, 0.2);
+      border-radius: 12px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 12px;
+      color: rgba(208, 187, 246, 0.8);
+      white-space: nowrap;
+    }
+    #hud span { opacity: 0.5; }
+    #hud strong { color: #87DCAB; }
+    #viewport-size { font-weight: 600; color: #D1912A; }
+
+    /* ── Preset buttons ── */
+    #presets {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .preset-btn {
+      background: rgba(10, 5, 15, 0.8);
+      border: 1px solid rgba(208, 187, 246, 0.25);
+      border-radius: 10px;
+      color: rgba(208, 187, 246, 0.8);
+      font-family: 'Fredoka', sans-serif;
+      font-size: 12px;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .preset-btn:hover { border-color: var(--mint, #87DCAB); color: #87DCAB; }
+    .preset-btn.active { border-color: #87DCAB; color: #87DCAB; }
+
+    /* ── Resize frame (simulates device viewports) ── */
+    #frame {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 15;
+      border: 3px solid transparent;
+      transition: all 0.3s ease;
+    }
+    body.framed #frame {
+      border-color: rgba(178, 16, 48, 0.7);
+      box-shadow: inset 0 0 0 2000px rgba(0, 0, 0, 0.55);
+    }
+    /* Reveal only the frame's inner rect */
+    body.framed #frame::before {
+      content: '';
+      position: absolute;
+      top: var(--frame-top);
+      left: var(--frame-left);
+      width: var(--frame-w);
+      height: var(--frame-h);
+      box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.0);
+      border: 2px solid rgba(178, 16, 48, 0.9);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="room-bg"></div>
+  <div id="centerpiece">centerpiece</div>
+  <div id="seats"></div>
+  <div id="frame"></div>
+
+  <div id="hud">
+    <span>viewport</span> <strong id="viewport-size">—</strong>
+    <span>|</span>
+    <span>simulating</span> <strong id="sim-label">none</strong>
+  </div>
+
+  <div id="presets">
+    <button class="preset-btn active" data-w="0" data-h="0" data-label="actual">actual size</button>
+    <button class="preset-btn" data-w="390"  data-h="844"  data-label="iPhone 14">iPhone 14</button>
+    <button class="preset-btn" data-w="430"  data-h="932"  data-label="iPhone 14 Plus">iPhone 14+</button>
+    <button class="preset-btn" data-w="768"  data-h="1024" data-label="iPad">iPad</button>
+    <button class="preset-btn" data-w="1024" data-h="1366" data-label="iPad Pro">iPad Pro</button>
+    <button class="preset-btn" data-w="1280" data-h="800"  data-label="Small laptop">Small laptop</button>
+    <button class="preset-btn" data-w="1440" data-h="900"  data-label="Desktop">Desktop</button>
+    <button class="preset-btn" data-w="1920" data-h="1080" data-label="1080p">1080p</button>
+    <button class="preset-btn" data-w="2560" data-h="1440" data-label="1440p">1440p</button>
+  </div>
+
+  <script>
+    // ── Seat positions ─────────────────────────────────────────────────────────
+    // [dx, dy] as fractions of centerpiece half-dimensions (half-width, half-height).
+    // 0,0 = centerpiece center. 1.0 dx = right edge of centerpiece.
+    // Placeholder values — replace with artist-encoded coords once art lands.
+    const SEAT_POSITIONS = [
+      [ 0.00, -1.50],  // 0 — top center
+      [ 0.76, -1.21],  // 1 — top right
+      [ 1.24, -0.46],  // 2 — right upper
+      [ 1.24,  0.46],  // 3 — right lower
+      [ 0.76,  1.21],  // 4 — bottom right
+      [ 0.00,  1.50],  // 5 — bottom center
+      [-0.76,  1.21],  // 6 — bottom left
+      [-1.24,  0.46],  // 7 — left lower
+      [-1.24, -0.46],  // 8 — left upper
+      [-0.76, -1.21],  // 9 — top left
+    ];
+
+    function layoutSeats() {
+      const container = document.getElementById('seats');
+      container.innerHTML = '';
+
+      const cp = document.getElementById('centerpiece').getBoundingClientRect();
+      const cx = cp.left + cp.width  / 2;
+      const cy = cp.top  + cp.height / 2;
+      const hw = cp.width  / 2;  // half-width
+      const hh = cp.height / 2;  // half-height
+
+      SEAT_POSITIONS.forEach(([dx, dy], i) => {
+        const x = cx + dx * hw;
+        const y = cy + dy * hh;
+        const seat = document.createElement('div');
+        seat.className = 'seat';
+        seat.style.left = x + 'px';
+        seat.style.top  = y + 'px';
+        seat.textContent = i + 1;
+        container.appendChild(seat);
+      });
+    }
+
+    // ── Viewport label ────────────────────────────────────────────────────────
+    function updateLabel() {
+      document.getElementById('viewport-size').textContent =
+        `${window.innerWidth} × ${window.innerHeight}`;
+    }
+
+    // ── Device frame simulation ───────────────────────────────────────────────
+    let activeBtn = document.querySelector('.preset-btn.active');
+
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeBtn?.classList.remove('active');
+        btn.classList.add('active');
+        activeBtn = btn;
+
+        const w = +btn.dataset.w;
+        const h = +btn.dataset.h;
+        const label = btn.dataset.label;
+
+        document.getElementById('sim-label').textContent = label;
+
+        if (!w || !h) {
+          document.body.classList.remove('framed');
+          layoutSeats();
+          return;
+        }
+
+        // Calculate frame position centered in actual viewport
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+
+        // Scale down if simulated size is larger than actual viewport
+        const scale = Math.min(1, vw / w, vh / h);
+        const fw = Math.round(w * scale);
+        const fh = Math.round(h * scale);
+        const fl = Math.round((vw - fw) / 2);
+        const ft = Math.round((vh - fh) / 2);
+
+        const frame = document.getElementById('frame');
+        frame.style.setProperty('--frame-left', fl + 'px');
+        frame.style.setProperty('--frame-top',  ft + 'px');
+        frame.style.setProperty('--frame-w', fw + 'px');
+        frame.style.setProperty('--frame-h', fh + 'px');
+        document.body.classList.add('framed');
+
+        layoutSeats();
+      });
+    });
+
+    window.addEventListener('resize', () => { updateLabel(); layoutSeats(); });
+    updateLabel();
+    layoutSeats();
+  </script>
+</body>
+</html>
