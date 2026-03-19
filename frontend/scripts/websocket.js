@@ -1,7 +1,6 @@
 import { state, send } from './state.js';
-import { log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding } from './helpers.js';
-import { avatarColor } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPlayerRow, renderVoteButtons, renderAccusation, renderDamageButtons, checkYourTurn } from './rendering.js';
+import { log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showScreen } from './helpers.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, renderVoteButtons, renderAccusation, renderDamageButtons, checkYourTurn, renderChat } from './rendering.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
 import { _drawState, clearCanvas } from './drawing.js';
@@ -20,7 +19,29 @@ export function _setConnectBusy(busy) {
 
 export function connectWS(lobbyId, playerId, name, isRetry) {
   state.lobbyId = lobbyId; state.playerId = playerId; state.playerName = name;
-  if (!isRetry) { _wsRetries = 0; _wsOpened = false; _wsKicked = false; _wsMaintenance = false; }
+  if (!isRetry) {
+    _wsRetries = 0; _wsOpened = false; _wsKicked = false; _wsMaintenance = false;
+    Object.assign(state, {
+      lobbyStarted: false,
+      isHost: false,
+      hostId: null,
+      role: null,
+      halfBoard: null,
+      targetWord: null,
+      board: null,
+      turnOrder: [],
+      hints: [],
+      players: {},
+      chatMessages: [],
+      speechBubbles: {},
+      selectedVotes: [],
+      numVotes: 1,
+      _accusedMorpIds: [],
+      isGhost: false,
+      endgameTargetWord: null,
+      drawingHints: false,
+    });
+  }
 
   state.ws = new WebSocket(`${document.getElementById('server-url').value}/ws/${lobbyId}/${playerId}`);
 
@@ -33,8 +54,14 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
     codeEl.classList.remove('hidden');
     document.getElementById('panel-connect').classList.add('hidden');
     showLanding(false);
-    document.getElementById('game-layout').classList.remove('hidden');
-    showAction('lobby');
+    renderRoleBanner();
+    showScreen(state.screen === 'ingame' ? 'ingame' : 'pregame');
+    if (state.screen === 'ingame') {
+      renderInGamePlayerRow();
+    } else {
+      renderPregameLobby();
+    }
+    renderChat();
   };
 
   state.ws.onmessage = e => handleMessage(JSON.parse(e.data));
@@ -42,7 +69,6 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
   state.ws.onclose = e => {
     if (e.code === 4403 || _wsKicked) {
       log('You have been kicked from the lobby.', 'error');
-      document.getElementById('game-layout').classList.add('hidden');
       document.getElementById('lobby-code-display').classList.add('hidden');
       document.getElementById('role-banner').className = '';
       document.getElementById('role-banner').textContent = '';
@@ -89,7 +115,6 @@ function handleMessage(msg) {
 
     case 'maintenance_shutdown': {
       _wsMaintenance = true;
-      document.getElementById('game-layout').classList.add('hidden');
       document.getElementById('lobby-code-display').classList.add('hidden');
       document.getElementById('role-banner').className = '';
       document.getElementById('role-banner').textContent = '';
@@ -101,15 +126,16 @@ function handleMessage(msg) {
 
     case 'lobby_update': {
       state.players     = Object.fromEntries(msg.players.map(p => [p.id, p]));
+      state.lobbyStarted = !!msg.started;
       state.hostId      = msg.host_id;
       state.isHost      = msg.host_id === state.playerId;
       state.isGhost     = state.players[state.playerId]?.is_ghost ?? false;
       state.drawingHints = msg.drawing_hints ?? false;
-      renderPlayerRow();
-      document.getElementById('host-controls').classList.toggle('hidden', !state.isHost);
-      document.getElementById('lobby-waiting').style.display = state.isHost ? 'none' : 'block';
-      document.getElementById('btn-start').disabled =
-        !state.isHost || msg.started || msg.players.length < 3;
+      if (state.screen === 'ingame') {
+        renderInGamePlayerRow();
+      } else {
+        renderPregameLobby();
+      }
       setPhaseLabel(msg.started ? 'IN GAME' : 'WAITING');
       if (state.isGhost && state.role !== 'ghost') {
         state.role = 'ghost';
@@ -127,6 +153,8 @@ function handleMessage(msg) {
       break;
 
     case 'round_start':
+      showScreen('ingame');
+      state.lobbyStarted = true;
       state.board      = { board_hint: msg.board_hint, words: msg.words };
       state.turnOrder  = msg.turn_order;
       state.targetWord = msg.target_word || null;
@@ -134,7 +162,8 @@ function handleMessage(msg) {
       state.speechBubbles = {};
       state.endgameTargetWord = null;
       renderBoard();
-      renderPlayerRow();
+      renderInGamePlayerRow();
+      renderChat();
       document.getElementById('board-area').classList.remove('hidden');
       checkYourTurn();
       showAction('hint');
@@ -148,7 +177,7 @@ function handleMessage(msg) {
         text: msg.text, skipped: !msg.text && !msg.is_drawing,
         is_drawing: msg.is_drawing || false, drawing_data: msg.drawing_data || null,
       };
-      renderPlayerRow();
+      renderInGamePlayerRow();
       checkYourTurn();
       log(msg.is_drawing ? `Drawing hint from ${playerName(msg.player_id)}` : `Hint from ${playerName(msg.player_id)}: "${msg.text || '(skipped)'}"`, '');
       break;
@@ -163,7 +192,7 @@ function handleMessage(msg) {
           is_drawing: h.is_drawing || false, drawing_data: h.drawing_data || null,
         };
       }
-      renderPlayerRow();
+      renderInGamePlayerRow();
       if (!state.isGhost) {
         renderVoteButtons();
         showAction('vote');
@@ -251,13 +280,16 @@ function handleMessage(msg) {
     // ── 2-Player Endgame ──────────────────────────────────────────────────────
 
     case 'endgame_round_start': {
+      showScreen('ingame');
+      state.lobbyStarted = true;
       state.endgameTargetWord = msg.target_word || null;
       state.halfBoard = null;
       state.speechBubbles = {};
       state.board      = { board_hint: msg.board_hint, words: msg.words };
       state.targetWord = state.endgameTargetWord;
       renderBoard();
-      renderPlayerRow();
+      renderInGamePlayerRow();
+      renderChat();
       document.getElementById('board-area').classList.remove('hidden');
 
       const isGhost = (msg.ghost_ids || []).includes(state.playerId);
@@ -298,7 +330,7 @@ function handleMessage(msg) {
           text: msg.text || '', skipped: false,
           is_drawing: msg.is_drawing || false, drawing_data: msg.drawing_data || null,
         };
-        renderPlayerRow();
+        renderInGamePlayerRow();
       }
       if (msg.player_id === state.playerId) {
         document.getElementById('endgame-ghost-input-block').classList.add('hidden');
@@ -412,16 +444,12 @@ function handleMessage(msg) {
       break;
 
     case 'chat': {
-      const chatEl = document.getElementById('chat-messages');
-      const d = document.createElement('div');
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'chat-name';
-      nameSpan.style.color = avatarColor(msg.player_id);
-      nameSpan.textContent = msg.name + ': ';
-      d.appendChild(nameSpan);
-      d.appendChild(document.createTextNode(msg.text));
-      chatEl.appendChild(d);
-      chatEl.scrollTop = chatEl.scrollHeight;
+      state.chatMessages.push({
+        player_id: msg.player_id,
+        name: msg.name,
+        text: msg.text,
+      });
+      renderChat();
       break;
     }
 

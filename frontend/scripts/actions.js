@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
-import { log, showAction, setPhaseLabel } from './helpers.js';
-import { renderRoleBanner, renderPlayerRow } from './rendering.js';
+import { showScreen, setPhaseLabel } from './helpers.js';
+import { renderRoleBanner, renderPregameLobby, renderChat } from './rendering.js';
 import { _drawState, clearCanvas } from './drawing.js';
 import { _timers, clearTimer } from './timers.js';
 
@@ -75,13 +75,14 @@ export function _localResetToLobby() {
     board: null, turnOrder: [], hints: [],
     speechBubbles: {}, selectedVotes: [], numVotes: 1,
     isGhost: false, endgameTargetWord: null, hostId: null,
-    drawingHints: false,
+    drawingHints: false, lobbyStarted: false,
   });
   Object.keys(_timers).forEach(clearTimer);
   renderRoleBanner();
-  renderPlayerRow();
   document.getElementById('board-area').classList.add('hidden');
-  showAction('lobby');
+  showScreen('pregame');
+  renderPregameLobby();
+  renderChat();
   setPhaseLabel('WAITING');
 }
 

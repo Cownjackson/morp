@@ -30,6 +30,12 @@ export function showAction(name) {
   ACTIONS.forEach(a => document.getElementById(`act-${a}`)?.classList.toggle('hidden', a !== name));
 }
 
+export function showScreen(name) {
+  state.screen = name;
+  document.getElementById('pregame-layout').classList.toggle('hidden', name !== 'pregame');
+  document.getElementById('game-layout').classList.toggle('hidden', name !== 'ingame');
+}
+
 // ─── Logging ──────────────────────────────────────────────────────────────────
 export function log(msg, cls = '') {
   const el = document.getElementById('log');
@@ -48,11 +54,17 @@ export function toggleLog() {
 // ─── Landing show/hide helper ──
 export function showLanding(show) {
   const method = show ? 'remove' : 'add';
+  state.screen = show ? 'landing' : state.screen;
   document.getElementById('landing-logo').classList[method]('hidden');
   document.getElementById('landing-footer').classList[method]('hidden');
   document.querySelector('header').classList[show ? 'add' : 'remove']('landing-mode');
   document.body.classList[show ? 'add' : 'remove']('is-landing');
   document.querySelector('.card-row').classList[method]('hidden');
+  document.getElementById('chat-wrap').classList.toggle('hidden', show);
+  if (show) {
+    document.getElementById('pregame-layout').classList.add('hidden');
+    document.getElementById('game-layout').classList.add('hidden');
+  }
 }
 
 // ─── REST helpers ─────────────────────────────────────────────────────────────
