@@ -326,7 +326,7 @@ function _playStickyHand(fromId, toId) {
       const t = (e - T_WINDUP - T_THROW) / T_SMACK;
       if (!hitFired) {
         hitFired = true;
-        _playHitReaction(toId);
+        _applyAvatarClass(toId, 'ix-slap-judder');
         slapSfx.play().catch(() => {});
       }
       const scaleX = t < 0.3 ? 1.0 + 0.6 * (t / 0.3)
@@ -348,7 +348,7 @@ function _playStickyHand(fromId, toId) {
       // ── RETRACT — slow peel then elastic snap ──────────────────────────
       const t    = (e - T_WINDUP - T_THROW - T_SMACK - T_STICK) / T_RETRACT;
       const ease = t * t * t;
-      if (!pullFired) { pullFired = true; _applyAvatarClass(toId, 'ix-pull'); }
+      if (!pullFired) { pullFired = true; _stampHandMark(to.x, to.y, faceAngle); }
       const hx = to.x + (from.x - to.x) * ease;
       const hy = to.y + (from.y - to.y) * ease;
       _setHand(hx, hy, 1 - 0.5 * ease, faceAngle + ease * 0.8);
@@ -362,6 +362,22 @@ function _playStickyHand(fromId, toId) {
   }
 
   requestAnimationFrame(step);
+}
+
+function _stampHandMark(x, y, rot) {
+  const layer = document.getElementById('interaction-anim-layer');
+  if (!layer) return;
+
+  const mark = document.createElement('img');
+  mark.className = 'ix-hand-mark';
+  mark.src = '/assets/sticky_hand.png';
+  mark.draggable = false;
+  mark.style.left      = x + 'px';
+  mark.style.top       = y + 'px';
+  mark.style.transform = `translate(-50%,-50%) rotate(${rot}rad)`;
+  layer.appendChild(mark);
+
+  mark.addEventListener('animationend', () => mark.remove(), { once: true });
 }
 
 function _playSelfAnim(playerId) {

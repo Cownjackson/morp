@@ -1158,3 +1158,31 @@ body.is-landing #log-toggle:hover { color: var(--pinky); }
   70%  { transform: scale(1.04) skewX(-2deg); }
   100% { transform: scale(1); }
 }
+
+/* ── Sticky hand: quick impact judder ── */
+@keyframes ix-slap-judder {
+  0%   { transform: translate(0, 0); }
+  15%  { transform: translate(-4px, 2px); }
+  30%  { transform: translate(5px, -3px); }
+  45%  { transform: translate(-3px, -2px); }
+  60%  { transform: translate(4px, 3px); }
+  75%  { transform: translate(-2px, 1px); }
+  100% { transform: translate(0, 0); }
+}
+.moop-avatar.ix-slap-judder { animation: ix-slap-judder 0.25s ease-out forwards; }
+
+/* ── Sticky hand: red mark left at contact point ── */
+.ix-hand-mark {
+  position: fixed;
+  width: 64px;
+  height: auto;
+  pointer-events: none;
+  z-index: 24;
+  filter: brightness(0.45) saturate(1.8) drop-shadow(0 0 3px rgba(180,20,20,0.4));
+  animation: ix-mark-fade 2.5s ease-out forwards;
+}
+@keyframes ix-mark-fade {
+  0%   { opacity: 0.75; }
+  35%  { opacity: 0.55; }
+  100% { opacity: 0; }
+}
