@@ -98,8 +98,16 @@ export function sendChat() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if (!text) return;
+  state.chatMessages.push({
+    player_id: state.playerId,
+    name: state.playerName,
+    text,
+    pendingLocal: true,
+  });
+  renderChat();
   send({ type: 'chat', text });
   input.value = '';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
   _chatCooldown = true;
   const btn = document.getElementById('btn-chat-send');
   btn.disabled = true;

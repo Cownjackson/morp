@@ -184,6 +184,7 @@ export function renderPregameLobby() {
 export function renderChat() {
   const chatEl = document.getElementById('chat-messages');
   if (!chatEl) return;
+  chatEl.classList.toggle('hidden', state.chatMessages.length === 0);
   chatEl.innerHTML = '';
   for (const msg of state.chatMessages) {
     const d = document.createElement('div');

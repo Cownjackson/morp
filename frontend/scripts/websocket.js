@@ -444,11 +444,24 @@ function handleMessage(msg) {
       break;
 
     case 'chat': {
-      state.chatMessages.push({
-        player_id: msg.player_id,
-        name: msg.name,
-        text: msg.text,
-      });
+      const pendingIndex = state.chatMessages.findIndex(entry =>
+        entry.pendingLocal &&
+        entry.player_id === msg.player_id &&
+        entry.text === msg.text
+      );
+      if (pendingIndex >= 0) {
+        state.chatMessages[pendingIndex] = {
+          player_id: msg.player_id,
+          name: msg.name,
+          text: msg.text,
+        };
+      } else {
+        state.chatMessages.push({
+          player_id: msg.player_id,
+          name: msg.name,
+          text: msg.text,
+        });
+      }
       renderChat();
       break;
     }

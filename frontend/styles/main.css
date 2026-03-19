@@ -758,6 +758,185 @@ body.is-landing #landing-meta-panel {
   border-radius: 8px; padding: 14px 16px;
   min-height: 72px; text-align: center;
 }
+#pregame-action-area {
+  width: min(100%, 740px);
+  margin: 0 auto;
+  padding: 18px 20px 20px;
+  border-radius: 24px;
+  border-color: rgba(90, 40, 72, 0.82);
+  background: rgba(16, 8, 21, 0.94);
+  box-shadow: 0 18px 36px rgba(0,0,0,0.24);
+}
+.pregame-host-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  text-align: left;
+}
+.pregame-controls-top {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
+.pregame-menu {
+  position: relative;
+  width: auto;
+}
+.pregame-menu-trigger {
+  width: auto;
+  min-width: 170px;
+  margin: 0;
+  padding: 11px 18px;
+  border: none;
+  border-radius: 14px;
+  background: var(--lavender);
+  color: #2A1540;
+  text-align: center;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: 600;
+  user-select: none;
+}
+.pregame-menu.is-open .pregame-menu-trigger,
+.pregame-menu-trigger:hover {
+  background: #D9C2F8;
+  color: #2A1540;
+}
+.pregame-menu-panel,
+.pregame-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pregame-menu-panel {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 10px);
+  right: auto;
+  width: min(320px, calc(100vw - 56px));
+  padding: 14px 16px;
+  background: rgba(24, 13, 30, 0.72);
+  border: 1px solid rgba(90, 40, 72, 0.9);
+  border-radius: 16px;
+  box-shadow: 0 16px 30px rgba(0,0,0,0.22);
+  z-index: 30;
+}
+.pregame-panel-section {
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+.pregame-boards-panel {
+  gap: 16px;
+  font-size: 1.15em;
+}
+.pregame-panel-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+.pregame-boards-title {
+  display: block;
+  color: var(--lavender);
+  font-size: 1.26em;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--lavender);
+}
+.pregame-menu-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(16, 8, 21, 0.72);
+  border: 1px solid rgba(58, 40, 72, 0.74);
+  border-radius: 12px;
+  color: #E8C8DC;
+  cursor: pointer;
+  font-size: 0.85em;
+  line-height: 1.45;
+}
+.pregame-menu-option input {
+  margin: 3px 0 0;
+  flex-shrink: 0;
+}
+.pregame-menu-option span {
+  flex: 1;
+}
+#custom-boards-input {
+  width: 100% !important;
+  min-height: 154px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 14px 16px !important;
+  border: 1px solid #3A2848 !important;
+  border-radius: 14px !important;
+  background: #140A18 !important;
+  color: #E8C8DC !important;
+  font-family: monospace !important;
+  font-size: 0.95em !important;
+  line-height: 1.55;
+}
+#custom-boards-input::placeholder {
+  color: #725b6c;
+  white-space: pre-line;
+}
+.pregame-boards-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+}
+.pregame-boards-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.pregame-boards-buttons button {
+  min-width: 136px;
+  font-size: 1em;
+}
+.btn-secondary-mint {
+  border: 1px solid #2A6A5A !important;
+  background: #0A1A14 !important;
+  color: #87DCAB !important;
+}
+.btn-secondary-mint:hover:not(:disabled) {
+  background: #10261D !important;
+}
+.pregame-boards-status {
+  color: #907880;
+  font-size: 0.88em;
+  text-align: center;
+}
+.pregame-panel-footer {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+#btn-start {
+  min-width: 138px;
+}
+#pregame-lobby-waiting {
+  margin: 0;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #907880 !important;
+  font-size: 0.9em !important;
+}
 .action-section h3 {
   color: #D0BBF6; font-size: 0.8em; text-transform: uppercase;
   letter-spacing: 1px; margin-bottom: 10px;
@@ -992,32 +1171,134 @@ body.is-landing #log-toggle:hover { color: var(--pinky); }
 
 /* ── Chat ── */
 .chat-panel {
-  border-top: 1px solid #180D1E;
   margin-top: 6px; flex-shrink: 0;
   position: relative;
   z-index: 3;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: text;
 }
 .chat-messages {
-  height: 110px; overflow-y: auto;
-  background: #080508; border: 1px solid #140A18;
-  border-radius: 4px 4px 0 0;
-  padding: 6px 8px; font-size: 0.8em; color: #C09AB8;
+  max-height: 165px;
+  overflow-y: auto;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 8px 10px;
+  font-size: 0.8em;
+  color: #C09AB8;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.55);
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
-.chat-messages div { margin-bottom: 2px; line-height: 1.4; }
+.chat-panel:focus-within .chat-messages {
+  background: rgba(8, 5, 8, 0.62);
+  border-color: rgba(20, 10, 24, 0.95);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+}
+.chat-messages div { margin-bottom: 4px; line-height: 1.45; }
 .chat-messages .chat-name { font-weight: bold; }
 .chat-input-row {
   display: flex;
-  border: 1px solid #140A18; border-top: none;
-  border-radius: 0 0 4px 4px; overflow: hidden;
+  margin-top: 4px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.chat-panel:focus-within .chat-input-row {
+  border-color: rgba(20, 10, 24, 0.95);
+  background: rgba(13, 8, 16, 0.92);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.14);
 }
 .chat-input {
-  flex: 1; border: none; border-radius: 0;
-  background: #0D0810; color: #E8C8DC;
-  padding: 5px 8px; font-family: monospace; font-size: 0.8em;
+  flex: 1;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  color: #E8C8DC;
+  padding: 8px 10px;
+  font-family: monospace;
+  font-size: 0.8em;
 }
 .chat-input:focus { outline: none; }
 .chat-send-btn {
-  border: none; border-left: 1px solid #2A1A40;
-  border-radius: 0; margin: 0; padding: 5px 12px;
+  max-width: 0;
+  overflow: hidden;
+  border: none;
+  border-radius: 0 14px 14px 0;
+  margin: 0;
+  padding: 8px 0;
   font-size: 0.78em;
+  box-shadow: none;
+  opacity: 0;
+  transition: max-width 0.18s ease, padding 0.18s ease, opacity 0.18s ease, border-left-color 0.18s ease;
+}
+.chat-panel:focus-within .chat-send-btn,
+.chat-panel.chat-has-draft .chat-send-btn {
+  max-width: 72px;
+  padding: 8px 13px;
+  border-left: 1px solid #2A1A40;
+  opacity: 1;
+}
+.chat-send-btn:disabled {
+  background: rgba(42, 26, 34, 0.88);
+  color: #705060;
+}
+@media (max-width: 720px) {
+  #pregame-action-area {
+    width: 100%;
+    max-width: 100%;
+    padding: 16px;
+    border-radius: 18px;
+  }
+  .pregame-controls-top,
+  .pregame-panel-section,
+  #custom-boards-input {
+    width: 100% !important;
+    max-width: 100%;
+  }
+  .pregame-menu {
+    width: auto;
+  }
+  .pregame-menu-trigger {
+    min-width: 0;
+  }
+  .pregame-menu-panel {
+    padding: 12px;
+  }
+  .pregame-boards-actions,
+  .pregame-boards-buttons {
+    width: 100%;
+  }
+  .pregame-boards-actions {
+    align-items: center;
+  }
+  .pregame-boards-buttons {
+    justify-content: center;
+  }
+  .pregame-boards-buttons button {
+    flex: 0 1 auto;
+  }
+  .pregame-panel-footer {
+    justify-content: flex-start;
+  }
+  .pregame-panel-footer button {
+    flex: 1;
+  }
+  .pregame-menu-panel {
+    top: calc(100% + 8px);
+    left: auto;
+    right: 0;
+    width: min(320px, calc(100vw - 40px));
+  }
+  .chat-panel {
+    padding: 6px 0 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
