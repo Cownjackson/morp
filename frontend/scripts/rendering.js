@@ -1,5 +1,5 @@
 import { state, send } from './state.js';
-import { avatarColor, initials, playerName, httpBase, log } from './helpers.js';
+import { avatarColor, initials, playerName, httpBase, log, clearPregameLobbyMoops, syncPregameLobbyMoops } from './helpers.js';
 import { renderMoopInto } from './cosmetics.js';
 import { buildMoopSprite } from './moop-sprite.js';
 import { renderStrokesToCanvas, clearCanvas } from './drawing.js';
@@ -184,23 +184,29 @@ export function renderInGamePlayerRow() {
 
 let backgroundLobbySyncToken = 0;
 
-async function syncBackgroundLobbyPlayers() {
-  if (typeof window.syncBackgroundPlayers !== 'function') return;
+async function syncPregameLobbyBackgroundMoops() {
+  const syncToken = ++backgroundLobbySyncToken;
 
-  const players = Object.values(state.players);
-  if (players.length === 0) {
-    window.syncBackgroundPlayers([]);
+  if (state.screen !== 'pregame') {
+    clearPregameLobbyMoops();
     return;
   }
 
-  const syncToken = ++backgroundLobbySyncToken;
+  const players = Object.values(state.players).filter(player => player.is_connected !== false);
+  if (players.length === 0) {
+    clearPregameLobbyMoops();
+    return;
+  }
+
   const payload = await Promise.all(players.map(async (player) => {
     let spriteSrc = null;
+    let spriteBounds = null;
 
     if (player.cosmetics) {
       try {
         const sprite = await buildMoopSprite(player.cosmetics);
         spriteSrc = sprite.src;
+        spriteBounds = sprite.bounds || null;
       } catch (error) {
         console.warn(`Failed to build lobby floating sprite for ${player.name || player.id}.`, error);
       }
@@ -211,17 +217,18 @@ async function syncBackgroundLobbyPlayers() {
       name: player.name,
       cosmetics: player.cosmetics || null,
       spriteSrc,
+      spriteBounds,
       isHost: player.id === state.hostId,
       isYou: player.id === state.playerId
     };
   }));
 
-  if (syncToken !== backgroundLobbySyncToken) return;
-  window.syncBackgroundPlayers(payload);
+  if (syncToken !== backgroundLobbySyncToken || state.screen !== 'pregame') return;
+  syncPregameLobbyMoops(payload);
 }
 
 export function renderPregameLobby() {
-  syncBackgroundLobbyPlayers();
+  syncPregameLobbyBackgroundMoops();
   document.getElementById('pregame-host-controls').classList.toggle('hidden', !state.isHost);
   document.getElementById('pregame-lobby-waiting').style.display = state.isHost ? 'none' : 'block';
   document.getElementById('btn-start').disabled =

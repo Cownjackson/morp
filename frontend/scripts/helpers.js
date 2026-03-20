@@ -31,10 +31,33 @@ export function showAction(name) {
   ACTIONS.forEach(a => document.getElementById(`act-${a}`)?.classList.toggle('hidden', a !== name));
 }
 
+function _callBackgroundMoopApi(functionName, ...args) {
+  const fn = window[functionName];
+  if (typeof fn === 'function') {
+    fn(...args);
+    return true;
+  }
+  return false;
+}
+
+export function clearPregameLobbyMoops() {
+  if (_callBackgroundMoopApi('setBackgroundMoopMode', 'off')) return;
+  _callBackgroundMoopApi('syncBackgroundPlayers', []);
+}
+
+export function syncPregameLobbyMoops(players = []) {
+  if (_callBackgroundMoopApi('setBackgroundMoopMode', 'pregame')) {
+    _callBackgroundMoopApi('syncPregameLobbyMoops', players);
+    return;
+  }
+  _callBackgroundMoopApi('syncBackgroundPlayers', players);
+}
+
 export function showScreen(name) {
   state.screen = name;
   document.getElementById('pregame-layout').classList.toggle('hidden', name !== 'pregame');
   document.getElementById('game-layout').classList.toggle('hidden', name !== 'ingame');
+  if (name !== 'pregame') clearPregameLobbyMoops();
   showInteractionTrigger(name === 'ingame');
 }
 
@@ -64,9 +87,7 @@ export function showLanding(show) {
   document.querySelector('.card-row').classList[method]('hidden');
   document.getElementById('chat-wrap').classList.toggle('hidden', show);
   if (show) {
-    if (typeof window.syncBackgroundPlayers === 'function') {
-      window.syncBackgroundPlayers([]);
-    }
+    clearPregameLobbyMoops();
     document.getElementById('pregame-layout').classList.add('hidden');
     document.getElementById('game-layout').classList.add('hidden');
     showInteractionTrigger(false);

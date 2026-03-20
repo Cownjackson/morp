@@ -99,11 +99,13 @@ async function syncBackgroundPrototypePlayer() {
   const cosmetics = getCosmetics();
   const syncToken = ++backgroundPrototypeSyncToken;
   let spriteSrc = null;
+  let spriteBounds = null;
 
   try {
     const sprite = await buildMoopSprite(cosmetics);
     if (syncToken !== backgroundPrototypeSyncToken) return;
     spriteSrc = sprite.src;
+    spriteBounds = sprite.bounds || null;
   } catch (error) {
     if (syncToken !== backgroundPrototypeSyncToken) return;
     console.warn('Failed to build background prototype sprite.', error);
@@ -112,7 +114,8 @@ async function syncBackgroundPrototypePlayer() {
   const prototypePlayerData = {
     name: nameInput?.value.trim() || 'you',
     cosmetics,
-    spriteSrc
+    spriteSrc,
+    spriteBounds
   };
 
   window.backgroundPrototypePlayerData = prototypePlayerData;

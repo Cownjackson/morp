@@ -623,32 +623,21 @@ def test_join_allowed_during_game_over(client):
 
 
 def test_reconnect_by_name_returns_original_player_id(client):
-    """Rejoining with a disconnected player's name gives back their original player_id."""
+    """Mid-game reconnect keeps the same player_id."""
     lobby_id = client.post("/lobby/create").json()["lobby_id"]
     p0 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
     p1 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Bob"}).json()["player_id"]
+    p2 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Cara"}).json()["player_id"]
 
-    with client.websocket_connect(f"/ws/{lobby_id}/{p0}") as ws0, \
-         client.websocket_connect(f"/ws/{lobby_id}/{p1}") as ws1:
-        for ws in (ws0, ws1):
-            drain_until(ws, "lobby_update")
-    # Both WS closed — but lobby survives because both disconnected simultaneously;
-    # re-join Bob to keep lobby alive, then check Alice's reconnect
-    # Actually: lobby is deleted when all disconnect. Use nested context instead.
+    with client.websocket_connect(f"/ws/{lobby_id}/{p0}") as ws_alice, \
+         client.websocket_connect(f"/ws/{lobby_id}/{p1}") as ws_bob, \
+         client.websocket_connect(f"/ws/{lobby_id}/{p2}") as ws_cara:
+        wss = [ws_alice, ws_bob, ws_cara]
+        _start_game(wss, ws_alice)
 
-    # Re-run: keep Bob's WS open while Alice disconnects and reconnects
-    lobby_id = client.post("/lobby/create").json()["lobby_id"]
-    p0 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
-    p1 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Bob"}).json()["player_id"]
-
-    with client.websocket_connect(f"/ws/{lobby_id}/{p1}") as ws_bob:
+        ws_alice.close()
         drain_until(ws_bob, "lobby_update")
-        with client.websocket_connect(f"/ws/{lobby_id}/{p0}") as ws_alice:
-            drain_until(ws_alice, "lobby_update")
-            drain_until(ws_bob, "lobby_update")
-            # Close before context exits so the handler broadcasts before cancel fires.
-            ws_alice.close()
-            drain_until(ws_bob, "lobby_update")  # disconnect broadcast
+        drain_until(ws_cara, "lobby_update")
 
         reconnect_id = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
         assert reconnect_id == p0
@@ -660,18 +649,18 @@ def test_reconnect_preserves_player_hp(client):
     lobby_id = client.post("/lobby/create").json()["lobby_id"]
     p0 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
     p1 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Bob"}).json()["player_id"]
+    p2 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Cara"}).json()["player_id"]
 
-    with client.websocket_connect(f"/ws/{lobby_id}/{p1}") as ws_bob:
+    with client.websocket_connect(f"/ws/{lobby_id}/{p0}") as ws_alice, \
+         client.websocket_connect(f"/ws/{lobby_id}/{p1}") as ws_bob, \
+         client.websocket_connect(f"/ws/{lobby_id}/{p2}") as ws_cara:
+        wss = [ws_alice, ws_bob, ws_cara]
+        _start_game(wss, ws_alice)
+
+        _engines[lobby_id].lobby.players[p0].hp = 1
+        ws_alice.close()
         drain_until(ws_bob, "lobby_update")
-        with client.websocket_connect(f"/ws/{lobby_id}/{p0}") as ws_alice:
-            drain_until(ws_alice, "lobby_update")
-            drain_until(ws_bob, "lobby_update")
-            # Damage Alice while she's connected
-            _engines[lobby_id].lobby.players[p0].hp = 1
-            # Send disconnect now so the handler broadcasts before the cancel scope fires.
-            # Drain Bob's lobby_update here while Alice's context is still alive.
-            ws_alice.close()
-            drain_until(ws_bob, "lobby_update")
+        drain_until(ws_cara, "lobby_update")
 
         reconnect_id = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
         assert reconnect_id == p0
@@ -680,6 +669,23 @@ def test_reconnect_preserves_player_hp(client):
             lu = drain_until(ws_alice2, "lobby_update")
             player_data = next(p for p in lu["players"] if p["id"] == reconnect_id)
             assert player_data["hp"] == 1
+
+
+def test_pregame_disconnect_removes_player_from_lobby(client):
+    """Leaving before the game starts removes the player from the visible lobby roster."""
+    lobby_id = client.post("/lobby/create").json()["lobby_id"]
+    p0 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
+    p1 = client.post(f"/lobby/{lobby_id}/join", json={"name": "Bob"}).json()["player_id"]
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{p1}") as ws_bob:
+        drain_until(ws_bob, "lobby_update")
+        with client.websocket_connect(f"/ws/{lobby_id}/{p0}") as ws_alice:
+            drain_until(ws_alice, "lobby_update")
+            drain_until(ws_bob, "lobby_update")
+            ws_alice.close()
+
+        lu = drain_until(ws_bob, "lobby_update")
+        assert [player["id"] for player in lu["players"]] == [p1]
 
 
 def test_new_player_appears_disconnected_until_ws_connects(client):
