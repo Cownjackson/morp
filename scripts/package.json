@@ -1,0 +1,8 @@
+{
+  "name": "morp-scripts",
+  "version": "1.0.0",
+  "description": "Dev utility scripts for Morp",
+  "dependencies": {
+    "playwright": "*"
+  }
+}
