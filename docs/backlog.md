@@ -2,6 +2,8 @@
 
 Items move here when planned, to `changelog.md` when shipped.
 
+**Workflow:** Planned → backlog → in progress → when ready, add test cases to `user_testing.md` → once testing passes, close out to `changelog.md`
+
 **Tags:** `[feature]` `[bug]` `[dev]` `[design]`
 **Owners:** `@cownj` `@bisnispinguin` or unowned
 
