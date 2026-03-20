@@ -21,6 +21,8 @@ export function playerName(id) {
 
 export function setPhaseLabel(text) {
   document.getElementById('phase-label').textContent = text;
+  const pregamePhaseLabel = document.getElementById('pregame-phase-label');
+  if (pregamePhaseLabel) pregamePhaseLabel.textContent = text;
 }
 
 export function setEndgamePhaseLabel(text) {
@@ -53,10 +55,26 @@ export function syncPregameLobbyMoops(players = []) {
   _callBackgroundMoopApi('syncBackgroundPlayers', players);
 }
 
+function syncScreenClasses(screenName) {
+  document.body.classList.toggle('screen-pregame', screenName === 'pregame');
+  document.body.classList.toggle('screen-ingame', screenName === 'ingame');
+}
+
+function refreshBackgroundLogoPaint() {
+  const refresh = window.refreshBackgroundLogoPaint;
+  if (typeof refresh === 'function') {
+    refresh();
+    requestAnimationFrame(() => refresh());
+    window.setTimeout(() => refresh(), 120);
+  }
+}
+
 export function showScreen(name) {
   state.screen = name;
   document.getElementById('pregame-layout').classList.toggle('hidden', name !== 'pregame');
   document.getElementById('game-layout').classList.toggle('hidden', name !== 'ingame');
+  syncScreenClasses(name);
+  refreshBackgroundLogoPaint();
   if (name !== 'pregame') clearPregameLobbyMoops();
   showInteractionTrigger(name === 'ingame');
 }
@@ -84,6 +102,8 @@ export function showLanding(show) {
   document.getElementById('landing-footer').classList[method]('hidden');
   document.querySelector('header').classList[show ? 'add' : 'remove']('landing-mode');
   document.body.classList[show ? 'add' : 'remove']('is-landing');
+  syncScreenClasses(show ? 'landing' : state.screen);
+  refreshBackgroundLogoPaint();
   document.getElementById('chat-wrap').classList.toggle('hidden', show);
   if (show) {
     clearPregameLobbyMoops();

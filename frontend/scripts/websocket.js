@@ -51,8 +51,14 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
     _wsRetries = 0;
     log(`Connected to lobby ${lobbyId} as ${name}`, 'ok');
     const codeEl = document.getElementById('lobby-code-display');
-    codeEl.textContent = 'Lobby Code: ' + lobbyId;
+    const lobbyCodeText = 'Lobby Code: ' + lobbyId;
+    codeEl.textContent = lobbyCodeText;
     codeEl.classList.remove('hidden');
+    const pregameCodeEl = document.getElementById('pregame-lobby-code-display');
+    if (pregameCodeEl) {
+      pregameCodeEl.textContent = lobbyCodeText;
+      pregameCodeEl.classList.remove('hidden');
+    }
     document.getElementById('panel-connect').classList.add('hidden');
     showLanding(false);
     renderRoleBanner();
@@ -71,6 +77,7 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
     if (e.code === 4403 || _wsKicked) {
       log('You have been kicked from the lobby.', 'error');
       document.getElementById('lobby-code-display').classList.add('hidden');
+      document.getElementById('pregame-lobby-code-display')?.classList.add('hidden');
       document.getElementById('role-banner').className = '';
       document.getElementById('role-banner').textContent = '';
       document.getElementById('panel-connect').classList.remove('hidden');
@@ -117,6 +124,7 @@ function handleMessage(msg) {
     case 'maintenance_shutdown': {
       _wsMaintenance = true;
       document.getElementById('lobby-code-display').classList.add('hidden');
+      document.getElementById('pregame-lobby-code-display')?.classList.add('hidden');
       document.getElementById('role-banner').className = '';
       document.getElementById('role-banner').textContent = '';
       document.getElementById('panel-connect').classList.remove('hidden');

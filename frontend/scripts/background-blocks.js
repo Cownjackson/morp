@@ -679,12 +679,12 @@
     };
   }
 
-  function createLogoLetterObjects(landingLogoText) {
-    if (!landingLogoText) {
+  function createLogoLetterObjects(logoTextElement) {
+    if (!logoTextElement) {
       return [];
     }
 
-    return Array.from(landingLogoText.querySelectorAll('.logo-letter')).map((element) => {
+    return Array.from(logoTextElement.querySelectorAll('.logo-letter')).map((element) => {
       const character = element.dataset.letter || element.textContent.trim();
       element.dataset.letter = character;
 
@@ -855,11 +855,21 @@
     );
     const ripples = [];
     let rippleIndex = 0;
-    const landingLogoText = document.getElementById('landing-logo-text');
-    const logoLetters = createLogoLetterObjects(landingLogoText);
+    const logoTargetIds = ['landing-logo-text', 'pregame-logo-text'];
+    let logoTextElements = [];
+    let logoLetters = [];
     const defaultLogoFill = hexToRgb(getComputedStyle(document.documentElement).getPropertyValue('--punch'));
     const defaultLogoShadow = darkenColor(defaultLogoFill, logoPaintConfig.shadowDarkness);
     let logoBoundsRaf = 0;
+
+    function syncLogoTargets() {
+      logoTextElements = logoTargetIds
+        .map((id) => document.getElementById(id))
+        .filter(Boolean);
+      logoLetters = logoTextElements.reduce((letters, logoTextElement) => (
+        letters.concat(createLogoLetterObjects(logoTextElement))
+      ), []);
+    }
 
     const shapeModes = shuffle([
       'square', 'square', 'square', 'square',
@@ -1074,6 +1084,7 @@
     }
 
     function updateLogoLetterBounds() {
+      syncLogoTargets();
       logoLetters.forEach((letter) => {
         letter.bounds = letter.fillElement.getBoundingClientRect();
         rebuildLogoLetterMask(letter);
@@ -1450,12 +1461,16 @@
       });
     }
 
-    if (typeof ResizeObserver !== 'undefined' && landingLogoText) {
+    syncLogoTargets();
+
+    if (typeof ResizeObserver !== 'undefined' && logoTextElements.length) {
       const logoObserver = new ResizeObserver(() => {
         updateLogoLetterBounds();
         scheduleLogoBoundsRefresh(1);
       });
-      logoObserver.observe(landingLogoText);
+      logoTextElements.forEach((logoTextElement) => {
+        logoObserver.observe(logoTextElement);
+      });
     }
 
     placeBlocks();
@@ -1471,6 +1486,11 @@
     window.syncPregameLobbyMoops = syncPregameLobbyMoops;
     window.syncBackgroundPlayers = syncBackgroundPlayers;
     window.setBackgroundPrototypePlayer = syncPrototypePlayer;
+    window.refreshBackgroundLogoPaint = () => {
+      syncLogoTargets();
+      updateLogoLetterBounds();
+      scheduleLogoBoundsRefresh(1);
+    };
     syncPrototypePlayer(window.backgroundPrototypePlayerData || {});
     container.dataset.initialized = 'true';
   }

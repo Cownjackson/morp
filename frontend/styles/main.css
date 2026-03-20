@@ -80,12 +80,14 @@ header {
   position: relative;
   z-index: 10;
 }
+body.screen-pregame header { display: none; }
 header.landing-mode { display: none; }
 header h1 {
   color: var(--punch); font-family: 'Fredoka', sans-serif;
   font-weight: 700; font-size: 1.5em; letter-spacing: 2px;
 }
-#lobby-code-display {
+#lobby-code-display,
+.pregame-lobby-code-chip {
   color: var(--mint); font-weight: 600; font-size: 0.9em;
   background: rgba(26, 10, 18, 0.6); padding: 4px 12px;
   border-radius: 10px; border: 1px solid rgba(90, 40, 72, 0.5);
@@ -788,6 +790,12 @@ body.is-landing #landing-meta-panel {
   position: relative;
   z-index: 10;
 }
+#pregame-layout {
+  justify-content: center;
+  align-items: center;
+  padding-top: 0;
+  pointer-events: none;
+}
 
 /* ── Board ── */
 #board-area {
@@ -824,27 +832,127 @@ body.is-landing #landing-meta-panel {
   min-height: 72px; text-align: center;
 }
 #pregame-action-area {
-  width: min(100%, 740px);
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
   padding: 18px 20px 20px;
   border-radius: 24px;
   border: none;
   background: transparent;
   box-shadow: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  pointer-events: none;
+}
+.pregame-logo-shell {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 22px);
+  transform: translateX(-50%);
+  z-index: 11;
+  pointer-events: none;
+}
+.pregame-main-cluster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  margin-top: 50px;
+  width: fit-content;
+  max-width: min(100%, 740px);
+  position: relative;
+  z-index: 12;
+  pointer-events: none;
+}
+.pregame-main-cluster > * {
+  pointer-events: auto;
+}
+.pregame-top-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+  max-width: 100%;
+  position: relative;
+  z-index: 12;
+  pointer-events: auto;
+}
+.pregame-top-stack > * {
+  pointer-events: auto;
+}
+.pregame-logo-area {
+  margin: 0;
+  z-index: auto;
+}
+.pregame-logo {
+  font-size: clamp(3.6rem, 7vw, 5rem);
+  gap: 3px;
+}
+.pregame-logo .logo-letter-shadow {
+  top: 4px;
+}
+.pregame-lobby-code-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.pregame-help-btn {
+  min-width: 188px;
+  margin: 0;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 18px;
+  background: var(--mint);
+  color: #1A3A28;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow:
+    0 12px 24px rgba(0,0,0,0.24),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  position: relative;
+  z-index: 12;
+}
+.pregame-help-btn:hover {
+  background: #6ACFA0;
+}
+.pregame-changelog-btn {
+  margin: 0;
+  padding: 10px 20px;
+  border: 1px solid rgba(208, 187, 246, 0.45);
+  border-radius: 14px;
+  background: rgba(26, 10, 18, 0.72);
+  color: var(--lavender);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(0,0,0,0.2);
+  position: relative;
+  z-index: 12;
+}
+.pregame-changelog-btn:hover {
+  border-color: var(--lavender);
+  color: var(--white);
 }
 .pregame-host-controls {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   gap: 14px;
-  text-align: left;
+  width: fit-content;
+  max-width: 100%;
+  text-align: center;
 }
 .pregame-controls-top {
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 18px;
+  gap: 14px;
 }
 .pregame-menu {
   position: relative;
@@ -852,9 +960,9 @@ body.is-landing #landing-meta-panel {
 }
 .pregame-menu-trigger {
   width: auto;
-  min-width: 255px;
+  min-width: 214px;
   margin: 0;
-  padding: 16px 27px;
+  padding: 16px 20px;
   border: none;
   border-radius: 18px;
   background: var(--mint);
@@ -980,9 +1088,9 @@ body.is-landing #landing-meta-panel {
   width: 100%;
 }
 #btn-start {
-  min-width: 207px;
-  padding: 15px 27px;
-  font-size: 1.08em;
+  min-width: 312px;
+  padding: 22px 40px;
+  font-size: 1.16em;
 }
 #btn-start:not(:disabled) {
   background: var(--punch);
@@ -999,13 +1107,21 @@ body.is-landing #landing-meta-panel {
   color: #5A3848;
   box-shadow: none;
 }
+.pregame-phase-label {
+  min-height: 20px;
+  color: var(--mustard);
+  font-size: 0.92em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
 #pregame-lobby-waiting {
   margin: 0;
   min-height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #907880 !important;
+  color: var(--mustard) !important;
   font-size: 0.9em !important;
 }
 .action-section h3 {
@@ -1213,12 +1329,47 @@ body.is-landing #log-wrap {
   margin-top: 4px;
   padding-top: 2px;
 }
+body.screen-pregame #landing-meta-panel {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: fit-content;
+  max-width: calc(100vw - 120px);
+  margin: 0;
+  z-index: 16;
+  pointer-events: none;
+}
+body.screen-pregame #log-wrap {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+  width: fit-content;
+  pointer-events: auto;
+}
 #log-toggle {
   background: none; border: none; color: #3A2848;
   font-family: monospace; font-size: 0.74em;
   cursor: pointer; padding: 5px 0; width: 100%; text-align: left;
 }
 #log-toggle:hover { color: #806878; }
+body.screen-pregame #log-toggle {
+  width: auto;
+  padding: 7px 14px;
+  border: 1px solid rgba(90, 40, 72, 0.72);
+  border-radius: 999px;
+  background: rgba(26, 10, 18, 0.72);
+  color: #7A5068;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 0.76rem;
+  font-weight: 500;
+  text-align: center;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.18);
+}
+body.screen-pregame #log-toggle:hover {
+  color: var(--pinky);
+  border-color: rgba(208, 187, 246, 0.52);
+}
 body.is-landing #log-toggle {
   color: #7A5068;
   font-family: 'Fredoka', sans-serif;
@@ -1234,6 +1385,19 @@ body.is-landing #log-toggle:hover { color: var(--pinky); }
   border-radius: 4px; padding: 6px 8px;
   font-size: 0.74em; color: #453060;
 }
+body.screen-pregame #log {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(360px, calc(100vw - 40px));
+  height: 96px;
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(8, 5, 8, 0.9);
+  border-color: rgba(20, 10, 24, 0.95);
+  box-shadow: 0 14px 30px rgba(0,0,0,0.24);
+}
 #log div { margin-bottom: 1px; }
 #log div.info  { color: #71B2E6; }
 #log div.ok    { color: #87DCAB; }
@@ -1242,16 +1406,23 @@ body.is-landing #log-toggle:hover { color: var(--pinky); }
 
 /* ── Chat ── */
 .chat-panel {
-  margin-top: 6px; flex-shrink: 0;
-  position: relative;
-  z-index: 3;
+  margin-top: 0;
+  flex-shrink: 0;
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 28px));
+  max-width: calc(100vw - 28px);
+  z-index: 18;
   padding: 0;
   border: none;
   background: transparent;
   cursor: text;
+  pointer-events: auto;
 }
 .chat-messages {
-  max-height: 165px;
+  max-height: 118px;
   overflow-y: auto;
   background: transparent;
   border: 1px solid transparent;
@@ -1319,9 +1490,17 @@ body.is-landing #log-toggle:hover { color: var(--pinky); }
 @media (max-width: 720px) {
   #pregame-action-area {
     width: 100%;
-    max-width: 100%;
     padding: 16px;
     border-radius: 18px;
+  }
+  .pregame-logo-shell {
+    bottom: calc(100% - 16px);
+  }
+  .pregame-main-cluster {
+    width: 100%;
+    max-width: 100%;
+    gap: 18px;
+    margin-top: 50px;
   }
   .pregame-controls-top,
   .pregame-panel-section,
@@ -1332,10 +1511,25 @@ body.is-landing #log-toggle:hover { color: var(--pinky); }
   .pregame-menu {
     width: auto;
   }
+  .pregame-top-stack {
+    width: 100%;
+    gap: 10px;
+  }
+  .pregame-logo {
+    font-size: clamp(3rem, 13vw, 4rem);
+  }
+  .pregame-help-btn {
+    min-width: 0;
+    width: 100%;
+    padding: 13px 16px;
+  }
+  .pregame-changelog-btn {
+    width: 100%;
+  }
   .pregame-menu-trigger {
     min-width: 0;
     width: 100%;
-    padding: 14px 20px;
+    padding: 14px 16px;
     font-size: 1.08em;
   }
   .pregame-menu-panel {
@@ -1356,6 +1550,11 @@ body.is-landing #log-toggle:hover { color: var(--pinky); }
   .pregame-panel-footer button {
     flex: 1;
   }
+  #btn-start {
+    min-width: 0;
+    width: 100%;
+    padding: 18px 24px;
+  }
   .pregame-menu-panel {
     top: calc(100% + 10px);
     left: 50%;
@@ -1364,7 +1563,10 @@ body.is-landing #log-toggle:hover { color: var(--pinky); }
     transform: translateX(-50%);
   }
   .chat-panel {
-    padding: 6px 0 0;
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    bottom: 10px;
+    padding: 0;
     border: none;
     border-radius: 0;
     background: transparent;

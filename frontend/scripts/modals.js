@@ -1,18 +1,26 @@
 // ─── Modal wiring ─────────────────────────────────────────────────────────────
 export function initModals() {
+  const openModal = (overlay) => overlay?.classList.add('open');
+  const closeModal = (overlay) => overlay?.classList.remove('open');
+  const bindOpenButton = (buttonId, overlay) => {
+    document.getElementById(buttonId)?.addEventListener('click', () => openModal(overlay));
+  };
+
   // Changelog modal
   const changelog = document.getElementById('changelog-overlay');
-  document.getElementById('changelog-btn').addEventListener('click', () => changelog.classList.add('open'));
-  document.getElementById('changelog-btn-footer').addEventListener('click', () => changelog.classList.add('open'));
-  document.getElementById('changelog-close').addEventListener('click', () => changelog.classList.remove('open'));
-  changelog.addEventListener('click', e => { if (e.target === changelog) changelog.classList.remove('open'); });
+  bindOpenButton('changelog-btn', changelog);
+  bindOpenButton('pregame-changelog-btn', changelog);
+  bindOpenButton('changelog-btn-footer', changelog);
+  document.getElementById('changelog-close').addEventListener('click', () => closeModal(changelog));
+  changelog.addEventListener('click', e => { if (e.target === changelog) closeModal(changelog); });
 
   // Help modal
   const help = document.getElementById('help-overlay');
-  document.getElementById('help-btn').addEventListener('click', () => help.classList.add('open'));
-  document.getElementById('help-btn-footer').addEventListener('click', () => help.classList.add('open'));
-  document.getElementById('help-close').addEventListener('click', () => help.classList.remove('open'));
-  help.addEventListener('click', e => { if (e.target === help) help.classList.remove('open'); });
+  bindOpenButton('help-btn', help);
+  bindOpenButton('pregame-help-btn', help);
+  bindOpenButton('help-btn-footer', help);
+  document.getElementById('help-close').addEventListener('click', () => closeModal(help));
+  help.addEventListener('click', e => { if (e.target === help) closeModal(help); });
 
   // Credits modal
   const credits = document.getElementById('credits-overlay');
