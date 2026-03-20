@@ -45,6 +45,7 @@ async function main() {
   await page1.goto(baseUrl);
 
   await page1.fill('#player-name', '1');
+  await page1.click('#moop-random-btn');
   await page1.click('button:has-text("Create Lobby")');
 
   // Wait for the lobby code to appear
@@ -68,12 +69,16 @@ async function main() {
     await page.goto(baseUrl);
 
     await page.fill('#player-name', String(i));
+    await page.click('#moop-random-btn');
     await page.fill('#join-code', lobbyCode);
     await page.click('button:has-text("Join")');
 
     await page.waitForSelector('#lobby-code-display:not(.hidden)', { timeout: 10_000 });
     console.log(`Player ${i} joined.`);
   }
+
+  // Return focus to the lobby leader.
+  await page1.bringToFront();
 
   console.log(`\nAll ${n} players connected. Close this terminal to end the session.`);
   // Keep the process alive so the browser windows stay open.
