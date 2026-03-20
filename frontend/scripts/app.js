@@ -1,7 +1,8 @@
 // ─── Entry point ──────────────────────────────────────────────────────────────
 import { showLanding } from './helpers.js';
 import { toggleLog } from './helpers.js';
-import { initMoopCustomizer } from './cosmetics.js';
+import { getCosmetics, initMoopCustomizer } from './cosmetics.js';
+import { buildMoopSprite } from './moop-sprite.js';
 import { initModals } from './modals.js';
 import { initMusic } from './music.js';
 import { initCanvas, clearCanvas, undoStroke, setDrawColor, setDrawSize, toggleEraser, toggleFill } from './drawing.js';
@@ -91,6 +92,39 @@ function initChatPanel() {
   syncDraftState();
 }
 
+let backgroundPrototypeSyncToken = 0;
+
+async function syncBackgroundPrototypePlayer() {
+  const nameInput = document.getElementById('player-name');
+  const cosmetics = getCosmetics();
+  const syncToken = ++backgroundPrototypeSyncToken;
+  let spriteSrc = null;
+
+  try {
+    const sprite = await buildMoopSprite(cosmetics);
+    if (syncToken !== backgroundPrototypeSyncToken) return;
+    spriteSrc = sprite.src;
+  } catch (error) {
+    if (syncToken !== backgroundPrototypeSyncToken) return;
+    console.warn('Failed to build background prototype sprite.', error);
+  }
+
+  const prototypePlayerData = {
+    name: nameInput?.value.trim() || 'you',
+    cosmetics,
+    spriteSrc
+  };
+
+  window.backgroundPrototypePlayerData = prototypePlayerData;
+  window.dispatchEvent(new CustomEvent('background-prototype-player-change', {
+    detail: prototypePlayerData
+  }));
+
+  if (typeof window.setBackgroundPrototypePlayer === 'function') {
+    window.setBackgroundPrototypePlayer(prototypePlayerData);
+  }
+}
+
 // ─── Init ──────────────────────────────────────────────────────────────────────
 
 // Default the server URL to wherever this page was served from
@@ -104,10 +138,18 @@ initCanvas('hint-canvas',         'hint');
 initCanvas('endgame-ghost-canvas', 'endgame');
 initPregameInfoToggles();
 initChatPanel();
+syncBackgroundPrototypePlayer();
 
 // Start in landing mode
 showLanding(true);
 initMoopCustomizer();
+syncBackgroundPrototypePlayer();
+
+const playerNameInput = document.getElementById('player-name');
+if (playerNameInput) {
+  playerNameInput.addEventListener('input', syncBackgroundPrototypePlayer);
+}
+window.addEventListener('moop-cosmetics-changed', syncBackgroundPrototypePlayer);
 
 // ─── Enter key shortcuts ──────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
