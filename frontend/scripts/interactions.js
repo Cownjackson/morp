@@ -202,11 +202,7 @@ function _playProjectile(fromId, toId, interaction) {
 }
 
 // ─── Sticky hand animation ────────────────────────────────────────────────────
-// Path: figure-8 Lissajous curve (sin(t), sin(2t)/2).
-//   Back lobe  = windup (hand swings behind sender and around)
-//   Crossover  = smooth transition through sender position
-//   Front lobe = whip into target
-// Then: SMACK → STICK → RETRACT as discrete phases.
+// Lissajous back-lobe windup (π → 3π/2) → direct throw → SMACK → STICK → RETRACT.
 function _playStickyHand(fromId, toId) {
   const from = _avatarCenter(fromId);
   const to   = _avatarCenter(toId);
@@ -250,8 +246,12 @@ function _playStickyHand(fromId, toId) {
   const T_STICK   = 550;
   const T_RETRACT = Math.max(250, Math.min(500, dist * 0.6));
 
-  let hitFired  = false;
-  let pullFired = false;
+  // Windup peak — throw launches from here (30% behind sender, on-axis)
+  const peakX = from.x - dist * 0.3 * ux;
+  const peakY = from.y - dist * 0.3 * uy;
+
+  let hitFired    = false;
+  let markStamped = false;
   const start = performance.now();
 
   function _setBand(hx, hy, opacity = 1) {
@@ -308,10 +308,6 @@ function _playStickyHand(fromId, toId) {
       const t = (e - T_WINDUP) / T_THROW;
       const ease = 1 - Math.pow(1 - t, 3);  // ease-out: explosive start
 
-      // Launch point = windup peak (30% behind sender, no lateral offset)
-      const peakX = from.x - dist * 0.3 * ux;
-      const peakY = from.y - dist * 0.3 * uy;
-
       // Subtle overhead arc
       const arc = Math.sin(t * Math.PI) * dist * -0.08;
       const hx = peakX + (to.x - peakX) * ease + px * arc;
@@ -348,7 +344,7 @@ function _playStickyHand(fromId, toId) {
       // ── RETRACT — slow peel then elastic snap ──────────────────────────
       const t    = (e - T_WINDUP - T_THROW - T_SMACK - T_STICK) / T_RETRACT;
       const ease = t * t * t;
-      if (!pullFired) { pullFired = true; _stampHandMark(to.x, to.y, faceAngle); }
+      if (!markStamped) { markStamped = true; _stampHandMark(to.x, to.y, faceAngle); }
       const hx = to.x + (from.x - to.x) * ease;
       const hy = to.y + (from.y - to.y) * ease;
       _setHand(hx, hy, 1 - 0.5 * ease, faceAngle + ease * 0.8);

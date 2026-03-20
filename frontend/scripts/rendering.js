@@ -59,7 +59,7 @@ const SEAT_POSITIONS = [
   [0.253, 0.306],  // 9 — top left
 ];
 
-// ─── Player row ───────────────────────────────────────────────────────────────
+// ─── Player layout ────────────────────────────────────────────────────────────
 function renderPlayers(containerId, { avatarSize = 80 } = {}) {
   const el = document.getElementById(containerId);
   if (!el) return;
