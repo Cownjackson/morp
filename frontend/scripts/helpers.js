@@ -60,12 +60,24 @@ function syncScreenClasses(screenName) {
   document.body.classList.toggle('screen-ingame', screenName === 'ingame');
 }
 
-function refreshBackgroundLogoPaint() {
+let backgroundLogoRefreshTimeout = 0;
+let backgroundLogoRefreshLateTimeout = 0;
+
+export function refreshBackgroundLogoPaint({ delayed = false, late = false } = {}) {
   const refresh = window.refreshBackgroundLogoPaint;
   if (typeof refresh === 'function') {
     refresh();
     requestAnimationFrame(() => refresh());
-    window.setTimeout(() => refresh(), 120);
+    clearTimeout(backgroundLogoRefreshTimeout);
+    clearTimeout(backgroundLogoRefreshLateTimeout);
+
+    if (delayed) {
+      backgroundLogoRefreshTimeout = window.setTimeout(() => refresh(), 120);
+    }
+
+    if (late) {
+      backgroundLogoRefreshLateTimeout = window.setTimeout(() => refresh(), 280);
+    }
   }
 }
 
@@ -74,7 +86,7 @@ export function showScreen(name) {
   document.getElementById('pregame-layout').classList.toggle('hidden', name !== 'pregame');
   document.getElementById('game-layout').classList.toggle('hidden', name !== 'ingame');
   syncScreenClasses(name);
-  refreshBackgroundLogoPaint();
+  refreshBackgroundLogoPaint({ delayed: true });
   if (name !== 'pregame') clearPregameLobbyMoops();
   showInteractionTrigger(name === 'ingame');
 }
@@ -103,7 +115,7 @@ export function showLanding(show) {
   document.querySelector('header').classList[show ? 'add' : 'remove']('landing-mode');
   document.body.classList[show ? 'add' : 'remove']('is-landing');
   syncScreenClasses(show ? 'landing' : state.screen);
-  refreshBackgroundLogoPaint();
+  refreshBackgroundLogoPaint({ delayed: true });
   document.getElementById('chat-wrap').classList.toggle('hidden', show);
   if (show) {
     clearPregameLobbyMoops();

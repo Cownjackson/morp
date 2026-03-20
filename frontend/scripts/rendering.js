@@ -1,5 +1,5 @@
 import { state, send } from './state.js';
-import { avatarColor, initials, playerName, httpBase, log, clearPregameLobbyMoops, syncPregameLobbyMoops } from './helpers.js';
+import { avatarColor, initials, playerName, httpBase, log, clearPregameLobbyMoops, syncPregameLobbyMoops, refreshBackgroundLogoPaint } from './helpers.js';
 import { renderMoopInto } from './cosmetics.js';
 import { buildMoopSprite } from './moop-sprite.js';
 import { renderStrokesToCanvas, clearCanvas } from './drawing.js';
@@ -183,8 +183,6 @@ export function renderInGamePlayerRow() {
 }
 
 let backgroundLobbySyncToken = 0;
-let pregameLogoRefreshTimeout = 0;
-let pregameLogoRefreshLateTimeout = 0;
 
 async function syncPregameLobbyBackgroundMoops() {
   const syncToken = ++backgroundLobbySyncToken;
@@ -250,18 +248,7 @@ export function renderPregameLobby() {
   startButton.disabled =
     !isHost || state.lobbyStarted || Object.values(state.players).length < 3;
 
-  const refreshLogoPaint = window.refreshBackgroundLogoPaint;
-  if (typeof refreshLogoPaint === 'function') {
-    refreshLogoPaint();
-    requestAnimationFrame(() => {
-      refreshLogoPaint();
-      requestAnimationFrame(() => refreshLogoPaint());
-    });
-    clearTimeout(pregameLogoRefreshTimeout);
-    clearTimeout(pregameLogoRefreshLateTimeout);
-    pregameLogoRefreshTimeout = window.setTimeout(() => refreshLogoPaint(), 120);
-    pregameLogoRefreshLateTimeout = window.setTimeout(() => refreshLogoPaint(), 280);
-  }
+  refreshBackgroundLogoPaint({ delayed: true, late: true });
 }
 
 export function renderChat() {
