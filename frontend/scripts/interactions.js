@@ -1,5 +1,6 @@
 import { state, send } from './state.js';
 
+
 // ─── Interaction catalog ───────────────────────────────────────────────────────
 // Add new interactions here — no other file needs to change for new types.
 const INTERACTIONS = [
@@ -291,6 +292,7 @@ function _playSpitball(fromId, toId) {
         ball.remove();
         _spawnSplatBurst(layer, to.x, to.y);
         _playHitReaction(toId);
+        if (toId === state.playerId) _onSpitHit();
       }
     }
   }
