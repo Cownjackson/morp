@@ -21,6 +21,8 @@ export function playerName(id) {
 
 export function setPhaseLabel(text) {
   document.getElementById('phase-label').textContent = text;
+  const pregamePhaseLabel = document.getElementById('pregame-phase-label');
+  if (pregamePhaseLabel) pregamePhaseLabel.textContent = text;
 }
 
 export function setEndgamePhaseLabel(text) {
@@ -53,10 +55,38 @@ export function syncPregameLobbyMoops(players = []) {
   _callBackgroundMoopApi('syncBackgroundPlayers', players);
 }
 
+function syncScreenClasses(screenName) {
+  document.body.classList.toggle('screen-pregame', screenName === 'pregame');
+  document.body.classList.toggle('screen-ingame', screenName === 'ingame');
+}
+
+let backgroundLogoRefreshTimeout = 0;
+let backgroundLogoRefreshLateTimeout = 0;
+
+export function refreshBackgroundLogoPaint({ delayed = false, late = false } = {}) {
+  const refresh = window.refreshBackgroundLogoPaint;
+  if (typeof refresh === 'function') {
+    refresh();
+    requestAnimationFrame(() => refresh());
+    clearTimeout(backgroundLogoRefreshTimeout);
+    clearTimeout(backgroundLogoRefreshLateTimeout);
+
+    if (delayed) {
+      backgroundLogoRefreshTimeout = window.setTimeout(() => refresh(), 120);
+    }
+
+    if (late) {
+      backgroundLogoRefreshLateTimeout = window.setTimeout(() => refresh(), 280);
+    }
+  }
+}
+
 export function showScreen(name) {
   state.screen = name;
   document.getElementById('pregame-layout').classList.toggle('hidden', name !== 'pregame');
   document.getElementById('game-layout').classList.toggle('hidden', name !== 'ingame');
+  syncScreenClasses(name);
+  refreshBackgroundLogoPaint({ delayed: true });
   if (name !== 'pregame') clearPregameLobbyMoops();
   showInteractionTrigger(name === 'ingame');
 }
@@ -80,11 +110,12 @@ export function toggleLog() {
 export function showLanding(show) {
   const method = show ? 'remove' : 'add';
   state.screen = show ? 'landing' : state.screen;
-  document.getElementById('landing-logo').classList[method]('hidden');
+  document.getElementById('landing-main-cluster').classList[method]('hidden');
   document.getElementById('landing-footer').classList[method]('hidden');
   document.querySelector('header').classList[show ? 'add' : 'remove']('landing-mode');
   document.body.classList[show ? 'add' : 'remove']('is-landing');
-  document.querySelector('.card-row').classList[method]('hidden');
+  syncScreenClasses(show ? 'landing' : state.screen);
+  refreshBackgroundLogoPaint({ delayed: true });
   document.getElementById('chat-wrap').classList.toggle('hidden', show);
   if (show) {
     clearPregameLobbyMoops();

@@ -35,37 +35,62 @@ window.clearCanvas = clearCanvas;
 function initPregameInfoToggles() {
   const waitingLabel = document.getElementById('pregame-lobby-waiting');
   if (waitingLabel) waitingLabel.textContent = 'Waiting for players...';
-
-  const optionsMenu = document.getElementById('pregame-options-menu');
-  const optionsBtn = document.getElementById('pregame-options-btn');
-  const optionsPanel = document.getElementById('pregame-options-panel');
-  if (optionsMenu && optionsBtn && optionsPanel) {
-    const closeOptionsMenu = () => {
-      optionsMenu.classList.remove('is-open');
-      optionsPanel.classList.add('hidden');
-      optionsBtn.setAttribute('aria-expanded', 'false');
-    };
-
-    optionsBtn.setAttribute('aria-haspopup', 'true');
-    optionsBtn.setAttribute('aria-expanded', 'false');
-    optionsBtn.setAttribute('aria-controls', 'pregame-options-panel');
-
-    optionsBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      const isOpen = optionsMenu.classList.toggle('is-open');
-      optionsPanel.classList.toggle('hidden', !isOpen);
-      optionsBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    });
-
-    optionsPanel.addEventListener('click', e => {
-      e.stopPropagation();
-    });
-
-    document.addEventListener('click', e => {
-      if (optionsMenu.contains(e.target)) return;
-      closeOptionsMenu();
-    });
+  const pregamePhaseLabel = document.getElementById('pregame-phase-label');
+  if (pregamePhaseLabel && !pregamePhaseLabel.textContent.trim()) {
+    pregamePhaseLabel.textContent = 'WAITING';
   }
+
+  const menuConfigs = [
+    {
+      menu: document.getElementById('pregame-options-menu'),
+      button: document.getElementById('pregame-options-btn'),
+      panel: document.getElementById('pregame-options-panel')
+    },
+    {
+      menu: document.getElementById('pregame-boards-menu'),
+      button: document.getElementById('pregame-boards-btn'),
+      panel: document.getElementById('pregame-boards-panel')
+    }
+  ].filter(config => config.menu && config.button && config.panel);
+
+  if (!menuConfigs.length) return;
+
+  const closeMenu = ({ menu, button, panel }) => {
+    menu.classList.remove('is-open');
+    panel.classList.add('hidden');
+    button.setAttribute('aria-expanded', 'false');
+  };
+
+  const closeAllMenus = (exceptMenu = null) => {
+    menuConfigs.forEach(config => {
+      if (config.menu === exceptMenu) return;
+      closeMenu(config);
+    });
+  };
+
+  menuConfigs.forEach(({ menu, button, panel }) => {
+    button.setAttribute('aria-haspopup', 'true');
+    button.setAttribute('aria-expanded', 'false');
+    button.setAttribute('aria-controls', panel.id);
+
+    button.addEventListener('click', e => {
+      e.stopPropagation();
+      const willOpen = !menu.classList.contains('is-open');
+      closeAllMenus(menu);
+      menu.classList.toggle('is-open', willOpen);
+      panel.classList.toggle('hidden', !willOpen);
+      button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    });
+
+    panel.addEventListener('click', e => {
+      e.stopPropagation();
+    });
+  });
+
+  document.addEventListener('click', e => {
+    if (menuConfigs.some(({ menu }) => menu.contains(e.target))) return;
+    closeAllMenus();
+  });
 }
 
 function initChatPanel() {
@@ -90,6 +115,60 @@ function initChatPanel() {
   sendBtn.addEventListener('blur', syncDraftState);
 
   syncDraftState();
+}
+
+function initLandingNameAutosize() {
+  const input = document.getElementById('player-name');
+  if (!input || input.dataset.autosizeInit === 'true') return;
+  input.dataset.autosizeInit = 'true';
+
+  const field = input.closest('.connect-field');
+  let measure = document.getElementById('landing-name-measure');
+  if (!measure) {
+    measure = document.createElement('span');
+    measure.id = 'landing-name-measure';
+    measure.setAttribute('aria-hidden', 'true');
+    measure.style.position = 'absolute';
+    measure.style.visibility = 'hidden';
+    measure.style.whiteSpace = 'pre';
+    measure.style.pointerEvents = 'none';
+    measure.style.left = '-9999px';
+    measure.style.top = '0';
+    document.body.appendChild(measure);
+  }
+
+  const syncWidth = () => {
+    const styles = window.getComputedStyle(input);
+    measure.style.font = styles.font;
+    measure.style.letterSpacing = styles.letterSpacing;
+    measure.textContent = input.value || input.placeholder || '';
+
+    const horizontalPadding =
+      parseFloat(styles.paddingLeft) +
+      parseFloat(styles.paddingRight) +
+      parseFloat(styles.borderLeftWidth) +
+      parseFloat(styles.borderRightWidth) +
+      18;
+    const minWidth = window.innerWidth <= 430 ? 176 : 188;
+    const defaultMaxWidth = window.innerWidth <= 430 ? 320 : 352;
+    const fieldWidth = field?.clientWidth || input.parentElement?.clientWidth || defaultMaxWidth;
+    const maxWidth = Math.min(fieldWidth, defaultMaxWidth);
+    const contentWidth = Math.ceil(measure.getBoundingClientRect().width + horizontalPadding);
+    const width = Math.max(minWidth, Math.min(maxWidth, contentWidth));
+    input.style.width = `${width}px`;
+  };
+
+  input.addEventListener('input', syncWidth);
+  window.addEventListener('resize', syncWidth);
+  if (typeof ResizeObserver === 'function' && field) {
+    const resizeObserver = new ResizeObserver(syncWidth);
+    resizeObserver.observe(field);
+    input._landingAutosizeObserver = resizeObserver;
+  }
+  if (document.fonts?.ready) {
+    document.fonts.ready.then(syncWidth).catch(() => {});
+  }
+  syncWidth();
 }
 
 let backgroundPrototypeSyncToken = 0;
@@ -146,6 +225,7 @@ syncBackgroundPrototypePlayer();
 // Start in landing mode
 showLanding(true);
 initMoopCustomizer();
+initLandingNameAutosize();
 syncBackgroundPrototypePlayer();
 
 const playerNameInput = document.getElementById('player-name');

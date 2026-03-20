@@ -150,38 +150,40 @@
 
 <div id="role-banner"></div>
 
-<!-- Landing logo -->
-<div class="logo-area" id="landing-logo">
-  <div class="logo" id="landing-logo-text" aria-label="MORP" draggable="false">
-    <span class="logo-letter">M</span>
-    <span class="logo-letter">O</span>
-    <span class="logo-letter">R</span>
-    <span class="logo-letter">P</span>
+<div class="landing-main-cluster" id="landing-main-cluster">
+  <!-- Landing logo -->
+  <div class="logo-area" id="landing-logo">
+    <div class="logo" id="landing-logo-text" aria-label="MORP" draggable="false">
+      <span class="logo-letter">M</span>
+      <span class="logo-letter">O</span>
+      <span class="logo-letter">R</span>
+      <span class="logo-letter">P</span>
+    </div>
   </div>
-</div>
 
-<!-- Connect screen -->
-<div class="card-row">
-  <div id="panel-connect">
-    <h2>Join a Game</h2>
-    <input type="hidden" id="server-url">
-    <div class="connect-field">
-      <input type="text" id="player-name" placeholder="your name" maxlength="20" aria-label="your name">
-    </div>
-    <div class="moop-sidebar" id="moop-sidebar">
-      <div class="moop-preview-frame">
-        <div class="moop-preview" id="moop-preview"></div>
+  <!-- Connect screen -->
+  <div class="card-row">
+    <div id="panel-connect">
+      <h2>Join a Game</h2>
+      <input type="hidden" id="server-url">
+      <div class="connect-field">
+        <input type="text" id="player-name" placeholder="your name" maxlength="20" aria-label="your name">
       </div>
-      <div class="moop-action-row">
-        <button class="btn-customize" id="moop-btn" type="button">customize</button>
-        <button class="btn-customize btn-customize-random" id="moop-random-btn" type="button" title="randomize moop" aria-label="randomize moop">?</button>
+      <div class="moop-sidebar" id="moop-sidebar">
+        <div class="moop-preview-frame">
+          <div class="moop-preview" id="moop-preview"></div>
+        </div>
+        <div class="moop-action-row">
+          <button class="btn-customize" id="moop-btn" type="button">customize</button>
+          <button class="btn-customize btn-customize-random" id="moop-random-btn" type="button" title="randomize moop" aria-label="randomize moop">?</button>
+        </div>
       </div>
-    </div>
-    <button class="btn-create-lobby" onclick="createLobby()">Create Lobby</button>
-    <div class="connect-divider"><span>or</span></div>
-    <div class="connect-join-row">
-      <input type="text" id="join-code" placeholder="lobby code" maxlength="6">
-      <button onclick="joinLobby()">Join</button>
+      <button class="btn-create-lobby" onclick="createLobby()">Create Lobby</button>
+      <div class="connect-divider"><span>or</span></div>
+      <div class="connect-join-row">
+        <input type="text" id="join-code" placeholder="lobby code" maxlength="6">
+        <button onclick="joinLobby()">Join</button>
+      </div>
     </div>
   </div>
 </div>
@@ -232,40 +234,56 @@
 <!-- Pre-game lobby layout (shown after connecting, before the game starts) -->
 <div id="pregame-layout" class="stage-layout lobby-stage hidden">
   <div id="pregame-action-area" class="action-area-card">
-    <div id="pregame-host-controls" class="pregame-host-controls hidden">
-      <div class="pregame-controls-top">
-        <div id="pregame-options-menu" class="pregame-menu">
-          <button type="button" id="pregame-options-btn" class="pregame-menu-trigger">Game Options</button>
-          <div id="pregame-options-panel" class="pregame-menu-panel hidden">
-            <label class="pregame-menu-option" for="timers-toggle">
-              <input type="checkbox" id="timers-toggle" checked>
-              <span>Timers enabled (30 s morp guess / endgame guess)</span>
-            </label>
-            <label class="pregame-menu-option" for="drawing-hints-toggle">
-              <input type="checkbox" id="drawing-hints-toggle" checked>
-              <span>Drawing hints (players draw instead of type)</span>
-            </label>
-          </div>
+    <div class="pregame-logo-shell" id="pregame-logo" aria-hidden="true">
+      <div class="logo-area pregame-logo-area">
+        <div class="logo pregame-logo" id="pregame-logo-text" aria-label="MORP" draggable="false">
+          <span class="logo-letter">M</span>
+          <span class="logo-letter">O</span>
+          <span class="logo-letter">R</span>
+          <span class="logo-letter">P</span>
         </div>
-      </div>
-      <div class="pregame-panel-section pregame-boards-panel">
-        <div class="pregame-panel-heading">
-          <span class="pregame-boards-title">Custom Boards</span>
-        </div>
-        <textarea id="custom-boards-input" rows="4" placeholder='Paste a JSON array here, or leave it blank to use the default set. [{"board_hint":"Theme...","words":["word1","word2"]}]'></textarea>
-        <div class="pregame-boards-actions">
-          <div class="pregame-boards-buttons">
-            <button type="button" onclick="setCustomBoards()">Set Boards</button>
-            <button type="button" onclick="copyBoardTemplate()" id="copy-template-btn" class="btn-secondary-mint">Copy Template</button>
-          </div>
-          <span id="custom-boards-status" class="pregame-boards-status">using defaults</span>
-        </div>
-      </div>
-      <div class="pregame-panel-footer">
-        <button type="button" id="btn-start" onclick="startGame()" disabled>Start Game</button>
       </div>
     </div>
-    <p id="pregame-lobby-waiting" style="color:#3A2848;font-size:0.88em">Waiting for players…</p>
+    <div class="pregame-main-cluster">
+      <div class="pregame-top-stack">
+        <span id="pregame-lobby-code-display" class="pregame-lobby-code-chip hidden"></span>
+        <button type="button" id="pregame-help-btn" class="pregame-help-btn">How to Play</button>
+        <button type="button" id="pregame-changelog-btn" class="pregame-changelog-btn">What's New</button>
+      </div>
+      <div id="pregame-host-controls" class="pregame-host-controls hidden">
+        <div class="pregame-controls-top">
+          <div id="pregame-options-menu" class="pregame-menu">
+            <button type="button" id="pregame-options-btn" class="pregame-menu-trigger">Game Options</button>
+            <div id="pregame-options-panel" class="pregame-menu-panel hidden">
+              <label class="pregame-menu-option" for="timers-toggle">
+                <input type="checkbox" id="timers-toggle" checked>
+                <span>Timers enabled (30 s morp guess / endgame guess)</span>
+              </label>
+              <label class="pregame-menu-option" for="drawing-hints-toggle">
+                <input type="checkbox" id="drawing-hints-toggle" checked>
+                <span>Drawing hints (players draw instead of type)</span>
+              </label>
+            </div>
+          </div>
+          <div id="pregame-boards-menu" class="pregame-menu">
+            <button type="button" id="pregame-boards-btn" class="pregame-menu-trigger">Custom Boards</button>
+            <div id="pregame-boards-panel" class="pregame-menu-panel hidden">
+              <textarea id="custom-boards-input" rows="4" placeholder='Paste a JSON array here, or leave it blank to use the default set. [{"board_hint":"Theme...","words":["word1","word2"]}]'></textarea>
+              <div class="pregame-boards-buttons">
+                <button type="button" onclick="setCustomBoards()">Set Boards</button>
+                <button type="button" onclick="copyBoardTemplate()" id="copy-template-btn" class="btn-secondary-mint">Copy Template</button>
+              </div>
+              <span id="custom-boards-status" class="pregame-boards-status">using defaults</span>
+            </div>
+          </div>
+        </div>
+        <div class="pregame-panel-footer">
+          <button type="button" id="btn-start" onclick="startGame()" disabled>Start Game</button>
+        </div>
+        <div id="pregame-phase-label" class="pregame-phase-label"></div>
+      </div>
+      <p id="pregame-lobby-waiting">Waiting for players…</p>
+    </div>
   </div>
 
 </div>

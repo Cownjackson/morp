@@ -1,5 +1,5 @@
 import { state, send } from './state.js';
-import { avatarColor, initials, playerName, httpBase, log, clearPregameLobbyMoops, syncPregameLobbyMoops } from './helpers.js';
+import { avatarColor, initials, playerName, httpBase, log, clearPregameLobbyMoops, syncPregameLobbyMoops, refreshBackgroundLogoPaint } from './helpers.js';
 import { renderMoopInto } from './cosmetics.js';
 import { buildMoopSprite } from './moop-sprite.js';
 import { renderStrokesToCanvas, clearCanvas } from './drawing.js';
@@ -229,10 +229,26 @@ async function syncPregameLobbyBackgroundMoops() {
 
 export function renderPregameLobby() {
   syncPregameLobbyBackgroundMoops();
-  document.getElementById('pregame-host-controls').classList.toggle('hidden', !state.isHost);
-  document.getElementById('pregame-lobby-waiting').style.display = state.isHost ? 'none' : 'block';
-  document.getElementById('btn-start').disabled =
-    !state.isHost || state.lobbyStarted || Object.values(state.players).length < 3;
+  const isHost = state.isHost;
+  const pregameHostControls = document.getElementById('pregame-host-controls');
+  const pregameWaiting = document.getElementById('pregame-lobby-waiting');
+  const pregamePhaseLabel = document.getElementById('pregame-phase-label');
+  const headerPhaseLabel = document.getElementById('phase-label');
+  const startButton = document.getElementById('btn-start');
+  const currentPhase = headerPhaseLabel?.textContent?.trim() || 'WAITING';
+
+  pregameHostControls.classList.toggle('hidden', !isHost);
+  pregameWaiting.style.display = isHost ? 'none' : 'block';
+
+  if (pregamePhaseLabel) {
+    pregamePhaseLabel.textContent = currentPhase;
+    pregamePhaseLabel.classList.toggle('hidden', !isHost);
+  }
+
+  startButton.disabled =
+    !isHost || state.lobbyStarted || Object.values(state.players).length < 3;
+
+  refreshBackgroundLogoPaint({ delayed: true, late: true });
 }
 
 export function renderChat() {
