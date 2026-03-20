@@ -3,8 +3,8 @@ import { state, send } from './state.js';
 // ─── Interaction catalog ───────────────────────────────────────────────────────
 // Add new interactions here — no other file needs to change for new types.
 const INTERACTIONS = [
-  { id: 'spitball',    label: 'Spitball',    targeted: true,  emoji: '🫧' },
-  { id: 'sticky_hand', label: 'Sticky Hand', targeted: true,  emoji: '🖐️' },
+  { id: 'spitball',    label: 'Spitball',    targeted: true,  emoji: '🫧', icon: '/assets/spitball.png' },
+  { id: 'sticky_hand', label: 'Sticky Hand', targeted: true,  emoji: '🖐️', icon: '/assets/sticky_hand.png' },
   { id: 'bark',        label: 'Bark',        targeted: false, emoji: '🐕' },
   { id: 'meow',        label: 'Meow',        targeted: false, emoji: '🐱' },
 ];
@@ -39,7 +39,10 @@ export function initInteractions() {
     const btn = document.createElement('button');
     btn.className = 'ix-option';
     btn.dataset.id = ix.id;
-    btn.innerHTML = `<span class="ix-emoji">${ix.emoji}</span><span class="ix-label">${ix.label}</span>`;
+    const iconHtml = ix.icon
+      ? `<img class="ix-icon" src="${ix.icon}" alt="${ix.label}" draggable="false">`
+      : `<span class="ix-emoji">${ix.emoji}</span>`;
+    btn.innerHTML = `${iconHtml}<span class="ix-label">${ix.label}</span>`;
     btn.addEventListener('click', e => { e.stopPropagation(); _onOptionClick(ix); });
     menu.appendChild(btn);
   }
@@ -145,6 +148,8 @@ export function handleInteraction({ player_id, interaction, target_id }) {
   if (target_id) {
     if (interaction === 'sticky_hand') {
       _playStickyHand(player_id, target_id);
+    } else if (interaction === 'spitball') {
+      _playSpitball(player_id, target_id);
     } else {
       _playProjectile(player_id, target_id, interaction);
     }
@@ -199,6 +204,128 @@ function _playProjectile(fromId, toId, interaction) {
     }
   }
   requestAnimationFrame(step);
+}
+
+// ─── Spitball animation ──────────────────────────────────────────────────────
+// Lean-back windup → straight shot with ease-out → wet blue trail → splat.
+function _playSpitball(fromId, toId) {
+  const from = _avatarCenter(fromId);
+  const to   = _avatarCenter(toId);
+  if (!from || !to) return;
+
+  const layer = document.getElementById('interaction-anim-layer');
+  const dx   = to.x - from.x;
+  const dy   = to.y - from.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  // Unit vector toward target (for lean direction)
+  const ux = dx / dist;
+  const uy = dy / dist;
+
+  // Spitball image (hidden during windup)
+  const ball = document.createElement('img');
+  ball.className = 'ix-spitball';
+  ball.src = '/assets/spitball.png';
+  ball.draggable = false;
+  ball.style.opacity = '0';
+  layer.appendChild(ball);
+
+  // Spit sound — plays when ball launches, not during windup
+  const spitSfx = new Audio('/music/spit.mp3');
+  spitSfx.volume = 0.5;
+
+  // Phase durations
+  const T_LEAN  = 300;   // lean back
+  const T_FLIGHT = Math.max(790, Math.min(1460, dist * 1.46));
+
+  let launched = false;
+  let lastTrailT = 0;
+  const start = performance.now();
+
+  // Lean-back: tilt sender avatar away from target
+  const fromAvatar = document.querySelector(
+    `#game-player-row [data-player-id="${fromId}"] .moop-avatar`
+  );
+  if (fromAvatar) {
+    fromAvatar.style.setProperty('--lean-x', `${-ux * 18}px`);
+    fromAvatar.style.setProperty('--lean-y', `${-uy * 18}px`);
+  }
+  _applyAvatarClass(fromId, 'ix-spit-lean');
+
+  function step(now) {
+    const e = now - start;
+
+    if (e < T_LEAN) {
+      // Windup — ball stays hidden, avatar is leaning via CSS class
+      requestAnimationFrame(step);
+
+    } else {
+      // ── FLIGHT ──
+      if (!launched) {
+        launched = true;
+        ball.style.opacity = '1';
+        spitSfx.play().catch(() => {});
+      }
+
+      const t = Math.min(1, (e - T_LEAN) / T_FLIGHT);
+      // Slight ease-out that stays punchy — doesn't linger at the end
+      const ease = 1 - Math.pow(1 - t, 1.6);
+
+      const bx = from.x + dx * ease;
+      const by = from.y + dy * ease;
+
+      ball.style.left = bx + 'px';
+      ball.style.top  = by + 'px';
+      const spin = t * 540;
+      ball.style.transform = `translate(-50%,-50%) rotate(${spin}deg) scale(${0.9 + 0.3 * Math.sin(t * Math.PI)})`;
+
+      // Trail drops every ~6%
+      if (t - lastTrailT > 0.06 && t < 0.92) {
+        lastTrailT = t;
+        _spawnTrailDrop(layer, bx, by);
+      }
+
+      if (t < 1) {
+        requestAnimationFrame(step);
+      } else {
+        ball.remove();
+        _spawnSplatBurst(layer, to.x, to.y);
+        _playHitReaction(toId);
+      }
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+function _spawnTrailDrop(layer, x, y) {
+  const drop = document.createElement('div');
+  drop.className = 'ix-spit-trail';
+  // Slight random offset for organic feel
+  const ox = (Math.random() - 0.5) * 8;
+  const oy = (Math.random() - 0.5) * 8;
+  drop.style.left = (x + ox) + 'px';
+  drop.style.top  = (y + oy) + 'px';
+  const size = 4 + Math.random() * 6;
+  drop.style.width  = size + 'px';
+  drop.style.height = size + 'px';
+  layer.appendChild(drop);
+  drop.addEventListener('animationend', () => drop.remove(), { once: true });
+}
+
+function _spawnSplatBurst(layer, x, y) {
+  for (let i = 0; i < 6; i++) {
+    const drop = document.createElement('div');
+    drop.className = 'ix-spit-splat';
+    const angle = (Math.PI * 2 / 6) * i + (Math.random() - 0.5) * 0.5;
+    const r = 12 + Math.random() * 18;
+    drop.style.left = (x + Math.cos(angle) * r) + 'px';
+    drop.style.top  = (y + Math.sin(angle) * r) + 'px';
+    const size = 5 + Math.random() * 7;
+    drop.style.width  = size + 'px';
+    drop.style.height = size + 'px';
+    layer.appendChild(drop);
+    drop.addEventListener('animationend', () => drop.remove(), { once: true });
+  }
 }
 
 // ─── Sticky hand animation ────────────────────────────────────────────────────
