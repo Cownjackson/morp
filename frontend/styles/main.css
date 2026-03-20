@@ -1420,8 +1420,6 @@ body.is-landing #log-toggle:hover { color: var(--pinky); }
 }
 .moop-avatar.ix-hit  { animation: ix-hit  0.5s ease-out forwards; }
 .moop-avatar.ix-self { animation: ix-self 0.4s ease-out forwards; }
-.moop-avatar.ix-pull { animation: ix-pull 0.35s ease-out forwards; }
-
 /* ── Sticky hand ── */
 .ix-sticky-hand {
   position: fixed;
@@ -1431,13 +1429,6 @@ body.is-landing #log-toggle:hover { color: var(--pinky); }
   z-index: 25;
   transform-origin: center center;
   filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
-}
-
-@keyframes ix-pull {
-  0%   { transform: scale(1.1); }
-  35%  { transform: scale(0.88) skewX(8deg); }
-  70%  { transform: scale(1.04) skewX(-2deg); }
-  100% { transform: scale(1); }
 }
 
 /* ── Sticky hand: quick impact judder ── */
