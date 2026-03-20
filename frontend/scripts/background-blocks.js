@@ -14,6 +14,7 @@
   const minSpeed = 42;
   const maxSpeed = 135;
   const hitboxScale = 0.95;
+  const playerHitboxScale = 0.8;
   const sizeRanges = {
     squareMin: 170,
     squareMax: 350,
@@ -44,8 +45,8 @@
     vy: 41,
     rotation: 0,
     spin: 7,
-    baseSize: 124,
-    minScale: 0.74,
+    baseSize: 248,
+    minScale: 0.56,
     maxScale: 1.18,
     speedScaleMultiplier: 0.82,
     labelFontMin: 0.68,
@@ -155,6 +156,7 @@
       name: 'you',
       cosmetics: null,
       isHost: false,
+      spriteBounds: null,
       ...overrides
     };
   }
@@ -269,20 +271,62 @@
       sizeRanges.radiusMaxScale
     );
 
-    return { viewportScale, speedScale, radiusScale };
+    return { viewportScale, speedScale, radiusScale, smoothedScale };
+  }
+
+  function getEntityCollisionBounds(block) {
+    if (!isPlayerEntity(block)) {
+      return {
+        left: 0,
+        top: 0,
+        width: 1,
+        height: 1,
+        scale: hitboxScale
+      };
+    }
+
+    const bounds = block.playerData?.spriteBounds;
+    if (!bounds) {
+      return {
+        left: 0,
+        top: 0,
+        width: 1,
+        height: 1,
+        scale: playerHitboxScale
+      };
+    }
+
+    const left = clamp(bounds.left ?? 0, 0, 1);
+    const top = clamp(bounds.top ?? 0, 0, 1);
+
+    return {
+      left,
+      top,
+      width: clamp(bounds.width ?? 1, 0.01, 1 - left),
+      height: clamp(bounds.height ?? 1, 0.01, 1 - top),
+      scale: playerHitboxScale
+    };
   }
 
   function getHitbox(block, visual = false) {
     const angle = visual ? block.angle + block.jiggleAngle : block.angle;
     const scaleX = visual ? block.jiggleScaleX : 1;
     const scaleY = visual ? block.jiggleScaleY : 1;
+    const collisionBounds = getEntityCollisionBounds(block);
+    const angleRadians = (angle * Math.PI) / 180;
+    const cos = Math.cos(angleRadians);
+    const sin = Math.sin(angleRadians);
+    const localCenterX = (collisionBounds.left + collisionBounds.width * 0.5) - 0.5;
+    const localCenterY = (collisionBounds.top + collisionBounds.height * 0.5) - 0.5;
+    const offsetX = localCenterX * block.width * scaleX;
+    const offsetY = localCenterY * block.height * scaleY;
 
     return {
-      centerX: block.x + block.width / 2,
-      centerY: block.y + block.height / 2,
-      halfWidth: (block.width * scaleX * hitboxScale) / 2,
-      halfHeight: (block.height * scaleY * hitboxScale) / 2,
-      angle: (angle * Math.PI) / 180
+      centerX: block.x + block.width / 2 + (offsetX * cos) - (offsetY * sin),
+      centerY: block.y + block.height / 2 + (offsetX * sin) + (offsetY * cos),
+      halfWidth: (block.width * scaleX * collisionBounds.width * collisionBounds.scale) / 2,
+      halfHeight: (block.height * scaleY * collisionBounds.height * collisionBounds.scale) / 2,
+      angle: angleRadians
     };
   }
 
@@ -1157,7 +1201,7 @@
     }
 
     function updateResponsiveLayout() {
-      const { viewportScale, speedScale, radiusScale } = getResponsiveMetrics();
+      const { viewportScale, speedScale, radiusScale, smoothedScale } = getResponsiveMetrics();
 
       blocks.forEach((block) => {
         block.width = Math.round(block.baseWidth * viewportScale);
@@ -1176,7 +1220,7 @@
       });
 
       const playerScale = clamp(
-        viewportScale * 1.02,
+        viewportScale * lerp(0.78, 1.02, smoothedScale),
         prototypePlayerConfig.minScale,
         prototypePlayerConfig.maxScale
       );

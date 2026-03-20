@@ -200,11 +200,13 @@ async function syncPregameLobbyBackgroundMoops() {
 
   const payload = await Promise.all(players.map(async (player) => {
     let spriteSrc = null;
+    let spriteBounds = null;
 
     if (player.cosmetics) {
       try {
         const sprite = await buildMoopSprite(player.cosmetics);
         spriteSrc = sprite.src;
+        spriteBounds = sprite.bounds || null;
       } catch (error) {
         console.warn(`Failed to build lobby floating sprite for ${player.name || player.id}.`, error);
       }
@@ -215,6 +217,7 @@ async function syncPregameLobbyBackgroundMoops() {
       name: player.name,
       cosmetics: player.cosmetics || null,
       spriteSrc,
+      spriteBounds,
       isHost: player.id === state.hostId,
       isYou: player.id === state.playerId
     };
