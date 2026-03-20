@@ -1,4 +1,5 @@
 import { COSMETICS } from './constants.js';
+import { getMoopLayerFiles } from './moop-sprite.js';
 
 // ─── Cosmetics ─────────────────────────────────────────────────────────────────
 const equipped = { colors: 'trumskin', hats: 'none', eyes: 'eyes', face: 'none', accessories: 'none' };
@@ -11,27 +12,9 @@ export function getCosmetics() {
   return { color: equipped.colors, hat: equipped.hats, eyes: equipped.eyes, face: equipped.face, accessory: equipped.accessories };
 }
 
-function _cosmeticFile(category, id) {
-  const item = COSMETICS[category]?.find(i => i.id === id);
-  return item?.file || null;
-}
-
 export function renderMoopInto(container, cosmeticsObj) {
   container.innerHTML = '';
-  const color = cosmeticsObj.color || cosmeticsObj.colors || 'trumskin';
-  const hat = cosmeticsObj.hat || cosmeticsObj.hats || 'none';
-  const eyes = cosmeticsObj.eyes || 'eyes';
-  const face = cosmeticsObj.face || 'none';
-  const acc = cosmeticsObj.accessory || cosmeticsObj.accessories || 'none';
-
-  const layers = [
-    { cls: 'layer-color', file: _cosmeticFile('colors', color) },
-    { cls: 'layer-base', file: 'cosmetics/moop.png' },
-    { cls: 'layer-eyes', file: _cosmeticFile('eyes', eyes) },
-    { cls: 'layer-face', file: _cosmeticFile('face', face) },
-    { cls: 'layer-acc', file: _cosmeticFile('accessories', acc) },
-    { cls: 'layer-hat', file: _cosmeticFile('hats', hat) },
-  ];
+  const layers = getMoopLayerFiles(cosmeticsObj);
   layers.forEach(l => {
     if (!l.file) return;
     const img = document.createElement('img');
@@ -70,6 +53,9 @@ function saveEquippedCosmetics() {
 function persistAndRefreshCosmetics(activeCategory = null) {
   saveEquippedCosmetics();
   renderMoopPreviews();
+  window.dispatchEvent(new CustomEvent('moop-cosmetics-changed', {
+    detail: getCosmetics()
+  }));
 
   if (!activeCategory) return;
 

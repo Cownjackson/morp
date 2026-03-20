@@ -36,6 +36,34 @@
     mobileBreakpoint: 960,
     mobileSizeBoost: 1.25
   };
+  const prototypePlayerConfig = {
+    id: 'local-prototype-player',
+    xRatio: 0.48,
+    yRatio: 0.5,
+    vx: -44,
+    vy: 41,
+    rotation: 0,
+    spin: 7,
+    baseSize: 124,
+    minScale: 0.74,
+    maxScale: 1.18,
+    speedScaleMultiplier: 0.82,
+    labelFontMin: 0.68,
+    labelFontMax: 0.88,
+    labelMaxWidthRatio: 1.4
+  };
+  const floatingPlayerSeatRatios = [
+    { xRatio: 0.18, yRatio: 0.22, vx: 36, vy: 42, spin: 6 },
+    { xRatio: 0.74, yRatio: 0.18, vx: -38, vy: 39, spin: -5 },
+    { xRatio: 0.84, yRatio: 0.52, vx: -42, vy: -34, spin: 7 },
+    { xRatio: 0.68, yRatio: 0.78, vx: -34, vy: -40, spin: -6 },
+    { xRatio: 0.34, yRatio: 0.8, vx: 39, vy: -36, spin: 5 },
+    { xRatio: 0.1, yRatio: 0.58, vx: 35, vy: -41, spin: -7 },
+    { xRatio: 0.28, yRatio: 0.38, vx: 40, vy: 33, spin: 6 },
+    { xRatio: 0.58, yRatio: 0.34, vx: -37, vy: 35, spin: -5 },
+    { xRatio: 0.46, yRatio: 0.62, vx: 33, vy: -38, spin: 7 },
+    { xRatio: 0.88, yRatio: 0.3, vx: -35, vy: 37, spin: -6 }
+  ];
   const responsiveBoostTiers = [
     {
       startWidth: 700,
@@ -106,6 +134,29 @@
 
   function randomInRange(min, max) {
     return Math.round(min + Math.random() * (max - min));
+  }
+
+  function hashString(value) {
+    let hash = 0;
+    for (let index = 0; index < value.length; index += 1) {
+      hash = ((hash << 5) - hash) + value.charCodeAt(index);
+      hash |= 0;
+    }
+    return Math.abs(hash);
+  }
+
+  function isPlayerEntity(entity) {
+    return entity?.type === 'player';
+  }
+
+  function getPrototypePlayerPayload(overrides = {}) {
+    return {
+      id: prototypePlayerConfig.id,
+      name: 'you',
+      cosmetics: null,
+      isHost: false,
+      ...overrides
+    };
   }
 
   function lerp(start, end, amount) {
@@ -393,10 +444,146 @@
   }
 
   function renderBlock(block) {
+    if (isPlayerEntity(block)) {
+      block.element.style.transform = `translate(${block.x}px, ${block.y}px)`;
+      if (block.bodyElement) {
+        block.bodyElement.style.transform =
+          `rotate(${block.angle + block.jiggleAngle}deg) ` +
+          `scale(${block.jiggleScaleX}, ${block.jiggleScaleY})`;
+      }
+      return;
+    }
+
     block.element.style.transform =
       `translate(${block.x}px, ${block.y}px) ` +
       `rotate(${block.angle + block.jiggleAngle}deg) ` +
       `scale(${block.jiggleScaleX}, ${block.jiggleScaleY})`;
+  }
+
+  function renderPlayerEntityVisual(entity) {
+    if (!entity?.bodyElement) return;
+    entity.bodyElement.innerHTML = '';
+    entity.bodyElement.style.visibility = 'hidden';
+
+    if (!entity.playerData?.spriteSrc) {
+      return;
+    }
+
+    const img = document.createElement('img');
+    img.className = 'bg-player-sprite';
+    img.alt = '';
+    img.src = entity.playerData.spriteSrc;
+    entity.bodyElement.appendChild(img);
+    entity.bodyElement.style.visibility = 'visible';
+  }
+
+  function updatePlayerEntityText(entity) {
+    if (!entity) return;
+    if (entity.nameElement) {
+      entity.nameElement.textContent = entity.playerData?.name || 'you';
+      entity.nameElement.classList.toggle('is-you', entity.playerData?.isYou === true);
+    }
+    if (entity.crownElement) {
+      entity.crownElement.style.display = entity.playerData?.isHost ? 'block' : 'none';
+    }
+  }
+
+  function updatePlayerEntityLayout(entity, playerScale) {
+    if (!entity || !entity.element || !entity.bodyElement || !entity.labelElement || !entity.nameElement) return;
+
+    const bodySize = Math.round(entity.baseWidth * playerScale);
+    const labelFontSize = clamp(
+      0.5 + playerScale * 0.28,
+      prototypePlayerConfig.labelFontMin,
+      prototypePlayerConfig.labelFontMax
+    );
+
+    entity.width = bodySize;
+    entity.height = bodySize;
+    entity.radius = bodySize * 0.5;
+    entity.element.style.width = `${bodySize}px`;
+    entity.element.style.height = `${bodySize}px`;
+    entity.bodyElement.style.width = `${bodySize}px`;
+    entity.bodyElement.style.height = `${bodySize}px`;
+    entity.labelElement.style.top = `${bodySize + 8}px`;
+    entity.nameElement.style.fontSize = `${labelFontSize}rem`;
+    entity.nameElement.style.maxWidth = `${Math.round(bodySize * prototypePlayerConfig.labelMaxWidthRatio)}px`;
+
+    if (entity.crownElement) {
+      entity.crownElement.style.fontSize = `${Math.max(0.7, labelFontSize + 0.04)}rem`;
+    }
+  }
+
+  function createPlayerEntity(container, playerData = {}) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'bg-player-entity';
+
+    const body = document.createElement('div');
+    body.className = 'bg-player-body';
+
+    const label = document.createElement('div');
+    label.className = 'bg-player-label';
+
+    const crown = document.createElement('div');
+    crown.className = 'bg-player-crown';
+    crown.textContent = '♛';
+
+    const name = document.createElement('div');
+    name.className = 'bg-player-name';
+
+    label.append(crown, name);
+    wrapper.append(body, label);
+    container.appendChild(wrapper);
+
+    const entity = {
+      type: 'player',
+      id: playerData.id || prototypePlayerConfig.id,
+      playerData: getPrototypePlayerPayload(playerData),
+      element: wrapper,
+      bodyElement: body,
+      labelElement: label,
+      crownElement: crown,
+      nameElement: name,
+      width: prototypePlayerConfig.baseSize,
+      height: prototypePlayerConfig.baseSize,
+      baseWidth: prototypePlayerConfig.baseSize,
+      baseHeight: prototypePlayerConfig.baseSize,
+      color: 'transparent',
+      radius: prototypePlayerConfig.baseSize * 0.5,
+      baseRadius: prototypePlayerConfig.baseSize * 0.5,
+      x: 0,
+      y: 0,
+      vx: prototypePlayerConfig.vx,
+      vy: prototypePlayerConfig.vy,
+      baseVx: prototypePlayerConfig.vx,
+      baseVy: prototypePlayerConfig.vy,
+      angle: prototypePlayerConfig.rotation,
+      spin: prototypePlayerConfig.spin,
+      jiggleCompressionX: 0,
+      jiggleCompressionY: 0,
+      jiggleTiltAmplitude: 0,
+      jiggleTime: collisionJiggleConfig.settleDuration,
+      jiggleAngle: 0,
+      jiggleScaleX: 1,
+      jiggleScaleY: 1,
+      xRatio: prototypePlayerConfig.xRatio,
+      yRatio: prototypePlayerConfig.yRatio,
+      lastWallHitX: -Infinity,
+      lastWallHitNX: 0,
+      lastWallHitY: -Infinity,
+      lastWallHitNY: 0
+    };
+
+    updatePlayerEntityText(entity);
+    updatePlayerEntityLayout(entity, 1);
+    renderPlayerEntityVisual(entity);
+
+    return entity;
+  }
+
+  function getFloatingPlayerSeat(playerId, fallbackIndex = 0) {
+    const hash = hashString(String(playerId || fallbackIndex));
+    return floatingPlayerSeatRatios[hash % floatingPlayerSeatRatios.length];
   }
 
   function hexToRgb(hex) {
@@ -685,7 +872,117 @@
         dvdTimeout: null
       };
     });
+    const playerEntities = [];
+    const playerEntitiesById = new Map();
+    const prototypePlayerEntity = createPlayerEntity(container, getPrototypePlayerPayload());
+    playerEntities.push(prototypePlayerEntity);
+    prototypePlayerEntity.hiddenFromScene = false;
+
+    function getPhysicsEntities() {
+      return blocks.concat(playerEntities.filter((entity) => !entity.hiddenFromScene));
+    }
+
+    function syncPrototypePlayer(overrides = {}) {
+      prototypePlayerEntity.playerData = getPrototypePlayerPayload(overrides);
+      updatePlayerEntityText(prototypePlayerEntity);
+      renderPlayerEntityVisual(prototypePlayerEntity);
+    }
+
+    function showPrototypePlayer(show) {
+      prototypePlayerEntity.element.classList.toggle('hidden', !show);
+      prototypePlayerEntity.hiddenFromScene = !show;
+    }
+
+    function attachPlayerEntity(entity) {
+      if (!playerEntities.includes(entity)) {
+        playerEntities.push(entity);
+      }
+      entity.hiddenFromScene = false;
+      entity.element.classList.remove('hidden');
+    }
+
+    function detachPlayerEntity(entity) {
+      const index = playerEntities.indexOf(entity);
+      if (index >= 0) {
+        playerEntities.splice(index, 1);
+      }
+      entity.element.remove();
+    }
+
+    function updatePlayerEntityFromPlayer(entity, playerData = {}) {
+      const previousSpriteSrc = entity.playerData?.spriteSrc;
+      const previousName = entity.playerData?.name;
+      const previousIsHost = entity.playerData?.isHost;
+      const previousIsYou = entity.playerData?.isYou;
+
+      entity.playerData = {
+        ...entity.playerData,
+        ...playerData
+      };
+
+      if (
+        previousName !== entity.playerData.name ||
+        previousIsHost !== entity.playerData.isHost ||
+        previousIsYou !== entity.playerData.isYou
+      ) {
+        updatePlayerEntityText(entity);
+      }
+
+      if (previousSpriteSrc !== entity.playerData.spriteSrc) {
+        renderPlayerEntityVisual(entity);
+      }
+    }
+
+    function createPlayerEntityFromPlayer(playerData = {}) {
+      const entity = createPlayerEntity(container, playerData);
+      const seat = getFloatingPlayerSeat(playerData.id, playerEntitiesById.size);
+      entity.xRatio = seat.xRatio;
+      entity.yRatio = seat.yRatio;
+      entity.vx = seat.vx;
+      entity.vy = seat.vy;
+      entity.baseVx = seat.vx;
+      entity.baseVy = seat.vy;
+      entity.spin = seat.spin;
+      attachPlayerEntity(entity);
+      playerEntitiesById.set(playerData.id, entity);
+      return entity;
+    }
+
+    function syncBackgroundPlayers(players = []) {
+      if (!Array.isArray(players) || players.length === 0) {
+        Array.from(playerEntitiesById.values()).forEach((entity) => {
+          playerEntitiesById.delete(entity.id);
+          detachPlayerEntity(entity);
+        });
+        showPrototypePlayer(true);
+        return;
+      }
+
+      showPrototypePlayer(false);
+
+      const incomingIds = new Set(players.map((player) => player.id));
+
+      Array.from(playerEntitiesById.entries()).forEach(([playerId, entity]) => {
+        if (incomingIds.has(playerId)) return;
+        playerEntitiesById.delete(playerId);
+        detachPlayerEntity(entity);
+      });
+
+      players.forEach((player) => {
+        const existing = playerEntitiesById.get(player.id);
+        if (existing) {
+          updatePlayerEntityFromPlayer(existing, player);
+          return;
+        }
+
+        createPlayerEntityFromPlayer(player);
+      });
+    }
     function triggerCornerFanfare(block) {
+      if (!block?.dvdImg) {
+        return;
+      }
+
       block.element.classList.remove('corner-flash');
       void block.element.offsetWidth;
       block.element.classList.add('corner-flash');
@@ -842,6 +1139,19 @@
         block.vx = Math.sign(block.vx || block.baseVx) * Math.abs(block.baseVx * speedScale);
         block.vy = Math.sign(block.vy || block.baseVy) * Math.abs(block.baseVy * speedScale);
       });
+
+      const playerScale = clamp(
+        viewportScale * 1.02,
+        prototypePlayerConfig.minScale,
+        prototypePlayerConfig.maxScale
+      );
+      const playerSpeedScale = speedScale * prototypePlayerConfig.speedScaleMultiplier;
+
+      playerEntities.forEach((entity) => {
+        updatePlayerEntityLayout(entity, playerScale);
+        entity.vx = Math.sign(entity.vx || entity.baseVx) * Math.abs(entity.baseVx * playerSpeedScale);
+        entity.vy = Math.sign(entity.vy || entity.baseVy) * Math.abs(entity.baseVy * playerSpeedScale);
+      });
     }
 
     function placeBlocks() {
@@ -850,14 +1160,14 @@
 
       updateResponsiveLayout();
 
-      blocks.forEach((block) => {
-        const maxX = Math.max(viewportWidth - block.width, 0);
-        const maxY = Math.max(viewportHeight - block.height, 0);
+      getPhysicsEntities().forEach((entity) => {
+        const maxX = Math.max(viewportWidth - entity.width, 0);
+        const maxY = Math.max(viewportHeight - entity.height, 0);
 
-        block.x = clamp(maxX * block.xRatio, 0, maxX);
-        block.y = clamp(maxY * block.yRatio, 0, maxY);
-        bounceOffWalls(block, viewportWidth, viewportHeight);
-        renderBlock(block);
+        entity.x = clamp(maxX * entity.xRatio, 0, maxX);
+        entity.y = clamp(maxY * entity.yRatio, 0, maxY);
+        bounceOffWalls(entity, viewportWidth, viewportHeight);
+        renderBlock(entity);
       });
     }
 
@@ -905,7 +1215,7 @@
     }
 
     function updateCollisionJiggle(delta) {
-      blocks.forEach((block) => {
+      getPhysicsEntities().forEach((block) => {
         block.jiggleTime = Math.min(block.jiggleTime + delta, collisionJiggleConfig.settleDuration);
 
         if (block.jiggleTime >= collisionJiggleConfig.settleDuration) {
@@ -938,7 +1248,7 @@
         clamp(window.innerWidth / 1024, 0, 1)
       );
 
-      blocks.forEach((block) => {
+      getPhysicsEntities().forEach((block) => {
         const centerX = block.x + block.width / 2;
         const centerY = block.y + block.height / 2;
         const dx = centerX - x;
@@ -981,9 +1291,10 @@
 
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
+      const physicsEntities = getPhysicsEntities();
 
       // Integrate positions
-      blocks.forEach((block) => {
+      physicsEntities.forEach((block) => {
         block.x += block.vx * delta;
         block.y += block.vy * delta;
         block.angle += block.spin * delta;
@@ -993,19 +1304,19 @@
       // Block-block collision — two passes: first applies impulse + jiggle,
       // second cleans up any residual overlap without re-triggering jiggle
       for (let pass = 0; pass < 2; pass += 1) {
-        for (let i = 0; i < blocks.length; i += 1) {
-          for (let j = i + 1; j < blocks.length; j += 1) {
-            const hit = resolveCollision(blocks[i], blocks[j]);
+        for (let i = 0; i < physicsEntities.length; i += 1) {
+          for (let j = i + 1; j < physicsEntities.length; j += 1) {
+            const hit = resolveCollision(physicsEntities[i], physicsEntities[j]);
             if (hit && hit.impulse > 0.5 && pass === 0) {
-              applyCollisionJiggle(blocks[i], -hit.normalX, -hit.normalY, hit.impulse);
-              applyCollisionJiggle(blocks[j], hit.normalX, hit.normalY, hit.impulse);
+              applyCollisionJiggle(physicsEntities[i], -hit.normalX, -hit.normalY, hit.impulse);
+              applyCollisionJiggle(physicsEntities[j], hit.normalX, hit.normalY, hit.impulse);
             }
           }
         }
       }
 
       // Wall bounce — single pass after collision resolution, with jiggle + corner ripple
-      blocks.forEach((block) => {
+      physicsEntities.forEach((block) => {
         const wallHit = bounceOffWalls(block, viewportWidth, viewportHeight);
         if (wallHit) {
           const speed = Math.hypot(block.vx, block.vy);
@@ -1033,7 +1344,7 @@
 
       // Update jiggle animation, clamp speeds, render
       updateCollisionJiggle(delta);
-      blocks.forEach((block) => {
+      physicsEntities.forEach((block) => {
         keepMomentum(block);
         renderBlock(block);
       });
@@ -1074,6 +1385,12 @@
       animate(now);
     });
 
+    window.addEventListener('background-prototype-player-change', (event) => {
+      syncPrototypePlayer(event.detail || {});
+    });
+    window.syncBackgroundPlayers = syncBackgroundPlayers;
+    window.setBackgroundPrototypePlayer = syncPrototypePlayer;
+    syncPrototypePlayer(window.backgroundPrototypePlayerData || {});
     container.dataset.initialized = 'true';
   }
 

@@ -1,6 +1,7 @@
 import { state, send } from './state.js';
 import { avatarColor, initials, playerName, httpBase, log } from './helpers.js';
 import { renderMoopInto } from './cosmetics.js';
+import { buildMoopSprite } from './moop-sprite.js';
 import { renderStrokesToCanvas, clearCanvas } from './drawing.js';
 
 // ─── Role banner ──────────────────────────────────────────────────────────────
@@ -174,10 +175,6 @@ function renderPlayers(containerId, { avatarSize = 80 } = {}) {
 
 }
 
-export function renderPregamePlayerRow() {
-  renderPlayers('pregame-player-row');
-}
-
 export function renderInGamePlayerRow() {
   const N = Object.values(state.players).length;
   // 320px at 3 players, scales down to ~160px at 10 — keeps avatars from overlapping
@@ -185,8 +182,46 @@ export function renderInGamePlayerRow() {
   renderPlayers('game-player-row', { avatarSize });
 }
 
+let backgroundLobbySyncToken = 0;
+
+async function syncBackgroundLobbyPlayers() {
+  if (typeof window.syncBackgroundPlayers !== 'function') return;
+
+  const players = Object.values(state.players);
+  if (players.length === 0) {
+    window.syncBackgroundPlayers([]);
+    return;
+  }
+
+  const syncToken = ++backgroundLobbySyncToken;
+  const payload = await Promise.all(players.map(async (player) => {
+    let spriteSrc = null;
+
+    if (player.cosmetics) {
+      try {
+        const sprite = await buildMoopSprite(player.cosmetics);
+        spriteSrc = sprite.src;
+      } catch (error) {
+        console.warn(`Failed to build lobby floating sprite for ${player.name || player.id}.`, error);
+      }
+    }
+
+    return {
+      id: player.id,
+      name: player.name,
+      cosmetics: player.cosmetics || null,
+      spriteSrc,
+      isHost: player.id === state.hostId,
+      isYou: player.id === state.playerId
+    };
+  }));
+
+  if (syncToken !== backgroundLobbySyncToken) return;
+  window.syncBackgroundPlayers(payload);
+}
+
 export function renderPregameLobby() {
-  renderPregamePlayerRow();
+  syncBackgroundLobbyPlayers();
   document.getElementById('pregame-host-controls').classList.toggle('hidden', !state.isHost);
   document.getElementById('pregame-lobby-waiting').style.display = state.isHost ? 'none' : 'block';
   document.getElementById('btn-start').disabled =

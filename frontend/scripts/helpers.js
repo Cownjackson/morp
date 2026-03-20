@@ -64,6 +64,9 @@ export function showLanding(show) {
   document.querySelector('.card-row').classList[method]('hidden');
   document.getElementById('chat-wrap').classList.toggle('hidden', show);
   if (show) {
+    if (typeof window.syncBackgroundPlayers === 'function') {
+      window.syncBackgroundPlayers([]);
+    }
     document.getElementById('pregame-layout').classList.add('hidden');
     document.getElementById('game-layout').classList.add('hidden');
     showInteractionTrigger(false);
