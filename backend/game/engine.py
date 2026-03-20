@@ -371,12 +371,18 @@ class GameEngine:
             self.on_player_disconnect(target_id)
             return False
 
+    def _remove_player_from_unstarted_lobby(self, player_id: str) -> bool:
+        """Remove a player entirely if they leave before the game has started."""
+        if self.lobby.started or player_id not in self.lobby.players:
+            return False
+        del self.lobby.players[player_id]
+        self._reassign_host_if_needed()
+        return True
+
     def on_player_disconnect(self, player_id: str) -> None:
         if player_id not in self.lobby.players:
             return  # already removed (e.g., kicked from lobby)
-        if not self.lobby.started:
-            del self.lobby.players[player_id]
-            self._reassign_host_if_needed()
+        if self._remove_player_from_unstarted_lobby(player_id):
             return
         self.lobby.players[player_id].is_connected = False
         self._reassign_host_if_needed()

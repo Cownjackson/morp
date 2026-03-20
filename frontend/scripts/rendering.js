@@ -1,5 +1,5 @@
 import { state, send } from './state.js';
-import { avatarColor, initials, playerName, httpBase, log } from './helpers.js';
+import { avatarColor, initials, playerName, httpBase, log, clearPregameLobbyMoops, syncPregameLobbyMoops } from './helpers.js';
 import { renderMoopInto } from './cosmetics.js';
 import { buildMoopSprite } from './moop-sprite.js';
 import { renderStrokesToCanvas, clearCanvas } from './drawing.js';
@@ -184,19 +184,17 @@ export function renderInGamePlayerRow() {
 
 let backgroundLobbySyncToken = 0;
 
-async function syncBackgroundLobbyPlayers() {
-  if (typeof window.syncBackgroundPlayers !== 'function') return;
-
+async function syncPregameLobbyBackgroundMoops() {
   const syncToken = ++backgroundLobbySyncToken;
 
   if (state.screen !== 'pregame') {
-    window.syncBackgroundPlayers([]);
+    clearPregameLobbyMoops();
     return;
   }
 
   const players = Object.values(state.players).filter(player => player.is_connected !== false);
   if (players.length === 0) {
-    window.syncBackgroundPlayers([]);
+    clearPregameLobbyMoops();
     return;
   }
 
@@ -223,11 +221,11 @@ async function syncBackgroundLobbyPlayers() {
   }));
 
   if (syncToken !== backgroundLobbySyncToken || state.screen !== 'pregame') return;
-  window.syncBackgroundPlayers(payload);
+  syncPregameLobbyMoops(payload);
 }
 
 export function renderPregameLobby() {
-  syncBackgroundLobbyPlayers();
+  syncPregameLobbyBackgroundMoops();
   document.getElementById('pregame-host-controls').classList.toggle('hidden', !state.isHost);
   document.getElementById('pregame-lobby-waiting').style.display = state.isHost ? 'none' : 'block';
   document.getElementById('btn-start').disabled =

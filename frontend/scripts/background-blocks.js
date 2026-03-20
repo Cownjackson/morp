@@ -878,6 +878,11 @@
     playerEntities.push(prototypePlayerEntity);
     prototypePlayerEntity.hiddenFromScene = true;
     prototypePlayerEntity.element.classList.add('hidden');
+    const backgroundMoopModes = Object.freeze({
+      OFF: 'off',
+      PREGAME: 'pregame',
+    });
+    let backgroundMoopMode = backgroundMoopModes.OFF;
 
     function getPhysicsEntities() {
       return blocks.concat(playerEntities.filter((entity) => !entity.hiddenFromScene));
@@ -916,6 +921,16 @@
         detachPlayerEntity(entity);
       });
       showPrototypePlayer(false);
+    }
+
+    function setBackgroundMoopMode(mode = backgroundMoopModes.OFF) {
+      backgroundMoopMode = mode === backgroundMoopModes.PREGAME
+        ? backgroundMoopModes.PREGAME
+        : backgroundMoopModes.OFF;
+
+      if (backgroundMoopMode === backgroundMoopModes.OFF) {
+        clearBackgroundPlayers();
+      }
     }
 
     function updatePlayerEntityFromPlayer(entity, playerData = {}) {
@@ -957,7 +972,12 @@
       return entity;
     }
 
-    function syncBackgroundPlayers(players = []) {
+    function syncPregameLobbyMoops(players = []) {
+      if (backgroundMoopMode !== backgroundMoopModes.PREGAME) {
+        clearBackgroundPlayers();
+        return;
+      }
+
       if (!Array.isArray(players) || players.length === 0) {
         clearBackgroundPlayers();
         return;
@@ -982,6 +1002,16 @@
 
         createPlayerEntityFromPlayer(player);
       });
+    }
+
+    function syncBackgroundPlayers(players = []) {
+      if (!Array.isArray(players) || players.length === 0) {
+        setBackgroundMoopMode(backgroundMoopModes.OFF);
+        return;
+      }
+
+      setBackgroundMoopMode(backgroundMoopModes.PREGAME);
+      syncPregameLobbyMoops(players);
     }
     function triggerCornerFanfare(block) {
       if (!block?.dvdImg) {
@@ -1393,6 +1423,8 @@
     window.addEventListener('background-prototype-player-change', (event) => {
       syncPrototypePlayer(event.detail || {});
     });
+    window.setBackgroundMoopMode = setBackgroundMoopMode;
+    window.syncPregameLobbyMoops = syncPregameLobbyMoops;
     window.syncBackgroundPlayers = syncBackgroundPlayers;
     window.setBackgroundPrototypePlayer = syncPrototypePlayer;
     syncPrototypePlayer(window.backgroundPrototypePlayerData || {});
