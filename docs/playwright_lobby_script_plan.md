@@ -1,27 +1,52 @@
-# Playwright Lobby Script Plan
+# Playwright Lobby Script
 
-## Goal
-Automate opening N browser windows (2–10) all joined to the same lobby for faster local testing — no manual name entry or code copying.
+Opens N browser windows (2–10) all joined to the same Morp lobby for local multiplayer testing — no manual name entry or code copying.
 
-## Files to Create
-- `scripts/open_lobby.js` — main script
-- `scripts/package.json` — `{ "dependencies": { "playwright": "*" } }`
+## Setup (one-time)
 
-## Usage
 ```bash
-cd scripts && npm install
-node open_lobby.js [n] [baseUrl]
-# e.g. node open_lobby.js 4 http://localhost:2718
+cd scripts
+npm install
 ```
 
-## Flow
-1. Launch Chromium (`headless: false`)
-2. Open isolated context for player `1` → go to `baseUrl`
-3. Fill `#player-name` = `"1"` → click `button:has-text("Create Lobby")`
-4. Wait for `#lobby-code-display:not(.hidden)` → extract code from text `"Lobby Code: XXXXXX"`
-5. For players `2`–`n`: new context → go to `baseUrl` → fill name → fill `#join-code` → click `"Join"` → wait for `#lobby-code-display:not(.hidden)`
+This installs Playwright and its Chromium browser.
 
-## Key Selectors
+## Usage
+
+```bash
+node open_lobby.js [n] [baseUrl]
+```
+
+| Argument | Default | Description |
+|---|---|---|
+| `n` | `2` | Number of players (2–10) |
+| `baseUrl` | `http://localhost:27182` | URL of the running Morp frontend |
+
+**Examples:**
+
+```bash
+# 2 players, default URL
+node open_lobby.js
+
+# 4 players, default URL
+node open_lobby.js 4
+
+# 4 players, custom port
+node open_lobby.js 4 http://localhost:27182
+```
+
+Press **Ctrl+C** in the terminal to close all browser windows and end the session.
+
+## What it does
+
+1. Opens a visible Chromium window for player `1`, navigates to `baseUrl`
+2. Fills in name `"1"` and clicks **Create Lobby**
+3. Waits for the lobby code to appear in `#lobby-code-display`
+4. For each subsequent player: opens a new isolated browser context, fills in their name and the lobby code, and clicks **Join**
+5. All windows stay open until you kill the process
+
+## Key selectors (for reference)
+
 | Element | Selector |
 |---|---|
 | Name input | `#player-name` |
@@ -30,8 +55,9 @@ node open_lobby.js [n] [baseUrl]
 | Join button | `button:has-text("Join")` |
 | Connection confirmed | `#lobby-code-display:not(.hidden)` |
 
-## Notes
-- Each player needs a separate `browser.newContext()` for isolated storage/session
-- Lobby code is in the format `"Lobby Code: XXXXXX"` — strip prefix to get raw code
-- Default URL: `http://localhost:2718`
-- Max 10 players per lobby (enforced by CLI arg validation)
+The lobby code is read from `#lobby-code-display` which has the format `"Lobby Code: XXXXXX"`.
+
+## Files
+
+- `scripts/open_lobby.js` — the script
+- `scripts/package.json` — Playwright dependency
