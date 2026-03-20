@@ -1,5 +1,76 @@
 import { state, send } from './state.js';
 
+// ─── Spit overlay ───────────────────────────────────────────────────────────
+// Blue tint applied to YOUR screen when hit by spitballs.
+// TODO: replace with custom artwork overlay once art is ready.
+//
+// First hit applies a big initial splat. Subsequent hits while active add less
+// than the decay removes, so a single player can never stack to blinding.
+// But multiple players hitting in concert can overwhelm the decay.
+const SPIT_INITIAL_HIT  = 0.55;  // first hit (from zero) — immediately noticeable
+const SPIT_STACK_HIT    = 0.18;  // subsequent hits while already active
+const SPIT_MAX_OPACITY  = 1.0;   // hard cap
+const SPIT_DECAY_RATE   = 0.12;  // opacity lost per second — slow drain
+
+let _spitLevel = 0;
+let _spitOverlay = null;
+let _spitDecaying = false;
+
+function _ensureSpitOverlay() {
+  if (_spitOverlay) return _spitOverlay;
+  _spitOverlay = document.createElement('div');
+  _spitOverlay.id = 'spit-overlay';
+  document.body.appendChild(_spitOverlay);
+  return _spitOverlay;
+}
+
+function _onSpitHit() {
+  _ensureSpitOverlay();
+  const bump = _spitLevel <= 0 ? SPIT_INITIAL_HIT : SPIT_STACK_HIT;
+  _spitLevel = Math.min(SPIT_MAX_OPACITY, _spitLevel + bump);
+  _spitOverlay.style.opacity = String(_spitLevel);
+  if (!_spitDecaying) _startSpitDecay();
+  // Spawn splatter globs on the screen
+  _spawnSpitSplatters();
+}
+
+function _spawnSpitSplatters() {
+  const count = 4 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < count; i++) {
+    const glob = document.createElement('div');
+    glob.className = 'spit-glob';
+    // Random position biased toward center
+    const cx = 50 + (Math.random() - 0.5) * 70;
+    const cy = 50 + (Math.random() - 0.5) * 60;
+    glob.style.left = cx + '%';
+    glob.style.top  = cy + '%';
+    // Random blob size
+    const size = 30 + Math.random() * 60;
+    glob.style.width  = size + 'px';
+    glob.style.height = (size * (0.6 + Math.random() * 0.5)) + 'px';
+    // Random delay for staggered splat feel
+    glob.style.animationDelay = (Math.random() * 0.15) + 's';
+    _spitOverlay.appendChild(glob);
+    glob.addEventListener('animationend', () => glob.remove(), { once: true });
+  }
+}
+
+function _startSpitDecay() {
+  _spitDecaying = true;
+  let last = performance.now();
+  function tick(now) {
+    const dt = (now - last) / 1000;
+    last = now;
+    _spitLevel = Math.max(0, _spitLevel - SPIT_DECAY_RATE * dt);
+    _spitOverlay.style.opacity = String(_spitLevel);
+    if (_spitLevel > 0) {
+      requestAnimationFrame(tick);
+    } else {
+      _spitDecaying = false;
+    }
+  }
+  requestAnimationFrame(tick);
+}
 
 // ─── Interaction catalog ───────────────────────────────────────────────────────
 // Add new interactions here — no other file needs to change for new types.
