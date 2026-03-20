@@ -35,6 +35,9 @@ export function showScreen(name) {
   state.screen = name;
   document.getElementById('pregame-layout').classList.toggle('hidden', name !== 'pregame');
   document.getElementById('game-layout').classList.toggle('hidden', name !== 'ingame');
+  if (name !== 'pregame' && typeof window.syncBackgroundPlayers === 'function') {
+    window.syncBackgroundPlayers([]);
+  }
   showInteractionTrigger(name === 'ingame');
 }
 

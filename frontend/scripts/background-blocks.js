@@ -876,7 +876,8 @@
     const playerEntitiesById = new Map();
     const prototypePlayerEntity = createPlayerEntity(container, getPrototypePlayerPayload());
     playerEntities.push(prototypePlayerEntity);
-    prototypePlayerEntity.hiddenFromScene = false;
+    prototypePlayerEntity.hiddenFromScene = true;
+    prototypePlayerEntity.element.classList.add('hidden');
 
     function getPhysicsEntities() {
       return blocks.concat(playerEntities.filter((entity) => !entity.hiddenFromScene));
@@ -907,6 +908,14 @@
         playerEntities.splice(index, 1);
       }
       entity.element.remove();
+    }
+
+    function clearBackgroundPlayers() {
+      Array.from(playerEntitiesById.values()).forEach((entity) => {
+        playerEntitiesById.delete(entity.id);
+        detachPlayerEntity(entity);
+      });
+      showPrototypePlayer(false);
     }
 
     function updatePlayerEntityFromPlayer(entity, playerData = {}) {
@@ -950,11 +959,7 @@
 
     function syncBackgroundPlayers(players = []) {
       if (!Array.isArray(players) || players.length === 0) {
-        Array.from(playerEntitiesById.values()).forEach((entity) => {
-          playerEntitiesById.delete(entity.id);
-          detachPlayerEntity(entity);
-        });
-        showPrototypePlayer(true);
+        clearBackgroundPlayers();
         return;
       }
 

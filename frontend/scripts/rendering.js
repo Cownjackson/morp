@@ -187,13 +187,19 @@ let backgroundLobbySyncToken = 0;
 async function syncBackgroundLobbyPlayers() {
   if (typeof window.syncBackgroundPlayers !== 'function') return;
 
-  const players = Object.values(state.players);
+  const syncToken = ++backgroundLobbySyncToken;
+
+  if (state.screen !== 'pregame') {
+    window.syncBackgroundPlayers([]);
+    return;
+  }
+
+  const players = Object.values(state.players).filter(player => player.is_connected !== false);
   if (players.length === 0) {
     window.syncBackgroundPlayers([]);
     return;
   }
 
-  const syncToken = ++backgroundLobbySyncToken;
   const payload = await Promise.all(players.map(async (player) => {
     let spriteSrc = null;
 
@@ -216,7 +222,7 @@ async function syncBackgroundLobbyPlayers() {
     };
   }));
 
-  if (syncToken !== backgroundLobbySyncToken) return;
+  if (syncToken !== backgroundLobbySyncToken || state.screen !== 'pregame') return;
   window.syncBackgroundPlayers(payload);
 }
 

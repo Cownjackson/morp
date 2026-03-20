@@ -374,6 +374,10 @@ class GameEngine:
     def on_player_disconnect(self, player_id: str) -> None:
         if player_id not in self.lobby.players:
             return  # already removed (e.g., kicked from lobby)
+        if not self.lobby.started:
+            del self.lobby.players[player_id]
+            self._reassign_host_if_needed()
+            return
         self.lobby.players[player_id].is_connected = False
         self._reassign_host_if_needed()
         phase = self.state.phase
