@@ -36,36 +36,57 @@ function initPregameInfoToggles() {
   const waitingLabel = document.getElementById('pregame-lobby-waiting');
   if (waitingLabel) waitingLabel.textContent = 'Waiting for players...';
 
-  const optionsMenu = document.getElementById('pregame-options-menu');
-  const optionsBtn = document.getElementById('pregame-options-btn');
-  const optionsPanel = document.getElementById('pregame-options-panel');
-  if (optionsMenu && optionsBtn && optionsPanel) {
-    const closeOptionsMenu = () => {
-      optionsMenu.classList.remove('is-open');
-      optionsPanel.classList.add('hidden');
-      optionsBtn.setAttribute('aria-expanded', 'false');
-    };
+  const menuConfigs = [
+    {
+      menu: document.getElementById('pregame-options-menu'),
+      button: document.getElementById('pregame-options-btn'),
+      panel: document.getElementById('pregame-options-panel')
+    },
+    {
+      menu: document.getElementById('pregame-boards-menu'),
+      button: document.getElementById('pregame-boards-btn'),
+      panel: document.getElementById('pregame-boards-panel')
+    }
+  ].filter(config => config.menu && config.button && config.panel);
 
-    optionsBtn.setAttribute('aria-haspopup', 'true');
-    optionsBtn.setAttribute('aria-expanded', 'false');
-    optionsBtn.setAttribute('aria-controls', 'pregame-options-panel');
+  if (!menuConfigs.length) return;
 
-    optionsBtn.addEventListener('click', e => {
+  const closeMenu = ({ menu, button, panel }) => {
+    menu.classList.remove('is-open');
+    panel.classList.add('hidden');
+    button.setAttribute('aria-expanded', 'false');
+  };
+
+  const closeAllMenus = (exceptMenu = null) => {
+    menuConfigs.forEach(config => {
+      if (config.menu === exceptMenu) return;
+      closeMenu(config);
+    });
+  };
+
+  menuConfigs.forEach(({ menu, button, panel }) => {
+    button.setAttribute('aria-haspopup', 'true');
+    button.setAttribute('aria-expanded', 'false');
+    button.setAttribute('aria-controls', panel.id);
+
+    button.addEventListener('click', e => {
       e.stopPropagation();
-      const isOpen = optionsMenu.classList.toggle('is-open');
-      optionsPanel.classList.toggle('hidden', !isOpen);
-      optionsBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      const willOpen = !menu.classList.contains('is-open');
+      closeAllMenus(menu);
+      menu.classList.toggle('is-open', willOpen);
+      panel.classList.toggle('hidden', !willOpen);
+      button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
     });
 
-    optionsPanel.addEventListener('click', e => {
+    panel.addEventListener('click', e => {
       e.stopPropagation();
     });
+  });
 
-    document.addEventListener('click', e => {
-      if (optionsMenu.contains(e.target)) return;
-      closeOptionsMenu();
-    });
-  }
+  document.addEventListener('click', e => {
+    if (menuConfigs.some(({ menu }) => menu.contains(e.target))) return;
+    closeAllMenus();
+  });
 }
 
 function initChatPanel() {

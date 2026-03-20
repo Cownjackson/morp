@@ -828,9 +828,9 @@ body.is-landing #landing-meta-panel {
   margin: 0 auto;
   padding: 18px 20px 20px;
   border-radius: 24px;
-  border-color: rgba(90, 40, 72, 0.82);
-  background: rgba(16, 8, 21, 0.94);
-  box-shadow: 0 18px 36px rgba(0,0,0,0.24);
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
 .pregame-host-controls {
   display: flex;
@@ -842,7 +842,9 @@ body.is-landing #landing-meta-panel {
 .pregame-controls-top {
   width: 100%;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 18px;
 }
 .pregame-menu {
   position: relative;
@@ -850,42 +852,48 @@ body.is-landing #landing-meta-panel {
 }
 .pregame-menu-trigger {
   width: auto;
-  min-width: 170px;
+  min-width: 255px;
   margin: 0;
-  padding: 11px 18px;
+  padding: 16px 27px;
   border: none;
-  border-radius: 14px;
-  background: var(--lavender);
-  color: #2A1540;
+  border-radius: 18px;
+  background: var(--mint);
+  color: #1A3A28;
   text-align: center;
   cursor: pointer;
-  font-size: 1em;
+  font-size: 1.2em;
   font-weight: 600;
   user-select: none;
+  box-shadow:
+    0 12px 24px rgba(0,0,0,0.24),
+    inset 0 1px 0 rgba(255,255,255,0.08);
 }
 .pregame-menu.is-open .pregame-menu-trigger,
 .pregame-menu-trigger:hover {
-  background: #D9C2F8;
-  color: #2A1540;
+  background: #6ACFA0;
+  color: #1A3A28;
 }
 .pregame-menu-panel,
 .pregame-panel-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
 }
 .pregame-menu-panel {
   position: absolute;
-  top: 0;
-  left: calc(100% + 10px);
+  top: calc(100% + 15px);
+  left: 50%;
   right: auto;
-  width: min(320px, calc(100vw - 56px));
-  padding: 14px 16px;
+  width: min(630px, calc(100vw - 56px));
+  padding: 21px 24px;
   background: rgba(24, 13, 30, 0.72);
   border: 1px solid rgba(90, 40, 72, 0.9);
-  border-radius: 16px;
+  border-radius: 24px;
   box-shadow: 0 16px 30px rgba(0,0,0,0.22);
   z-index: 30;
+  transform: translateX(-50%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 .pregame-panel-section {
   width: 100%;
@@ -893,26 +901,6 @@ body.is-landing #landing-meta-panel {
   background: transparent;
   border: none;
   border-radius: 0;
-}
-.pregame-boards-panel {
-  gap: 16px;
-  font-size: 1.15em;
-}
-.pregame-panel-heading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  text-align: center;
-}
-.pregame-boards-title {
-  display: block;
-  color: var(--lavender);
-  font-size: 1.26em;
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-color: var(--lavender);
 }
 .pregame-menu-option {
   display: flex;
@@ -936,12 +924,12 @@ body.is-landing #landing-meta-panel {
 }
 #custom-boards-input {
   width: 100% !important;
-  min-height: 154px;
+  min-height: 231px;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 14px 16px !important;
+  padding: 18px 20px !important;
   border: 1px solid #3A2848 !important;
-  border-radius: 14px !important;
+  border-radius: 18px !important;
   background: #140A18 !important;
   color: #E8C8DC !important;
   font-family: monospace !important;
@@ -984,6 +972,7 @@ body.is-landing #landing-meta-panel {
   color: #907880;
   font-size: 0.88em;
   text-align: center;
+  display: block;
 }
 .pregame-panel-footer {
   display: flex;
@@ -991,7 +980,24 @@ body.is-landing #landing-meta-panel {
   width: 100%;
 }
 #btn-start {
-  min-width: 138px;
+  min-width: 207px;
+  padding: 15px 27px;
+  font-size: 1.08em;
+}
+#btn-start:not(:disabled) {
+  background: var(--punch);
+  color: var(--white);
+  box-shadow:
+    0 12px 24px rgba(0,0,0,0.24),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+}
+#btn-start:hover:not(:disabled) {
+  background: #9A0E28;
+}
+#btn-start:disabled {
+  background: #2A1A22;
+  color: #5A3848;
+  box-shadow: none;
 }
 #pregame-lobby-waiting {
   margin: 0;
@@ -1328,16 +1334,15 @@ body.is-landing #log-toggle:hover { color: var(--pinky); }
   }
   .pregame-menu-trigger {
     min-width: 0;
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 1.08em;
   }
   .pregame-menu-panel {
-    padding: 12px;
+    padding: 18px;
   }
-  .pregame-boards-actions,
   .pregame-boards-buttons {
     width: 100%;
-  }
-  .pregame-boards-actions {
-    align-items: center;
   }
   .pregame-boards-buttons {
     justify-content: center;
@@ -1352,10 +1357,11 @@ body.is-landing #log-toggle:hover { color: var(--pinky); }
     flex: 1;
   }
   .pregame-menu-panel {
-    top: calc(100% + 8px);
-    left: auto;
-    right: 0;
-    width: min(320px, calc(100vw - 40px));
+    top: calc(100% + 10px);
+    left: 50%;
+    right: auto;
+    width: min(480px, calc(100vw - 40px));
+    transform: translateX(-50%);
   }
   .chat-panel {
     padding: 6px 0 0;

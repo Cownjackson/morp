@@ -249,18 +249,16 @@
             </label>
           </div>
         </div>
-      </div>
-      <div class="pregame-panel-section pregame-boards-panel">
-        <div class="pregame-panel-heading">
-          <span class="pregame-boards-title">Custom Boards</span>
-        </div>
-        <textarea id="custom-boards-input" rows="4" placeholder='Paste a JSON array here, or leave it blank to use the default set. [{"board_hint":"Theme...","words":["word1","word2"]}]'></textarea>
-        <div class="pregame-boards-actions">
-          <div class="pregame-boards-buttons">
-            <button type="button" onclick="setCustomBoards()">Set Boards</button>
-            <button type="button" onclick="copyBoardTemplate()" id="copy-template-btn" class="btn-secondary-mint">Copy Template</button>
+        <div id="pregame-boards-menu" class="pregame-menu">
+          <button type="button" id="pregame-boards-btn" class="pregame-menu-trigger">Custom Boards</button>
+          <div id="pregame-boards-panel" class="pregame-menu-panel hidden">
+            <textarea id="custom-boards-input" rows="4" placeholder='Paste a JSON array here, or leave it blank to use the default set. [{"board_hint":"Theme...","words":["word1","word2"]}]'></textarea>
+            <div class="pregame-boards-buttons">
+              <button type="button" onclick="setCustomBoards()">Set Boards</button>
+              <button type="button" onclick="copyBoardTemplate()" id="copy-template-btn" class="btn-secondary-mint">Copy Template</button>
+            </div>
+            <span id="custom-boards-status" class="pregame-boards-status">using defaults</span>
           </div>
-          <span id="custom-boards-status" class="pregame-boards-status">using defaults</span>
         </div>
       </div>
       <div class="pregame-panel-footer">
