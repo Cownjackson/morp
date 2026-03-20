@@ -80,11 +80,10 @@ export function toggleLog() {
 export function showLanding(show) {
   const method = show ? 'remove' : 'add';
   state.screen = show ? 'landing' : state.screen;
-  document.getElementById('landing-logo').classList[method]('hidden');
+  document.getElementById('landing-main-cluster').classList[method]('hidden');
   document.getElementById('landing-footer').classList[method]('hidden');
   document.querySelector('header').classList[show ? 'add' : 'remove']('landing-mode');
   document.body.classList[show ? 'add' : 'remove']('is-landing');
-  document.querySelector('.card-row').classList[method]('hidden');
   document.getElementById('chat-wrap').classList.toggle('hidden', show);
   if (show) {
     clearPregameLobbyMoops();

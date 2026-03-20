@@ -150,38 +150,40 @@
 
 <div id="role-banner"></div>
 
-<!-- Landing logo -->
-<div class="logo-area" id="landing-logo">
-  <div class="logo" id="landing-logo-text" aria-label="MORP" draggable="false">
-    <span class="logo-letter">M</span>
-    <span class="logo-letter">O</span>
-    <span class="logo-letter">R</span>
-    <span class="logo-letter">P</span>
+<div class="landing-main-cluster" id="landing-main-cluster">
+  <!-- Landing logo -->
+  <div class="logo-area" id="landing-logo">
+    <div class="logo" id="landing-logo-text" aria-label="MORP" draggable="false">
+      <span class="logo-letter">M</span>
+      <span class="logo-letter">O</span>
+      <span class="logo-letter">R</span>
+      <span class="logo-letter">P</span>
+    </div>
   </div>
-</div>
 
-<!-- Connect screen -->
-<div class="card-row">
-  <div id="panel-connect">
-    <h2>Join a Game</h2>
-    <input type="hidden" id="server-url">
-    <div class="connect-field">
-      <input type="text" id="player-name" placeholder="your name" maxlength="20" aria-label="your name">
-    </div>
-    <div class="moop-sidebar" id="moop-sidebar">
-      <div class="moop-preview-frame">
-        <div class="moop-preview" id="moop-preview"></div>
+  <!-- Connect screen -->
+  <div class="card-row">
+    <div id="panel-connect">
+      <h2>Join a Game</h2>
+      <input type="hidden" id="server-url">
+      <div class="connect-field">
+        <input type="text" id="player-name" placeholder="your name" maxlength="20" aria-label="your name">
       </div>
-      <div class="moop-action-row">
-        <button class="btn-customize" id="moop-btn" type="button">customize</button>
-        <button class="btn-customize btn-customize-random" id="moop-random-btn" type="button" title="randomize moop" aria-label="randomize moop">?</button>
+      <div class="moop-sidebar" id="moop-sidebar">
+        <div class="moop-preview-frame">
+          <div class="moop-preview" id="moop-preview"></div>
+        </div>
+        <div class="moop-action-row">
+          <button class="btn-customize" id="moop-btn" type="button">customize</button>
+          <button class="btn-customize btn-customize-random" id="moop-random-btn" type="button" title="randomize moop" aria-label="randomize moop">?</button>
+        </div>
       </div>
-    </div>
-    <button class="btn-create-lobby" onclick="createLobby()">Create Lobby</button>
-    <div class="connect-divider"><span>or</span></div>
-    <div class="connect-join-row">
-      <input type="text" id="join-code" placeholder="lobby code" maxlength="6">
-      <button onclick="joinLobby()">Join</button>
+      <button class="btn-create-lobby" onclick="createLobby()">Create Lobby</button>
+      <div class="connect-divider"><span>or</span></div>
+      <div class="connect-join-row">
+        <input type="text" id="join-code" placeholder="lobby code" maxlength="6">
+        <button onclick="joinLobby()">Join</button>
+      </div>
     </div>
   </div>
 </div>

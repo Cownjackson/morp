@@ -92,6 +92,60 @@ function initChatPanel() {
   syncDraftState();
 }
 
+function initLandingNameAutosize() {
+  const input = document.getElementById('player-name');
+  if (!input || input.dataset.autosizeInit === 'true') return;
+  input.dataset.autosizeInit = 'true';
+
+  const field = input.closest('.connect-field');
+  let measure = document.getElementById('landing-name-measure');
+  if (!measure) {
+    measure = document.createElement('span');
+    measure.id = 'landing-name-measure';
+    measure.setAttribute('aria-hidden', 'true');
+    measure.style.position = 'absolute';
+    measure.style.visibility = 'hidden';
+    measure.style.whiteSpace = 'pre';
+    measure.style.pointerEvents = 'none';
+    measure.style.left = '-9999px';
+    measure.style.top = '0';
+    document.body.appendChild(measure);
+  }
+
+  const syncWidth = () => {
+    const styles = window.getComputedStyle(input);
+    measure.style.font = styles.font;
+    measure.style.letterSpacing = styles.letterSpacing;
+    measure.textContent = input.value || input.placeholder || '';
+
+    const horizontalPadding =
+      parseFloat(styles.paddingLeft) +
+      parseFloat(styles.paddingRight) +
+      parseFloat(styles.borderLeftWidth) +
+      parseFloat(styles.borderRightWidth) +
+      18;
+    const minWidth = window.innerWidth <= 430 ? 176 : 188;
+    const defaultMaxWidth = window.innerWidth <= 430 ? 320 : 352;
+    const fieldWidth = field?.clientWidth || input.parentElement?.clientWidth || defaultMaxWidth;
+    const maxWidth = Math.min(fieldWidth, defaultMaxWidth);
+    const contentWidth = Math.ceil(measure.getBoundingClientRect().width + horizontalPadding);
+    const width = Math.max(minWidth, Math.min(maxWidth, contentWidth));
+    input.style.width = `${width}px`;
+  };
+
+  input.addEventListener('input', syncWidth);
+  window.addEventListener('resize', syncWidth);
+  if (typeof ResizeObserver === 'function' && field) {
+    const resizeObserver = new ResizeObserver(syncWidth);
+    resizeObserver.observe(field);
+    input._landingAutosizeObserver = resizeObserver;
+  }
+  if (document.fonts?.ready) {
+    document.fonts.ready.then(syncWidth).catch(() => {});
+  }
+  syncWidth();
+}
+
 let backgroundPrototypeSyncToken = 0;
 
 async function syncBackgroundPrototypePlayer() {
@@ -146,6 +200,7 @@ syncBackgroundPrototypePlayer();
 // Start in landing mode
 showLanding(true);
 initMoopCustomizer();
+initLandingNameAutosize();
 syncBackgroundPrototypePlayer();
 
 const playerNameInput = document.getElementById('player-name');
