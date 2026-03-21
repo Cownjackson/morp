@@ -378,7 +378,7 @@ function _processMessage(msg) {
         document.getElementById('endgame-ghost-waiting').style.display = 'none';
         document.getElementById('endgame-ghost-hint-input').disabled   = false;
       } else {
-        document.getElementById('btn-endgame-guess').disabled = true;
+        enableBoardWordSelection();
       }
       document.getElementById('endgame-guess-result').textContent = '';
 
