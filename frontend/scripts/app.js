@@ -224,6 +224,8 @@ showLanding(true);
 initMoopCustomizer();
 initLandingNameAutosize();
 syncBackgroundPrototypePlayer();
+document.body.dataset.appShellReady = 'true';
+window.dispatchEvent(new Event('morp:app-shell-ready'));
 
 const playerNameInput = document.getElementById('player-name');
 if (playerNameInput) {
