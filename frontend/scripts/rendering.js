@@ -518,10 +518,11 @@ export function resolveWordGuess(correct, onReveal) {
 
 /**
  * Animate the simultaneous endgame guess reveal.
- * results: [{player_id, guess, correct}, ...]
+ * results: [{player_id, guess, correct}, ...] — in submission order
+ * safePlayerId: the winner (first correct guesser), or null
  * onDone: callback after all animations finish
  */
-export function animateEndgameReveal(results, onDone) {
+export function animateEndgameReveal(results, safePlayerId, onDone) {
   const guessesWithWords = results.filter(r => r.guess);
   if (guessesWithWords.length === 0) {
     if (onDone) onDone();
@@ -556,7 +557,12 @@ export function animateEndgameReveal(results, onDone) {
     card.dataset.flyX = offsets[i].x;
     card.dataset.flyY = offsets[i].y;
 
-    cards.push({ el: card, correct: r.correct });
+    // Determine card style: correct winner = green, correct but slower = yellow, wrong = red
+    let style = 'wrong';
+    if (r.correct) {
+      style = (safePlayerId && r.player_id === safePlayerId) ? 'correct' : 'slow-correct';
+    }
+    cards.push({ el: card, style });
   });
 
   // Fly all cards
@@ -570,10 +576,10 @@ export function animateEndgameReveal(results, onDone) {
     });
   });
 
-  // After fly (400ms) + suspense (1000ms), reveal correct/wrong
+  // After fly (400ms) + suspense (1000ms), reveal result
   setTimeout(() => {
     cards.forEach(c => {
-      c.el.classList.add(c.correct ? 'word-toss-correct' : 'word-toss-wrong');
+      c.el.classList.add(`word-toss-${c.style}`);
     });
     // Hold the reveal, then fade out
     setTimeout(() => {

@@ -871,6 +871,13 @@ body.is-landing #landing-meta-panel {
   box-shadow: 0 0 30px rgba(135, 220, 171, 0.5);
   transition: border-color 0.3s, color 0.3s, background 0.3s, box-shadow 0.3s;
 }
+.word-toss-card.word-toss-slow-correct {
+  border-color: #D1912A;
+  color: #FFCE18;
+  background: #1E1408;
+  box-shadow: 0 0 30px rgba(209, 145, 42, 0.5);
+  transition: border-color 0.3s, color 0.3s, background 0.3s, box-shadow 0.3s;
+}
 .word-toss-card.word-toss-wrong {
   border-color: #B21232;
   color: #FEAED2;

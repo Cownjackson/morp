@@ -295,14 +295,24 @@ function _processMessage(msg) {
         : `✗ ${playerName(msg.morp_id)} guessed wrong. Target: "${msg.target_word}"${msg.timed_out ? ' (timed out)' : ''}`;
       log(resultText, msg.correct ? 'ok' : 'warn');
       _startAnimationLock();
-      if (msg.guess) animateWordGuess(msg.guess);
-      resolveWordGuess(msg.correct, () => {
-        document.getElementById('guess-result').textContent = resultText;
-        document.getElementById('guess-result').style.color = msg.correct ? '#87DCAB' : '#FEAED2';
+      if (msg.guess) {
+        animateWordGuess(msg.guess);
+        resolveWordGuess(msg.correct, () => {
+          document.getElementById('guess-result').textContent = resultText;
+          document.getElementById('guess-result').style.color = msg.correct ? '#87DCAB' : '#FEAED2';
+          state.targetWord = msg.target_word;
+          renderBoard();
+          _endAnimationLock();
+        });
+      } else {
+        // No guess submitted — show failure message with a brief delay for readability
+        document.getElementById('guess-result').textContent =
+          `✗ ${playerName(msg.morp_id)} failed to guess! Target: "${msg.target_word}"`;
+        document.getElementById('guess-result').style.color = '#FEAED2';
         state.targetWord = msg.target_word;
         renderBoard();
-        _endAnimationLock();
-      });
+        setTimeout(_endAnimationLock, 2000);
+      }
       break;
     }
 
@@ -449,7 +459,7 @@ function _processMessage(msg) {
       if (msg.timed_out) {
         resEl.innerHTML = `<span style="color:#FEAED2">⏰ Time's up!</span>`;
       }
-      animateEndgameReveal(msg.results, () => {
+      animateEndgameReveal(msg.results, msg.safe_player_id, () => {
         const winner = msg.safe_player_id ? playerName(msg.safe_player_id) : null;
         resEl.innerHTML = winner
           ? `<span style="color:#87DCAB">✓ ${winner} guessed correctly! Target: "${msg.target_word}"</span>`
