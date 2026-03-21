@@ -689,10 +689,10 @@ async def _broadcast_endgame_guesses_revealed(
         "draw": resolution.get("draw", False),
     })
     await manager.broadcast(lobby_id, _lobby_update(engine))
-    await _check_endgame_round_end(lobby_id, engine)
+    await _check_endgame_round_end(lobby_id, engine, draw=resolution.get("draw", False))
 
 
-async def _check_endgame_round_end(lobby_id: str, engine: GameEngine):
+async def _check_endgame_round_end(lobby_id: str, engine: GameEngine, draw: bool = False):
     phase = engine.state.phase
     if phase == GamePhase.GAME_OVER:
         await _broadcast_game_over(lobby_id, engine)
@@ -703,6 +703,7 @@ async def _check_endgame_round_end(lobby_id: str, engine: GameEngine):
             "safe_player_id": es.safe_player_id,
             "target_word": es.target_word,
             "host_id": engine.lobby.host_id,
+            "draw": draw,
         })
 
 

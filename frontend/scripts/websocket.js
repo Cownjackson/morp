@@ -498,9 +498,11 @@ function _processMessage(msg) {
 
     case 'endgame_round_end': {
       const ec = document.getElementById('round-end-content');
-      ec.innerHTML = msg.safe_player_id
-        ? `<p style="color:#C09AB8;margin-bottom:8px">${playerName(msg.safe_player_id)} survived. Target: "${msg.target_word}"</p>`
-        : `<p style="color:#FEAED2;margin-bottom:8px">Nobody guessed correctly. Target: "${msg.target_word}"</p>`;
+      ec.innerHTML = msg.draw
+        ? `<p style="color:#FFCE18;margin-bottom:8px">Draw! Both auto-submitted correctly. Target: "${msg.target_word}"</p>`
+        : msg.safe_player_id
+          ? `<p style="color:#C09AB8;margin-bottom:8px">${playerName(msg.safe_player_id)} survived. Target: "${msg.target_word}"</p>`
+          : `<p style="color:#FEAED2;margin-bottom:8px">Nobody guessed correctly. Target: "${msg.target_word}"</p>`;
       if (state.isHost) {
         const btn = document.createElement('button');
         btn.className = 'primary'; btn.textContent = 'Next Sudden Death Round ▶';
