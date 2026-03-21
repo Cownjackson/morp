@@ -67,7 +67,6 @@
         speedScaleMultiplier: 0.96,
         radiusScaleMultiplier: 0.96,
         spreadScale: 0.78,
-        safePadding: 16,
         impulseRadiusMultiplier: 0.92,
         impulseStrengthMultiplier: 0.82,
         rippleRadiusMultiplier: 0.88
@@ -79,7 +78,6 @@
         speedScaleMultiplier: 0.98,
         radiusScaleMultiplier: 0.98,
         spreadScale: 0.83,
-        safePadding: 18,
         impulseRadiusMultiplier: 0.97,
         impulseStrengthMultiplier: 0.88,
         rippleRadiusMultiplier: 0.92
@@ -91,7 +89,6 @@
         speedScaleMultiplier: 1,
         radiusScaleMultiplier: 1,
         spreadScale: 0.9,
-        safePadding: 22,
         impulseRadiusMultiplier: 1,
         impulseStrengthMultiplier: 0.93,
         rippleRadiusMultiplier: 0.97
@@ -103,7 +100,6 @@
         speedScaleMultiplier: 1,
         radiusScaleMultiplier: 1,
         spreadScale: 1,
-        safePadding: 28,
         impulseRadiusMultiplier: 1,
         impulseStrengthMultiplier: 1,
         rippleRadiusMultiplier: 1
@@ -115,7 +111,6 @@
         speedScaleMultiplier: 1.02,
         radiusScaleMultiplier: 1.03,
         spreadScale: 1.08,
-        safePadding: 38,
         impulseRadiusMultiplier: 1.08,
         impulseStrengthMultiplier: 1.04,
         rippleRadiusMultiplier: 1.05
@@ -171,9 +166,17 @@
     impulseStrength: 150,
     rippleLifetime: 950,
     rippleStartRadius: 10,
-    rippleEndRadius: 120,
-    cornerRippleWindow: 180
+    rippleEndRadius: 120
   };
+  const cornerTriggerConfig = Object.freeze({
+    size: {
+      minPx: 24,
+      maxPx: 40,
+      shortSideRatio: 0.035,
+      scale: 0.85
+    },
+    effects: ['cornerRipple', 'dvdFanfare']
+  });
   const collisionJiggleConfig = {
     maxTilt: 0.72,
     maxStretch: 0.036,
@@ -265,7 +268,6 @@
       speedScaleMultiplier: lerp(lowerProfile.speedScaleMultiplier, upperProfile.speedScaleMultiplier, amount),
       radiusScaleMultiplier: lerp(lowerProfile.radiusScaleMultiplier, upperProfile.radiusScaleMultiplier, amount),
       spreadScale: lerp(lowerProfile.spreadScale, upperProfile.spreadScale, amount),
-      safePadding: lerp(lowerProfile.safePadding, upperProfile.safePadding, amount),
       impulseRadiusMultiplier: lerp(lowerProfile.impulseRadiusMultiplier, upperProfile.impulseRadiusMultiplier, amount),
       impulseStrengthMultiplier: lerp(lowerProfile.impulseStrengthMultiplier, upperProfile.impulseStrengthMultiplier, amount),
       rippleRadiusMultiplier: lerp(lowerProfile.rippleRadiusMultiplier, upperProfile.rippleRadiusMultiplier, amount)
@@ -460,22 +462,11 @@
         (browserChromeHeight * responsiveSceneConfig.browserChromePenalty)
     );
     const profile = getResponsiveProfile(classMetric);
-    // Safe padding grows a bit on compact screens and when mobile browser chrome
-    // reduces the visible height, which keeps the scene from crowding the edges.
-    const safePadding = Math.round(
-      clamp(
-        profile.safePadding +
-          (shortSide * responsiveSceneConfig.safePaddingShortSideRatio) +
-          (browserChromeHeight * responsiveSceneConfig.safePaddingChromeRatio),
-        responsiveSceneConfig.minSafePadding,
-        responsiveSceneConfig.maxSafePadding
-      )
-    );
     const bounds = {
-      left: safePadding,
-      top: safePadding,
-      right: Math.max((safePadding + 1), visibleWidth - safePadding),
-      bottom: Math.max((safePadding + 1), visibleHeight - safePadding)
+      left: 0,
+      top: 0,
+      right: Math.max(visibleWidth, 1),
+      bottom: Math.max(visibleHeight, 1)
     };
     bounds.width = Math.max(bounds.right - bounds.left, 1);
     bounds.height = Math.max(bounds.bottom - bounds.top, 1);
@@ -634,6 +625,32 @@
       x: Math.abs(cos) * hitbox.halfWidth + Math.abs(sin) * hitbox.halfHeight,
       y: Math.abs(sin) * hitbox.halfWidth + Math.abs(cos) * hitbox.halfHeight
     };
+  }
+
+  function createAxisAlignedHitbox(left, top, width, height) {
+    return {
+      centerX: left + width / 2,
+      centerY: top + height / 2,
+      halfWidth: width / 2,
+      halfHeight: height / 2,
+      angle: 0
+    };
+  }
+
+  function hitboxesOverlap(hitboxA, hitboxB) {
+    const axes = [...getAxes(hitboxA), ...getAxes(hitboxB)];
+
+    for (const axis of axes) {
+      const projectionA = projectHitbox(hitboxA, axis);
+      const projectionB = projectHitbox(hitboxB, axis);
+      const overlap = Math.min(projectionA.max, projectionB.max) - Math.max(projectionA.min, projectionB.min);
+
+      if (overlap <= 0) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   function pointInRotatedHitbox(hitbox, x, y) {
@@ -895,11 +912,7 @@
       jiggleScaleX: 1,
       jiggleScaleY: 1,
       xRatio: prototypePlayerConfig.xRatio,
-      yRatio: prototypePlayerConfig.yRatio,
-      lastWallHitX: -Infinity,
-      lastWallHitNX: 0,
-      lastWallHitY: -Infinity,
-      lastWallHitNY: 0
+      yRatio: prototypePlayerConfig.yRatio
     };
 
     updatePlayerEntityText(entity);
@@ -1227,12 +1240,32 @@
         jiggleScaleY: 1,
         xRatio: config.xRatio,
         yRatio: config.yRatio,
-        lastWallHitX: -Infinity,
-        lastWallHitNX: 0,
-        lastWallHitY: -Infinity,
-        lastWallHitNY: 0,
+        activeCornerTriggerIds: new Set(),
         dvdImg,
         dvdTimeout: null
+      };
+    });
+    const cornerTriggerBoxes = [
+      { id: 'top-left' },
+      { id: 'top-right' },
+      { id: 'bottom-left' },
+      { id: 'bottom-right' }
+    ].map((triggerBox) => {
+      let element = container.querySelector(`[data-corner-trigger-box="${triggerBox.id}"]`);
+      if (!element) {
+        element = document.createElement('div');
+        element.className = 'background-corner-trigger-box';
+        element.dataset.cornerTriggerBox = triggerBox.id;
+        element.setAttribute('aria-hidden', 'true');
+        container.insertBefore(element, rippleLayer);
+      }
+
+      return {
+        ...triggerBox,
+        element,
+        hitbox: null,
+        cornerX: 0,
+        cornerY: 0
       };
     });
     const playerEntities = [];
@@ -1400,6 +1433,126 @@
 
       setBackgroundMoopMode(backgroundMoopModes.PREGAME);
       syncPregameLobbyMoops(players);
+    }
+
+    function getCornerTriggerSize(viewport = getSceneViewport()) {
+      const shortSide = Math.min(viewport.visibleWidth, viewport.visibleHeight);
+      const baseSize = Math.round(
+        clamp(
+          shortSide * cornerTriggerConfig.size.shortSideRatio,
+          cornerTriggerConfig.size.minPx,
+          cornerTriggerConfig.size.maxPx
+        )
+      );
+      return Math.max(1, Math.round(baseSize * cornerTriggerConfig.size.scale));
+    }
+
+    function getCornerTriggerDefinitions(viewport = getSceneViewport()) {
+      const triggerSize = getCornerTriggerSize(viewport);
+
+      return {
+        'top-left': {
+          left: 0,
+          top: 0,
+          cornerX: 0,
+          cornerY: 0,
+          size: triggerSize
+        },
+        'top-right': {
+          left: Math.max(viewport.visibleWidth - triggerSize, 0),
+          top: 0,
+          cornerX: viewport.visibleWidth,
+          cornerY: 0,
+          size: triggerSize
+        },
+        'bottom-left': {
+          left: 0,
+          top: Math.max(viewport.visibleHeight - triggerSize, 0),
+          cornerX: 0,
+          cornerY: viewport.visibleHeight,
+          size: triggerSize
+        },
+        'bottom-right': {
+          left: Math.max(viewport.visibleWidth - triggerSize, 0),
+          top: Math.max(viewport.visibleHeight - triggerSize, 0),
+          cornerX: viewport.visibleWidth,
+          cornerY: viewport.visibleHeight,
+          size: triggerSize
+        }
+      };
+    }
+
+    function updateCornerTriggerLayout(viewport = getSceneViewport()) {
+      const definitions = getCornerTriggerDefinitions(viewport);
+
+      cornerTriggerBoxes.forEach((triggerBox) => {
+        const definition = definitions[triggerBox.id];
+        triggerBox.cornerX = definition.cornerX;
+        triggerBox.cornerY = definition.cornerY;
+        triggerBox.hitbox = createAxisAlignedHitbox(
+          definition.left,
+          definition.top,
+          definition.size,
+          definition.size
+        );
+        triggerBox.element.style.width = `${definition.size}px`;
+        triggerBox.element.style.height = `${definition.size}px`;
+        triggerBox.element.style.transform = `translate(${definition.left}px, ${definition.top}px)`;
+      });
+    }
+
+    function getActiveCornerTriggerIds(block) {
+      const activeTriggerIds = new Set();
+      const blockHitbox = getHitbox(block);
+
+      cornerTriggerBoxes.forEach((triggerBox) => {
+        if (triggerBox.hitbox && hitboxesOverlap(blockHitbox, triggerBox.hitbox)) {
+          activeTriggerIds.add(triggerBox.id);
+        }
+      });
+
+      return activeTriggerIds;
+    }
+
+    function syncCornerTriggerOccupancy() {
+      blocks.forEach((block) => {
+        block.activeCornerTriggerIds = getActiveCornerTriggerIds(block);
+      });
+    }
+
+    const cornerEffectHandlers = Object.freeze({
+      cornerRipple(block, triggerBox) {
+        spawnRipple(triggerBox.cornerX, triggerBox.cornerY);
+      },
+      dvdFanfare(block) {
+        triggerCornerFanfare(block);
+      }
+    });
+
+    function runCornerTriggerEffects(block, triggerBox) {
+      cornerTriggerConfig.effects.forEach((effectId) => {
+        cornerEffectHandlers[effectId]?.(block, triggerBox);
+      });
+    }
+
+    function processCornerTriggerEntries() {
+      blocks.forEach((block) => {
+        const nextActiveTriggerIds = getActiveCornerTriggerIds(block);
+
+        cornerTriggerBoxes.some((triggerBox) => {
+          if (
+            !nextActiveTriggerIds.has(triggerBox.id) ||
+            block.activeCornerTriggerIds.has(triggerBox.id)
+          ) {
+            return false;
+          }
+
+          runCornerTriggerEffects(block, triggerBox);
+          return true;
+        });
+
+        block.activeCornerTriggerIds = nextActiveTriggerIds;
+      });
     }
 
     function triggerCornerFanfare(block) {
@@ -1663,10 +1816,12 @@
 
     function placeBlocks(viewport = getSceneViewport()) {
       updateResponsiveLayout(viewport);
+      updateCornerTriggerLayout(viewport);
 
       getPhysicsEntities().forEach((entity) => {
         positionEntityInViewport(entity, viewport);
       });
+      syncCornerTriggerOccupancy();
     }
 
     function spawnRipple(x, y) {
@@ -1810,26 +1965,9 @@
         if (wallHit) {
           const speed = Math.hypot(block.vx, block.vy);
           applyCollisionJiggle(block, wallHit.normalX, wallHit.normalY, speed * 0.4);
-
-          if (wallHit.normalX !== 0) {
-            block.lastWallHitX = now;
-            block.lastWallHitNX = wallHit.normalX;
-          }
-          if (wallHit.normalY !== 0) {
-            block.lastWallHitY = now;
-            block.lastWallHitNY = wallHit.normalY;
-          }
-          if (now - block.lastWallHitX < interactionConfig.cornerRippleWindow &&
-              now - block.lastWallHitY < interactionConfig.cornerRippleWindow) {
-            const cornerX = block.lastWallHitNX < 0 ? sceneBounds.right : sceneBounds.left;
-            const cornerY = block.lastWallHitNY < 0 ? sceneBounds.bottom : sceneBounds.top;
-            spawnRipple(cornerX, cornerY);
-            triggerCornerFanfare(block);
-            block.lastWallHitX = -Infinity;
-            block.lastWallHitY = -Infinity;
-          }
         }
       });
+      processCornerTriggerEntries();
 
       // Update jiggle animation, clamp speeds, render
       updateCollisionJiggle(delta);
