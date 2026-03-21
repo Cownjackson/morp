@@ -502,10 +502,21 @@ body.is-landing .card-row {
 .moop-modal-overlay {
   display: none; position: fixed; inset: 0; z-index: 1100;
   background: rgba(10, 2, 6, 0.7); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  align-items: safe center; justify-content: center; overflow-y: auto; padding: 20px;
+  align-items: safe center; justify-content: center; overflow: hidden; padding: clamp(12px, 4vw, 20px);
+  overscroll-behavior: contain;
 }
 .moop-modal-overlay.open { display: flex; }
-.moop-modal-content { width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.moop-modal-content {
+  width: 100%;
+  max-width: 560px;
+  height: min(760px, calc(100dvh - 40px));
+  max-height: calc(100dvh - 40px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  overflow: hidden;
+}
 .moop-modal-title { font-size: 1.4rem; font-weight: 700; color: var(--peach); letter-spacing: 1px; }
 
 .moop-stage-modal { position: relative; width: 180px; height: 180px; animation: wobble 3s ease-in-out infinite; }
@@ -513,13 +524,18 @@ body.is-landing .card-row {
 .slot-panel {
   --slot-tab-indicator-x: 0px;
   --slot-tab-indicator-width: 0px;
+  --slot-item-size: 82px;
+  --slot-grid-gap: 12px;
+  --slot-grid-padding: 16px;
+  --slot-scrollbar-size: 12px;
   width: 100%; background: rgba(42, 18, 32, 0.85); border: 3px solid var(--eggplant);
   border-radius: 20px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.35); overflow: hidden;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  min-height: 430px;
-  height: clamp(430px, 52vh, 520px);
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 520px;
 }
 .slot-tabs {
   display: flex;
@@ -557,18 +573,26 @@ body.is-landing .card-row {
 .slot-items {
   position: absolute;
   inset: 0;
-  padding: 16px;
+  padding: var(--slot-grid-padding);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(var(--slot-item-size), var(--slot-item-size)));
+  grid-auto-rows: var(--slot-item-size);
+  justify-content: center;
   align-content: start;
-  gap: 10px;
+  gap: var(--slot-grid-gap);
   overflow-y: auto;
+  overflow-x: hidden;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transform: translateY(8px);
   transition: opacity 0.2s ease, transform 0.24s ease, visibility 0s linear 0.24s;
-  scrollbar-gutter: stable;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y pinch-zoom;
+  scrollbar-gutter: stable both-edges;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(135, 220, 171, 0.75) rgba(255, 255, 255, 0.08);
 }
 .slot-items.active {
   opacity: 1;
@@ -577,8 +601,26 @@ body.is-landing .card-row {
   transform: translateY(0);
   transition: opacity 0.2s ease, transform 0.24s ease;
 }
+.slot-items::-webkit-scrollbar {
+  width: var(--slot-scrollbar-size);
+}
+.slot-items::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+}
+.slot-items::-webkit-scrollbar-thumb {
+  background: rgba(135, 220, 171, 0.8);
+  border: 3px solid rgba(42, 18, 32, 0.85);
+  border-radius: 999px;
+}
+.slot-items::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 233, 184, 0.86);
+}
 .slot-item {
-  aspect-ratio: 1; background: rgba(153, 135, 144, 0.7); border: 2px solid #5A2848;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  background: rgba(153, 135, 144, 0.7); border: 2px solid #5A2848;
   border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
   transition: border-color 0.15s, transform 0.1s, background 0.15s; position: relative; overflow: hidden;
 }
@@ -619,12 +661,21 @@ body.is-landing .card-row {
     gap: 10px; margin: 2px 0 0;
   }
   .moop-action-row { gap: 7px; }
+  .moop-modal-content {
+    height: min(720px, calc(100dvh - 24px));
+    max-height: calc(100dvh - 24px);
+    gap: 14px;
+  }
   .moop-preview-frame { width: 182px; height: 182px; }
   .moop-preview-frame::before { width: 216px; height: 216px; }
   .moop-preview { width: 176px; height: 176px; }
   .moop-stage-modal { width: 150px; height: 150px; }
-  .slot-panel { min-height: 392px; height: clamp(392px, 50vh, 460px); }
-  .slot-items { grid-template-columns: repeat(3, 1fr); }
+  .slot-panel {
+    --slot-item-size: 76px;
+    --slot-grid-gap: 10px;
+    --slot-grid-padding: 14px;
+    --slot-scrollbar-size: 14px;
+  }
   .slot-tab { font-size: 0.65rem; padding: 10px 2px; }
   .btn-customize-random {
     min-width: 34px;
@@ -633,6 +684,31 @@ body.is-landing .card-row {
 }
 
 @media (max-width: 430px) and (hover: none) and (pointer: coarse) {
+  .moop-modal-overlay {
+    padding: 12px;
+  }
+  .moop-modal-content {
+    height: calc(100dvh - 24px);
+    max-height: calc(100dvh - 24px);
+    gap: 12px;
+  }
+  .moop-modal-title {
+    font-size: 1.2rem;
+  }
+  .moop-stage-modal {
+    width: 132px;
+    height: 132px;
+  }
+  .slot-panel {
+    --slot-item-size: 72px;
+    --slot-grid-gap: 10px;
+    --slot-grid-padding: 12px;
+    --slot-scrollbar-size: 16px;
+  }
+  .slot-items::-webkit-scrollbar-thumb {
+    border-width: 4px;
+    min-height: 48px;
+  }
   body.is-landing {
     min-height: 100dvh;
     padding: 12px 14px 10px;
