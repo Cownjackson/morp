@@ -396,6 +396,11 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
                 engine.start_new_round(seed=seed)
                 await manager.broadcast(lobby_id, _lobby_update(engine))
                 await _broadcast_round_start(lobby_id, engine, seed)
+            elif engine.state.phase == GamePhase.ENDGAME_2P:
+                seed = _new_seed()
+                engine.start_endgame_round(seed=seed)
+                await manager.broadcast(lobby_id, _lobby_update(engine))
+                await _broadcast_endgame_round_start(lobby_id, engine)
             elif engine.state.phase == GamePhase.ENDGAME_ROUND_END:
                 seed = _new_seed()
                 engine.start_next_endgame_round(seed=seed)
@@ -616,10 +621,11 @@ async def _check_round_end(lobby_id: str, engine: GameEngine):
     if phase == GamePhase.GAME_OVER:
         await _broadcast_game_over(lobby_id, engine)
     elif phase == GamePhase.ENDGAME_2P:
-        seed = _new_seed()
-        engine.start_endgame_round(seed=seed)
-        await manager.broadcast(lobby_id, _lobby_update(engine))
-        await _broadcast_endgame_round_start(lobby_id, engine)
+        await manager.broadcast(lobby_id, {
+            "type": "round_end",
+            "host_id": engine.lobby.host_id,
+            "endgame_transition": True,
+        })
     elif phase == GamePhase.ROUND_END:
         await manager.broadcast(lobby_id, {
             "type": "round_end",

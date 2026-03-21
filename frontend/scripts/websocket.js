@@ -336,19 +336,32 @@ function _processMessage(msg) {
       break;
 
     case 'round_end': {
-      setPhaseLabel('ROUND OVER');
+      const isEndgameTransition = !!msg.endgame_transition;
+      setPhaseLabel(isEndgameTransition ? 'SUDDEN DEATH' : 'ROUND OVER');
       const rc = document.getElementById('round-end-content');
       rc.innerHTML = '';
+      if (isEndgameTransition) {
+        const announce = document.createElement('p');
+        announce.style.cssText = 'color:#FFCE18;font-size:1.1em;margin-bottom:8px';
+        announce.textContent = 'Two players remain — Sudden Death!';
+        rc.appendChild(announce);
+      }
       if (state.isHost) {
         const btn = document.createElement('button');
-        btn.className = 'primary'; btn.textContent = 'Next Round ▶';
+        btn.className = 'primary';
+        btn.textContent = isEndgameTransition ? 'Start Sudden Death ▶' : 'Next Round ▶';
         btn.onclick = () => { send({ type: 'next_round' }); btn.disabled = true; };
         rc.appendChild(btn);
       } else {
-        rc.innerHTML = '<p style="color:#453060;font-size:0.88em">Waiting for host to start next round…</p>';
+        const wait = document.createElement('p');
+        wait.style.cssText = 'color:#453060;font-size:0.88em';
+        wait.textContent = isEndgameTransition
+          ? 'Waiting for host to start sudden death…'
+          : 'Waiting for host to start next round…';
+        rc.appendChild(wait);
       }
       showAction('round-end');
-      log('Round over.', 'ok');
+      log(isEndgameTransition ? 'Sudden Death!' : 'Round over.', 'ok');
       break;
     }
 
