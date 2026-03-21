@@ -927,9 +927,11 @@
     let logoLetters = [];
     let defaultLogoFill = getThemeColorRgb('--punch');
     let defaultLogoShadow = darkenColor(defaultLogoFill, logoPaintConfig.shadowDarkness);
-    let logoBoundsRaf = 0;
-    let layoutRefreshRaf = 0;
-    let logoRefreshRaf = 0;
+    const refreshHandles = {
+      logoBounds: 0,
+      layout: 0,
+      logo: 0
+    };
 
     function syncLogoTargets() {
       logoTextElements = logoTargetIds
@@ -1171,71 +1173,50 @@
       });
     }
 
-    function scheduleLogoBoundsRefresh(frameCount = 2) {
-      if (logoBoundsRaf) {
-        cancelAnimationFrame(logoBoundsRaf);
+    function refreshThemeAndLogoMetrics() {
+      syncThemeStyles();
+      updateLogoLetterBounds();
+    }
+
+    function scheduleRefresh(handleKey, callback, frameCount = 1) {
+      if (refreshHandles[handleKey]) {
+        cancelAnimationFrame(refreshHandles[handleKey]);
       }
 
       const refresh = (remainingFrames) => {
         if (remainingFrames > 0) {
-          logoBoundsRaf = requestAnimationFrame(() => refresh(remainingFrames - 1));
+          refreshHandles[handleKey] = requestAnimationFrame(() => refresh(remainingFrames - 1));
           return;
         }
 
-        logoBoundsRaf = 0;
-        updateLogoLetterBounds();
+        refreshHandles[handleKey] = 0;
+        callback();
       };
 
       refresh(frameCount);
     }
 
+    function scheduleLogoBoundsRefresh(frameCount = 2) {
+      scheduleRefresh('logoBounds', updateLogoLetterBounds, frameCount);
+    }
+
     function runLogoRefresh() {
-      syncThemeStyles();
-      updateLogoLetterBounds();
+      refreshThemeAndLogoMetrics();
       scheduleLogoBoundsRefresh(1);
     }
 
     function scheduleLogoRefresh(frameCount = 1) {
-      if (logoRefreshRaf) {
-        cancelAnimationFrame(logoRefreshRaf);
-      }
-
-      const refresh = (remainingFrames) => {
-        if (remainingFrames > 0) {
-          logoRefreshRaf = requestAnimationFrame(() => refresh(remainingFrames - 1));
-          return;
-        }
-
-        logoRefreshRaf = 0;
-        runLogoRefresh();
-      };
-
-      refresh(frameCount);
+      scheduleRefresh('logo', runLogoRefresh, frameCount);
     }
 
     function runLayoutRefresh() {
-      syncThemeStyles();
-      updateLogoLetterBounds();
+      refreshThemeAndLogoMetrics();
       placeBlocks();
       scheduleLogoBoundsRefresh(1);
     }
 
     function scheduleLayoutRefresh(frameCount = 1) {
-      if (layoutRefreshRaf) {
-        cancelAnimationFrame(layoutRefreshRaf);
-      }
-
-      const refresh = (remainingFrames) => {
-        if (remainingFrames > 0) {
-          layoutRefreshRaf = requestAnimationFrame(() => refresh(remainingFrames - 1));
-          return;
-        }
-
-        layoutRefreshRaf = 0;
-        runLayoutRefresh();
-      };
-
-      refresh(frameCount);
+      scheduleRefresh('layout', runLayoutRefresh, frameCount);
     }
 
     function updateLogoPaint(now) {
@@ -1586,7 +1567,6 @@
       }, { passive: true });
     }
     interactionLayer.addEventListener('pointerdown', handlePointerDown, { passive: true });
-    syncThemeStyles();
 
     if (document.fonts?.ready) {
       document.fonts.ready.then(() => {
