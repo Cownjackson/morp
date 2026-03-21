@@ -508,7 +508,8 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
 
         elif msg_type == "endgame_submit_guess":
             guess = data.get("guess", "")
-            result = engine.endgame_submit_guess(player_id, guess)
+            auto_submitted = bool(data.get("auto_submitted", False))
+            result = engine.endgame_submit_guess(player_id, guess, auto_submitted=auto_submitted)
             if result["all_in"]:
                 _cancel_timer(lobby_id)
                 await _broadcast_endgame_guesses_revealed(lobby_id, engine)
@@ -679,6 +680,7 @@ async def _broadcast_endgame_guesses_revealed(
         "safe_player_id": resolution["safe_player_id"],
         "target_word": resolution["target_word"],
         "timed_out": timed_out,
+        "draw": resolution.get("draw", False),
     })
     await manager.broadcast(lobby_id, _lobby_update(engine))
     await _check_endgame_round_end(lobby_id, engine)

@@ -433,7 +433,7 @@ function _processMessage(msg) {
         startTimer('endgame-guess-timer', msg.guess_deadline, () => {
           if (isFinalist2 && state.boardSelectionMode) {
             const guess = state.boardWordSelected || '';
-            send({ type: 'endgame_submit_guess', guess });
+            send({ type: 'endgame_submit_guess', guess, auto_submitted: true });
             disableBoardWordSelection();
             document.getElementById('btn-endgame-guess').disabled = true;
           }
@@ -459,11 +459,13 @@ function _processMessage(msg) {
       if (msg.timed_out) {
         resEl.innerHTML = `<span style="color:#FEAED2">⏰ Time's up!</span>`;
       }
-      animateEndgameReveal(msg.results, msg.safe_player_id, () => {
+      animateEndgameReveal(msg.results, msg.safe_player_id, msg.draw, () => {
         const winner = msg.safe_player_id ? playerName(msg.safe_player_id) : null;
-        resEl.innerHTML = winner
-          ? `<span style="color:#87DCAB">✓ ${winner} guessed correctly! Target: "${msg.target_word}"</span>`
-          : `<span style="color:#FEAED2">✗ Nobody got it. Target: "${msg.target_word}"</span>`;
+        resEl.innerHTML = msg.draw
+          ? `<span style="color:#FFCE18">Draw! Both auto-submitted correctly. Target: "${msg.target_word}"</span>`
+          : winner
+            ? `<span style="color:#87DCAB">✓ ${winner} guessed correctly! Target: "${msg.target_word}"</span>`
+            : `<span style="color:#FEAED2">✗ Nobody got it. Target: "${msg.target_word}"</span>`;
         for (const r of msg.results) {
           const line = document.createElement('div');
           line.style.color = r.correct ? '#87DCAB' : '#FEAED2';

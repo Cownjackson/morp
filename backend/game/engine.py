@@ -289,7 +289,7 @@ class GameEngine:
             for p in self.lobby.ghost_players()
         )
 
-    def endgame_submit_guess(self, player_id: str, guess: str) -> dict:
+    def endgame_submit_guess(self, player_id: str, guess: str, auto_submitted: bool = False) -> dict:
         """Record a finalist's guess. Does NOT resolve — call endgame_resolve_guesses when all are in."""
         if self.state.phase not in (GamePhase.ENDGAME_GHOST_HINTS, GamePhase.ENDGAME_GUESSING):
             raise ValueError("Not in an active endgame round.")
@@ -301,6 +301,8 @@ class GameEngine:
             raise ValueError("Guess must be a word on the board.")
         es.guesses[player_id] = guess
         es.guess_order.append(player_id)
+        if auto_submitted:
+            es.auto_submitted.add(player_id)
 
         active_ids = {p.id for p in self.lobby.active_players()}
         return {"all_in": active_ids.issubset(es.guesses.keys())}
@@ -329,7 +331,13 @@ class GameEngine:
                 first_correct = pid
 
         # Determine winner and apply damage
-        if first_correct:
+        all_correct = all(r["correct"] for r in results)
+        all_auto = all(pid in es.auto_submitted for pid in es.guess_order)
+
+        if all_correct and all_auto:
+            # Both auto-submitted the correct answer — draw, no damage
+            pass
+        elif first_correct:
             es.safe_player_id = first_correct
             for p in self.lobby.active_players():
                 if p.id != first_correct:
@@ -338,11 +346,13 @@ class GameEngine:
             for p in self.lobby.active_players():
                 p.take_damage()
 
+        is_draw = all_correct and all_auto
         self._resolve_endgame_round()
         return {
             "results": results,
             "safe_player_id": es.safe_player_id,
             "target_word": es.target_word,
+            "draw": is_draw,
         }
 
     def endgame_timeout(self) -> dict:

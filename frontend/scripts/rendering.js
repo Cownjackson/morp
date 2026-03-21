@@ -522,7 +522,7 @@ export function resolveWordGuess(correct, onReveal) {
  * safePlayerId: the winner (first correct guesser), or null
  * onDone: callback after all animations finish
  */
-export function animateEndgameReveal(results, safePlayerId, onDone) {
+export function animateEndgameReveal(results, safePlayerId, isDraw, onDone) {
   const guessesWithWords = results.filter(r => r.guess);
   if (guessesWithWords.length === 0) {
     if (onDone) onDone();
@@ -557,9 +557,11 @@ export function animateEndgameReveal(results, safePlayerId, onDone) {
     card.dataset.flyX = offsets[i].x;
     card.dataset.flyY = offsets[i].y;
 
-    // Determine card style: correct winner = green, correct but slower = yellow, wrong = red
+    // Determine card style: draw = both yellow, correct winner = green, slower correct = yellow, wrong = red
     let style = 'wrong';
-    if (r.correct) {
+    if (isDraw) {
+      style = 'slow-correct';
+    } else if (r.correct) {
       style = (safePlayerId && r.player_id === safePlayerId) ? 'correct' : 'slow-correct';
     }
     cards.push({ el: card, style });

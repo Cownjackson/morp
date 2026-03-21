@@ -216,12 +216,12 @@ def test_non_ghost_cannot_submit_ghost_hint():
         engine.endgame_submit_ghost_hint(active[0].id, "sneak hint")
 
 
-def _submit_both_guesses(engine, guess0, guess1):
+def _submit_both_guesses(engine, guess0, guess1, auto0=False, auto1=False):
     """Helper: submit guesses for both finalists and resolve."""
     active = engine.lobby.active_players()
-    r0 = engine.endgame_submit_guess(active[0].id, guess0)
+    r0 = engine.endgame_submit_guess(active[0].id, guess0, auto_submitted=auto0)
     assert r0["all_in"] is False
-    r1 = engine.endgame_submit_guess(active[1].id, guess1)
+    r1 = engine.endgame_submit_guess(active[1].id, guess1, auto_submitted=auto1)
     assert r1["all_in"] is True
     return engine.endgame_resolve_guesses()
 
@@ -379,6 +379,49 @@ def test_endgame_both_correct_first_submitter_wins():
     assert resolution["safe_player_id"] == active[0].id
     assert active[0].hp == hp_before[0]       # winner untouched
     assert active[1].hp == hp_before[1] - 1   # slower player damaged
+
+
+def test_endgame_both_auto_correct_is_draw():
+    """Both auto-submitted correct answers → draw, no damage."""
+    engine, _ = make_endgame_engine()
+    active = engine.lobby.active_players()
+    target = engine.state.endgame_state.target_word
+    hp_before = [p.hp for p in active]
+
+    resolution = _submit_both_guesses(engine, target, target, auto0=True, auto1=True)
+    assert resolution["draw"] is True
+    assert resolution["safe_player_id"] is None
+    assert active[0].hp == hp_before[0]
+    assert active[1].hp == hp_before[1]
+
+
+def test_endgame_one_manual_one_auto_correct_not_draw():
+    """One manual + one auto correct → first submitter wins, not a draw."""
+    engine, _ = make_endgame_engine()
+    active = engine.lobby.active_players()
+    target = engine.state.endgame_state.target_word
+    hp_before = [p.hp for p in active]
+
+    resolution = _submit_both_guesses(engine, target, target, auto0=False, auto1=True)
+    assert resolution["draw"] is False
+    assert resolution["safe_player_id"] == active[0].id
+    assert active[0].hp == hp_before[0]
+    assert active[1].hp == hp_before[1] - 1
+
+
+def test_endgame_both_auto_wrong_not_draw():
+    """Both auto-submitted wrong answers → not a draw, both take damage."""
+    engine, _ = make_endgame_engine()
+    active = engine.lobby.active_players()
+    es = engine.state.endgame_state
+    wrong = next(w for w in es.board.words if w != es.target_word)
+    wrong2 = next(w for w in es.board.words if w != es.target_word and w != wrong)
+    hp_before = [p.hp for p in active]
+
+    resolution = _submit_both_guesses(engine, wrong, wrong2, auto0=True, auto1=True)
+    assert resolution["draw"] is False
+    assert active[0].hp == hp_before[0] - 1
+    assert active[1].hp == hp_before[1] - 1
 
 
 def test_endgame_resolve_tracks_submission_order():
