@@ -507,20 +507,11 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
                 await _start_endgame_guess_phase(lobby_id, engine)
 
         elif msg_type == "endgame_submit_guess":
-            result = engine.endgame_submit_guess(player_id, data.get("guess", ""))
-            es = engine.state.endgame_state
-            await manager.broadcast(lobby_id, {
-                "type": "endgame_guess_result",
-                "player_id": player_id,
-                "correct": result["correct"],
-                "round_over": result["round_over"],
-                "target_word": es.target_word if result["round_over"] else None,
-                "safe_player_id": es.safe_player_id,
-            })
-            if result["round_over"]:
+            guess = data.get("guess", "")
+            result = engine.endgame_submit_guess(player_id, guess)
+            if result["all_in"]:
                 _cancel_timer(lobby_id)
-                await manager.broadcast(lobby_id, _lobby_update(engine))
-                await _check_endgame_round_end(lobby_id, engine)
+                await _broadcast_endgame_guesses_revealed(lobby_id, engine)
 
         else:
             await manager.send(lobby_id, player_id, {
@@ -678,6 +669,21 @@ async def _broadcast_endgame_hints_revealed(lobby_id: str, engine: GameEngine):
         _schedule_endgame_timeout(lobby_id, engine, deadline)
 
 
+async def _broadcast_endgame_guesses_revealed(
+    lobby_id: str, engine: GameEngine, timed_out: bool = False
+):
+    resolution = engine.endgame_resolve_guesses()
+    await manager.broadcast(lobby_id, {
+        "type": "endgame_guesses_revealed",
+        "results": resolution["results"],
+        "safe_player_id": resolution["safe_player_id"],
+        "target_word": resolution["target_word"],
+        "timed_out": timed_out,
+    })
+    await manager.broadcast(lobby_id, _lobby_update(engine))
+    await _check_endgame_round_end(lobby_id, engine)
+
+
 async def _check_endgame_round_end(lobby_id: str, engine: GameEngine):
     phase = engine.state.phase
     if phase == GamePhase.GAME_OVER:
@@ -767,17 +773,11 @@ def _schedule_endgame_hint_timeout(lobby_id: str, engine: GameEngine, deadline: 
 
 def _schedule_endgame_timeout(lobby_id: str, engine: GameEngine, deadline: float):
     async def _run():
-        await asyncio.sleep(max(0, deadline - time.time()))
+        await asyncio.sleep(max(0, deadline - time.time()) + _TIMER_GRACE_SECONDS)
         if engine.state.phase != GamePhase.ENDGAME_GUESSING:
             return
-        engine.endgame_timeout()
-        es = engine.state.endgame_state
-        await manager.broadcast(lobby_id, {
-            "type": "endgame_timeout",
-            "target_word": es.target_word if es else None,
-        })
-        await manager.broadcast(lobby_id, _lobby_update(engine))
-        await _check_endgame_round_end(lobby_id, engine)
+        _timer_tasks.pop(lobby_id, None)
+        await _broadcast_endgame_guesses_revealed(lobby_id, engine, timed_out=True)
 
     _cancel_timer(lobby_id)
     _timer_tasks[lobby_id] = asyncio.create_task(_run())

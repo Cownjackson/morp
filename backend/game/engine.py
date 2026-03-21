@@ -290,42 +290,64 @@ class GameEngine:
         )
 
     def endgame_submit_guess(self, player_id: str, guess: str) -> dict:
-        """A finalist submits a guess. Returns result dict."""
+        """Record a finalist's guess. Does NOT resolve — call endgame_resolve_guesses when all are in."""
         if self.state.phase not in (GamePhase.ENDGAME_GHOST_HINTS, GamePhase.ENDGAME_GUESSING):
             raise ValueError("Not in an active endgame round.")
         es = self.state.endgame_state
         if player_id in es.guesses:
             raise ValueError(f"{player_id} has already guessed.")
+        # Validate guess is a board word (empty = timed out, allowed)
+        if guess and guess.strip().lower() not in [w.strip().lower() for w in es.board.words]:
+            raise ValueError("Guess must be a word on the board.")
         es.guesses[player_id] = guess
-        correct = guess.strip().lower() == es.target_word.strip().lower()
+        es.guess_order.append(player_id)
 
-        if correct:
-            es.safe_player_id = player_id
-            # Other finalist takes damage
-            other = next(p for p in self.lobby.active_players() if p.id != player_id)
-            other.take_damage()
-            self._resolve_endgame_round()
-            return {"correct": True, "round_over": True}
-
-        # Wrong guess — check if opponent has also guessed
         active_ids = {p.id for p in self.lobby.active_players()}
-        all_guessed = active_ids.issubset(es.guesses.keys())
-        if all_guessed:
-            # Both wrong — both take damage
+        return {"all_in": active_ids.issubset(es.guesses.keys())}
+
+    def endgame_resolve_guesses(self) -> dict:
+        """Resolve all submitted guesses. First correct guesser wins ties.
+
+        Call after all finalists have guessed or after timeout fills in empty guesses.
+        """
+        es = self.state.endgame_state
+
+        # Fill empty guesses for anyone who hasn't guessed (timeout)
+        for p in self.lobby.active_players():
+            if p.id not in es.guesses:
+                es.guesses[p.id] = ""
+                es.guess_order.append(p.id)
+
+        # Build results in submission order
+        results = []
+        first_correct = None
+        for pid in es.guess_order:
+            guess = es.guesses[pid]
+            correct = bool(guess) and guess.strip().lower() == es.target_word.strip().lower()
+            results.append({"player_id": pid, "guess": guess, "correct": correct})
+            if correct and first_correct is None:
+                first_correct = pid
+
+        # Determine winner and apply damage
+        if first_correct:
+            es.safe_player_id = first_correct
+            for p in self.lobby.active_players():
+                if p.id != first_correct:
+                    p.take_damage()
+        else:
             for p in self.lobby.active_players():
                 p.take_damage()
-            self._resolve_endgame_round()
-            return {"correct": False, "round_over": True}
 
-        return {"correct": False, "round_over": False}
-
-    def endgame_timeout(self) -> None:
-        """Called when the guess timer expires. Anyone who didn't guess correctly takes damage."""
-        es = self.state.endgame_state
-        for p in self.lobby.active_players():
-            if p.id != es.safe_player_id:
-                p.take_damage()
         self._resolve_endgame_round()
+        return {
+            "results": results,
+            "safe_player_id": es.safe_player_id,
+            "target_word": es.target_word,
+        }
+
+    def endgame_timeout(self) -> dict:
+        """Timer expired. Fill empty guesses for missing players and resolve."""
+        return self.endgame_resolve_guesses()
 
     def start_next_endgame_round(self, seed: int) -> None:
         """Start the next sudden-death endgame round. Called by main.py after ENDGAME_ROUND_END."""

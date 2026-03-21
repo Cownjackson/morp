@@ -216,6 +216,16 @@ def test_non_ghost_cannot_submit_ghost_hint():
         engine.endgame_submit_ghost_hint(active[0].id, "sneak hint")
 
 
+def _submit_both_guesses(engine, guess0, guess1):
+    """Helper: submit guesses for both finalists and resolve."""
+    active = engine.lobby.active_players()
+    r0 = engine.endgame_submit_guess(active[0].id, guess0)
+    assert r0["all_in"] is False
+    r1 = engine.endgame_submit_guess(active[1].id, guess1)
+    assert r1["all_in"] is True
+    return engine.endgame_resolve_guesses()
+
+
 def test_endgame_first_correct_guess_is_safe():
     engine, _ = make_endgame_engine()
     ghosts = [p for p in engine.lobby.players.values() if p.is_ghost]
@@ -224,10 +234,14 @@ def test_endgame_first_correct_guess_is_safe():
 
     active = engine.lobby.active_players()
     target = engine.state.endgame_state.target_word
-    result = engine.endgame_submit_guess(active[0].id, target)
-    assert result["correct"] is True
-    assert result["round_over"] is True
-    assert engine.state.endgame_state.safe_player_id == active[0].id
+    es = engine.state.endgame_state
+    wrong = next(w for w in es.board.words if w != es.target_word)
+    resolution = _submit_both_guesses(engine, target, wrong)
+    assert resolution["safe_player_id"] == active[0].id
+    assert resolution["target_word"] == target
+    # First result should be the first submitter (correct)
+    assert resolution["results"][0]["correct"] is True
+    assert resolution["results"][1]["correct"] is False
 
 
 def test_endgame_correct_guess_does_not_damage_winner():
@@ -239,7 +253,9 @@ def test_endgame_correct_guess_does_not_damage_winner():
     active = engine.lobby.active_players()
     hp_before = active[0].hp
     target = engine.state.endgame_state.target_word
-    engine.endgame_submit_guess(active[0].id, target)
+    es = engine.state.endgame_state
+    wrong = next(w for w in es.board.words if w != es.target_word)
+    _submit_both_guesses(engine, target, wrong)
     assert active[0].hp == hp_before
 
 
@@ -252,11 +268,14 @@ def test_endgame_loser_takes_damage_after_correct_guess():
     active = engine.lobby.active_players()
     hp_before = active[1].hp
     target = engine.state.endgame_state.target_word
-    engine.endgame_submit_guess(active[0].id, target)
+    es = engine.state.endgame_state
+    wrong = next(w for w in es.board.words if w != es.target_word)
+    _submit_both_guesses(engine, target, wrong)
     assert active[1].hp == hp_before - 1
 
 
-def test_endgame_wrong_guess_does_not_block_opponent():
+def test_endgame_submit_does_not_resolve_until_both_in():
+    """Submitting one guess should NOT resolve or deal damage."""
     engine, _ = make_endgame_engine()
     ghosts = [p for p in engine.lobby.players.values() if p.is_ghost]
     for i, g in enumerate(ghosts):
@@ -264,12 +283,15 @@ def test_endgame_wrong_guess_does_not_block_opponent():
 
     active = engine.lobby.active_players()
     es = engine.state.endgame_state
-    wrong = next(w for w in engine.state.endgame_state.board.words if w != es.target_word)
+    wrong = next(w for w in es.board.words if w != es.target_word)
+    hp_before = [p.hp for p in active]
 
     result = engine.endgame_submit_guess(active[0].id, wrong)
-    assert result["correct"] is False
-    assert result["round_over"] is False
-    assert engine.state.phase == GamePhase.ENDGAME_GHOST_HINTS  # still going
+    assert result["all_in"] is False
+    # No damage yet, phase unchanged
+    assert active[0].hp == hp_before[0]
+    assert active[1].hp == hp_before[1]
+    assert engine.state.phase in (GamePhase.ENDGAME_GHOST_HINTS, GamePhase.ENDGAME_GUESSING)
 
 
 def test_endgame_wrong_guess_cannot_guess_again():
@@ -287,6 +309,28 @@ def test_endgame_wrong_guess_cannot_guess_again():
         engine.endgame_submit_guess(active[0].id, es.target_word)
 
 
+def test_endgame_guess_must_be_board_word():
+    engine, _ = make_endgame_engine()
+    ghosts = [p for p in engine.lobby.players.values() if p.is_ghost]
+    for i, g in enumerate(ghosts):
+        engine.endgame_submit_ghost_hint(g.id, f"hint {i}")
+
+    active = engine.lobby.active_players()
+    with pytest.raises(ValueError, match="word on the board"):
+        engine.endgame_submit_guess(active[0].id, "notaboardword")
+
+
+def test_endgame_empty_guess_allowed_for_timeout():
+    engine, _ = make_endgame_engine()
+    ghosts = [p for p in engine.lobby.players.values() if p.is_ghost]
+    for i, g in enumerate(ghosts):
+        engine.endgame_submit_ghost_hint(g.id, f"hint {i}")
+
+    active = engine.lobby.active_players()
+    result = engine.endgame_submit_guess(active[0].id, "")
+    assert result["all_in"] is False  # opponent still hasn't guessed
+
+
 def test_endgame_both_wrong_both_take_damage():
     engine, _ = make_endgame_engine()
     ghosts = [p for p in engine.lobby.players.values() if p.is_ghost]
@@ -299,9 +343,8 @@ def test_endgame_both_wrong_both_take_damage():
     wrong2 = next(w for w in es.board.words if w != es.target_word and w != wrong)
     hp_before = [p.hp for p in active]
 
-    engine.endgame_submit_guess(active[0].id, wrong)
-    engine.endgame_submit_guess(active[1].id, wrong2)
-
+    resolution = _submit_both_guesses(engine, wrong, wrong2)
+    assert resolution["safe_player_id"] is None
     assert active[0].hp == hp_before[0] - 1
     assert active[1].hp == hp_before[1] - 1
 
@@ -317,9 +360,43 @@ def test_endgame_both_wrong_triggers_endgame_round_end():
     wrong = next(w for w in es.board.words if w != es.target_word)
     wrong2 = next(w for w in es.board.words if w != es.target_word and w != wrong)
 
-    engine.endgame_submit_guess(active[0].id, wrong)
-    engine.endgame_submit_guess(active[1].id, wrong2)
-    assert engine.state.phase == GamePhase.ENDGAME_ROUND_END  # main.py triggers next round
+    _submit_both_guesses(engine, wrong, wrong2)
+    assert engine.state.phase == GamePhase.ENDGAME_ROUND_END
+
+
+def test_endgame_both_correct_first_submitter_wins():
+    """When both finalists guess correctly, the first to submit is safe."""
+    engine, _ = make_endgame_engine()
+    ghosts = [p for p in engine.lobby.players.values() if p.is_ghost]
+    for i, g in enumerate(ghosts):
+        engine.endgame_submit_ghost_hint(g.id, f"hint {i}")
+
+    active = engine.lobby.active_players()
+    target = engine.state.endgame_state.target_word
+    hp_before = [p.hp for p in active]
+
+    resolution = _submit_both_guesses(engine, target, target)
+    assert resolution["safe_player_id"] == active[0].id
+    assert active[0].hp == hp_before[0]       # winner untouched
+    assert active[1].hp == hp_before[1] - 1   # slower player damaged
+
+
+def test_endgame_resolve_tracks_submission_order():
+    """guess_order should reflect the order guesses were submitted."""
+    engine, _ = make_endgame_engine()
+    active = engine.lobby.active_players()
+    target = engine.state.endgame_state.target_word
+    es = engine.state.endgame_state
+    wrong = next(w for w in es.board.words if w != es.target_word)
+
+    # Submit in reverse order: active[1] first
+    engine.endgame_submit_guess(active[1].id, wrong)
+    engine.endgame_submit_guess(active[0].id, target)
+    resolution = engine.endgame_resolve_guesses()
+
+    assert resolution["results"][0]["player_id"] == active[1].id
+    assert resolution["results"][1]["player_id"] == active[0].id
+    assert resolution["safe_player_id"] == active[0].id
 
 
 def test_start_next_endgame_round_resets_state():
@@ -332,13 +409,13 @@ def test_start_next_endgame_round_resets_state():
     es = engine.state.endgame_state
     wrong = next(w for w in es.board.words if w != es.target_word)
     wrong2 = next(w for w in es.board.words if w != es.target_word and w != wrong)
-    engine.endgame_submit_guess(active[0].id, wrong)
-    engine.endgame_submit_guess(active[1].id, wrong2)
+    _submit_both_guesses(engine, wrong, wrong2)
 
     engine.start_next_endgame_round(seed=77)
     assert engine.state.phase == GamePhase.ENDGAME_GHOST_HINTS
     assert engine.state.endgame_state.ghost_hints == []
     assert engine.state.endgame_state.guesses == {}
+    assert engine.state.endgame_state.guess_order == []
 
 
 def test_endgame_end_hint_phase_transitions_to_guessing():
@@ -352,16 +429,19 @@ def test_endgame_guess_works_during_hint_phase():
     engine, _ = make_endgame_engine()
     active = engine.lobby.active_players()
     target = engine.state.endgame_state.target_word
-    result = engine.endgame_submit_guess(active[0].id, target)
-    assert result["correct"] is True
-    assert result["round_over"] is True
+    es = engine.state.endgame_state
+    wrong = next(w for w in es.board.words if w != es.target_word)
+    resolution = _submit_both_guesses(engine, target, wrong)
+    assert resolution["safe_player_id"] == active[0].id
 
 
 def test_endgame_timeout_both_take_damage():
+    """Timeout with no guesses submitted — both take damage."""
     engine, _ = make_endgame_engine()
     active = engine.lobby.active_players()
     hp_before = [p.hp for p in active]
-    engine.endgame_timeout()
+    resolution = engine.endgame_timeout()
+    assert resolution["safe_player_id"] is None
     assert active[0].hp == hp_before[0] - 1
     assert active[1].hp == hp_before[1] - 1
 
@@ -374,6 +454,20 @@ def test_endgame_timeout_damages_player_who_already_guessed_wrong():
     wrong = next(w for w in es.board.words if w != es.target_word)
     engine.endgame_submit_guess(active[0].id, wrong)  # active[0] guesses wrong
     hp_before = [p.hp for p in active]
-    engine.endgame_timeout()  # active[1] never guesses
+    resolution = engine.endgame_timeout()  # active[1] never guesses
+    assert resolution["safe_player_id"] is None
     assert active[0].hp == hp_before[0] - 1  # wrong-guesser also takes damage
     assert active[1].hp == hp_before[1] - 1
+
+
+def test_endgame_timeout_with_one_correct_guess():
+    """If one player guessed correctly but timer expires for the other, correct guesser wins."""
+    engine, _ = make_endgame_engine()
+    active = engine.lobby.active_players()
+    target = engine.state.endgame_state.target_word
+    hp_before = [p.hp for p in active]
+    engine.endgame_submit_guess(active[0].id, target)  # correct guess
+    resolution = engine.endgame_timeout()  # active[1] never guesses
+    assert resolution["safe_player_id"] == active[0].id
+    assert active[0].hp == hp_before[0]       # winner untouched
+    assert active[1].hp == hp_before[1] - 1   # non-guesser damaged

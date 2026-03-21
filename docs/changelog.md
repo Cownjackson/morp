@@ -4,6 +4,11 @@ Completed work, newest first. Add an entry when a PR merges or a standalone chan
 
 ---
 
+## 2026-03-21
+
+- **[feature]** Avatar-based voting and damage targeting — players click avatars to vote/deal damage instead of buttons; mint/red glow selection indicators (Phases 4 + 6B)
+- **[dev]** Game room flow overhaul design doc — 12-phase spec with backend change requests, branching strategy, testing checklists
+
 ## 2026-03-20
 
 - **[feature]** Bouncing moop — scaling, hitbox fixes, and lobby bugfix (PR #14)

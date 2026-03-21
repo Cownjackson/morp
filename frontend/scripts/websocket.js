@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
@@ -115,10 +115,44 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
 
 
 
+// ─── Animation lock — defer state-changing messages while animations play ────
+let _animationLock = false;
+let _deferredQueue = [];
+let _animationLockTimer = null;
+const _ANIMATION_LOCK_TIMEOUT_MS = 5000;
+
+const _DEFERRED_TYPES = new Set([
+  'lobby_update', 'round_end', 'damage_dealt', 'damage_phase',
+  'endgame_round_end', 'round_start', 'endgame_round_start', 'game_over',
+]);
+
+function _startAnimationLock() {
+  _animationLock = true;
+  clearTimeout(_animationLockTimer);
+  _animationLockTimer = setTimeout(_endAnimationLock, _ANIMATION_LOCK_TIMEOUT_MS);
+}
+
+function _endAnimationLock() {
+  _animationLock = false;
+  clearTimeout(_animationLockTimer);
+  const queued = _deferredQueue.splice(0);
+  for (const m of queued) _processMessage(m);
+}
+
 // ─── Message handler ──────────────────────────────────────────────────────────
 function handleMessage(msg) {
   log(`← ${msg.type}`, 'info');
 
+  if (_animationLock && _DEFERRED_TYPES.has(msg.type)) {
+    log(`   ⏸ deferred (animation lock)`, 'info');
+    _deferredQueue.push(msg);
+    return;
+  }
+
+  _processMessage(msg);
+}
+
+function _processMessage(msg) {
   switch (msg.type) {
 
     case 'kicked': {
@@ -241,7 +275,6 @@ function handleMessage(msg) {
           if (isMorpBeingAsked && state.boardSelectionMode) {
             const guess = state.boardWordSelected || '';
             send({ type: 'submit_morp_guess', guess });
-            if (guess) animateWordGuess(guess);
             disableBoardWordSelection();
             document.getElementById('btn-morp-guess').disabled = true;
           }
@@ -261,14 +294,14 @@ function handleMessage(msg) {
         ? `✓ ${playerName(msg.morp_id)} guessed correctly! Target: "${msg.target_word}"`
         : `✗ ${playerName(msg.morp_id)} guessed wrong. Target: "${msg.target_word}"${msg.timed_out ? ' (timed out)' : ''}`;
       log(resultText, msg.correct ? 'ok' : 'warn');
-      // Non-morp players (or morp timeout with no prior animation): start word toss now
-      const isMorpWhoGuessed = msg.morp_id === state.playerId;
-      if (!isMorpWhoGuessed && msg.guess) animateWordGuess(msg.guess);
+      _startAnimationLock();
+      if (msg.guess) animateWordGuess(msg.guess);
       resolveWordGuess(msg.correct, () => {
         document.getElementById('guess-result').textContent = resultText;
         document.getElementById('guess-result').style.color = msg.correct ? '#87DCAB' : '#FEAED2';
         state.targetWord = msg.target_word;
         renderBoard();
+        _endAnimationLock();
       });
       break;
     }
@@ -335,8 +368,7 @@ function handleMessage(msg) {
         document.getElementById('endgame-ghost-waiting').style.display = 'none';
         document.getElementById('endgame-ghost-hint-input').disabled   = false;
       } else {
-        document.getElementById('endgame-guess-input').disabled  = false;
-        document.getElementById('btn-endgame-guess').disabled    = false;
+        document.getElementById('btn-endgame-guess').disabled = true;
       }
       document.getElementById('endgame-guess-result').textContent = '';
 
@@ -384,20 +416,22 @@ function handleMessage(msg) {
       document.getElementById('endgame-hint-timer').style.display  = 'none';
       document.getElementById('endgame-ghost-section').classList.add('hidden');
       const guessTimerEl = document.getElementById('endgame-guess-timer');
+      const isFinalist2 = !state.isGhost;
+      if (isFinalist2) enableBoardWordSelection();
       if (msg.timers_enabled) {
         guessTimerEl.style.display = 'inline-block';
-        const isFinalist2 = !state.isGhost;
         startTimer('endgame-guess-timer', msg.guess_deadline, () => {
-          if (isFinalist2 && !document.getElementById('endgame-guess-input').disabled) {
-            send({ type: 'endgame_submit_guess', guess: '' });
-            document.getElementById('endgame-guess-input').disabled = true;
-            document.getElementById('btn-endgame-guess').disabled   = true;
+          if (isFinalist2 && state.boardSelectionMode) {
+            const guess = state.boardWordSelected || '';
+            send({ type: 'endgame_submit_guess', guess });
+            disableBoardWordSelection();
+            document.getElementById('btn-endgame-guess').disabled = true;
           }
         });
       } else {
         guessTimerEl.style.display = 'none';
       }
-      if (!state.isGhost) document.getElementById('endgame-finalist-section').classList.remove('hidden');
+      if (isFinalist2) document.getElementById('endgame-finalist-section').classList.remove('hidden');
       setEndgamePhaseLabel('Guess!');
       log('Hint phase over: guess now!', 'warn');
       break;
@@ -406,37 +440,36 @@ function handleMessage(msg) {
     case 'endgame_hints_revealed':
       break;
 
-    case 'endgame_guess_result': {
-      if (msg.round_over) {
-        clearTimer('endgame-hint-timer');
-        clearTimer('endgame-guess-timer');
-      }
+    case 'endgame_guesses_revealed': {
+      clearTimer('endgame-hint-timer');
+      clearTimer('endgame-guess-timer');
+      disableBoardWordSelection();
+      _startAnimationLock();
       const resEl = document.getElementById('endgame-guess-result');
-      if (msg.round_over) {
+      if (msg.timed_out) {
+        resEl.innerHTML = `<span style="color:#FEAED2">⏰ Time's up!</span>`;
+      }
+      animateEndgameReveal(msg.results, () => {
         const winner = msg.safe_player_id ? playerName(msg.safe_player_id) : null;
         resEl.innerHTML = winner
           ? `<span style="color:#87DCAB">✓ ${winner} guessed correctly! Target: "${msg.target_word}"</span>`
           : `<span style="color:#FEAED2">✗ Nobody got it. Target: "${msg.target_word}"</span>`;
-      } else {
-        const line = document.createElement('div');
-        line.style.color = '#FEAED2';
-        line.textContent = `✗ ${playerName(msg.player_id)} guessed wrong.`;
-        resEl.appendChild(line);
-        if (msg.player_id === state.playerId) {
-          document.getElementById('endgame-guess-input').disabled  = true;
-          document.getElementById('btn-endgame-guess').disabled    = true;
+        for (const r of msg.results) {
+          const line = document.createElement('div');
+          line.style.color = r.correct ? '#87DCAB' : '#FEAED2';
+          line.style.fontSize = '0.85em';
+          line.textContent = r.guess
+            ? `${playerName(r.player_id)}: "${r.guess}" ${r.correct ? '✓' : '✗'}`
+            : `${playerName(r.player_id)}: (no guess)`;
+          resEl.appendChild(line);
         }
-      }
+        state.targetWord = msg.target_word;
+        renderBoard();
+        _endAnimationLock();
+      });
+      log(msg.timed_out ? `Time's up. Target: "${msg.target_word}"` : `Endgame guesses revealed.`, 'warn');
       break;
     }
-
-    case 'endgame_timeout':
-      clearTimer('endgame-hint-timer');
-      clearTimer('endgame-guess-timer');
-      document.getElementById('endgame-guess-result').innerHTML =
-        `<span style="color:#FEAED2">⏰ Time's up! Target was: "${msg.target_word}"</span>`;
-      log(`Time's up. Target: "${msg.target_word}"`, 'warn');
-      break;
 
     case 'endgame_round_end': {
       const ec = document.getElementById('round-end-content');

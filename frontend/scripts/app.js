@@ -242,7 +242,6 @@ document.addEventListener('keydown', e => {
   const id = document.activeElement.id;
   if (id === 'hint-input')               submitHint();
   if (id === 'endgame-ghost-hint-input') submitEndgameGhostHint();
-  if (id === 'endgame-guess-input')      submitEndgameGuess();
   if (id === 'join-code')                joinLobby();
   if (id === 'chat-input')               sendChat();
 });

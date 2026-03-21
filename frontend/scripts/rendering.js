@@ -435,14 +435,21 @@ function _handleBoardWordClick(word) {
 }
 
 function _updateWordGuessUI() {
-  const btn = document.getElementById('btn-morp-guess');
-  const label = document.getElementById('morp-guess-selected-word');
-  if (state.boardWordSelected) {
-    btn.disabled = false;
-    if (label) label.textContent = state.boardWordSelected;
-  } else {
-    btn.disabled = true;
-    if (label) label.textContent = '—';
+  // Update whichever guess button is active (morp guess or endgame guess)
+  for (const [btnId, labelId] of [
+    ['btn-morp-guess', 'morp-guess-selected-word'],
+    ['btn-endgame-guess', 'endgame-guess-selected-word'],
+  ]) {
+    const btn = document.getElementById(btnId);
+    const label = document.getElementById(labelId);
+    if (!btn) continue;
+    if (state.boardWordSelected) {
+      btn.disabled = false;
+      if (label) label.textContent = state.boardWordSelected;
+    } else {
+      btn.disabled = true;
+      if (label) label.textContent = '—';
+    }
   }
 }
 
@@ -507,6 +514,76 @@ export function resolveWordGuess(correct, onReveal) {
       if (onReveal) onReveal();
     }, 800);
   }, remaining);
+}
+
+/**
+ * Animate the simultaneous endgame guess reveal.
+ * results: [{player_id, guess, correct}, ...]
+ * onDone: callback after all animations finish
+ */
+export function animateEndgameReveal(results, onDone) {
+  const guessesWithWords = results.filter(r => r.guess);
+  if (guessesWithWords.length === 0) {
+    if (onDone) onDone();
+    return;
+  }
+
+  const grid = document.getElementById('board-grid');
+  const cards = [];
+  const offsets = guessesWithWords.length === 1
+    ? [{ x: '50vw', y: '40vh' }]
+    : [{ x: '35vw', y: '40vh' }, { x: '65vw', y: '40vh' }];
+
+  guessesWithWords.forEach((r, i) => {
+    let originRect = { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
+    if (grid) {
+      for (const cell of grid.querySelectorAll('.word-cell')) {
+        if (cell.textContent.trim() === r.guess) {
+          originRect = cell.getBoundingClientRect();
+          break;
+        }
+      }
+    }
+    const card = document.createElement('div');
+    card.className = 'word-toss-card';
+    card.textContent = r.guess;
+    document.body.appendChild(card);
+
+    const startX = originRect.left + originRect.width / 2;
+    const startY = originRect.top + originRect.height / 2;
+    card.style.left = startX + 'px';
+    card.style.top = startY + 'px';
+    card.dataset.flyX = offsets[i].x;
+    card.dataset.flyY = offsets[i].y;
+
+    cards.push({ el: card, correct: r.correct });
+  });
+
+  // Fly all cards
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      cards.forEach(c => {
+        c.el.style.left = c.el.dataset.flyX;
+        c.el.style.top = c.el.dataset.flyY;
+        c.el.style.transform = 'translate(-50%, -50%) scale(1.5)';
+      });
+    });
+  });
+
+  // After fly (400ms) + suspense (1000ms), reveal correct/wrong
+  setTimeout(() => {
+    cards.forEach(c => {
+      c.el.classList.add(c.correct ? 'word-toss-correct' : 'word-toss-wrong');
+    });
+    // Hold the reveal, then fade out
+    setTimeout(() => {
+      cards.forEach(c => {
+        c.el.classList.add('word-toss-hiding');
+        setTimeout(() => c.el.remove(), 500);
+      });
+      if (onDone) onDone();
+    }, 800);
+  }, 1400);
 }
 
 // ─── Damage animation placeholder ────────────────────────────────────────────

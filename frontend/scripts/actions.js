@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { showScreen, setPhaseLabel } from './helpers.js';
-import { renderRoleBanner, renderPregameLobby, renderChat, disableBoardWordSelection, animateWordGuess } from './rendering.js';
+import { renderRoleBanner, renderPregameLobby, renderChat, disableBoardWordSelection } from './rendering.js';
 import { _drawState, clearCanvas } from './drawing.js';
 import { _timers, clearTimer } from './timers.js';
 
@@ -42,7 +42,7 @@ export function submitMorpGuess() {
   send({ type: 'submit_morp_guess', guess });
   disableBoardWordSelection();
   document.getElementById('btn-morp-guess').disabled = true;
-  animateWordGuess(guess);
+  // Animation waits for server echo (morp_guess_result) so all players see it in sync
 }
 
 export function submitEndgameGhostHint() {
@@ -61,12 +61,12 @@ export function submitEndgameGhostHint() {
 }
 
 export function submitEndgameGuess() {
-  const input = document.getElementById('endgame-guess-input');
-  const guess = input.value.trim();
+  const guess = state.boardWordSelected;
   if (!guess) return;
   send({ type: 'endgame_submit_guess', guess });
-  input.disabled = true;
+  disableBoardWordSelection();
   document.getElementById('btn-endgame-guess').disabled = true;
+  // No animation here — wait for endgame_guesses_revealed so both play together
 }
 
 export function _localResetToLobby() {
