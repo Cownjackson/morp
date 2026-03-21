@@ -27,6 +27,42 @@ export function setEndgamePhaseLabel(text) {
   document.getElementById('endgame-phase-label').textContent = text;
 }
 
+export function setLobbyCodeCopyButtonState(copied = false) {
+  const button = document.getElementById('pregame-lobby-code-copy');
+  if (!button) return;
+  const text = copied ? 'Copied' : 'Copy';
+  const label = copied ? 'Lobby code copied' : 'Copy lobby code';
+  button.textContent = text;
+  button.title = label;
+  button.setAttribute('aria-label', label);
+}
+
+export function showLobbyCodeDisplays(lobbyId) {
+  const lobbyCodeText = `Lobby Code: ${lobbyId}`;
+  const headerCodeEl = document.getElementById('lobby-code-display');
+  const pregameCodeEl = document.getElementById('pregame-lobby-code-display');
+  const pregameCopyEl = document.getElementById('pregame-lobby-code-copy');
+
+  headerCodeEl.textContent = lobbyCodeText;
+  headerCodeEl.classList.remove('hidden');
+
+  if (pregameCodeEl) {
+    pregameCodeEl.textContent = lobbyCodeText;
+    pregameCodeEl.classList.remove('hidden');
+  }
+
+  if (pregameCopyEl) {
+    setLobbyCodeCopyButtonState(false);
+    pregameCopyEl.classList.remove('hidden');
+  }
+}
+
+export function hideLobbyCodeDisplays() {
+  document.getElementById('lobby-code-display')?.classList.add('hidden');
+  document.getElementById('pregame-lobby-code-display')?.classList.add('hidden');
+  document.getElementById('pregame-lobby-code-copy')?.classList.add('hidden');
+}
+
 export function showAction(name) {
   ACTIONS.forEach(a => document.getElementById(`act-${a}`)?.classList.toggle('hidden', a !== name));
 }

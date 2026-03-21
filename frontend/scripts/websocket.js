@@ -1,5 +1,5 @@
 import { state, send } from './state.js';
-import { log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showScreen } from './helpers.js';
+import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
 import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
@@ -68,15 +68,7 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
   state.ws.onopen = () => {
     _wsRetries = 0;
     log(`Connected to lobby ${lobbyId} as ${name}`, 'ok');
-    const codeEl = document.getElementById('lobby-code-display');
-    const lobbyCodeText = 'Lobby Code: ' + lobbyId;
-    codeEl.textContent = lobbyCodeText;
-    codeEl.classList.remove('hidden');
-    const pregameCodeEl = document.getElementById('pregame-lobby-code-display');
-    if (pregameCodeEl) {
-      pregameCodeEl.textContent = lobbyCodeText;
-      pregameCodeEl.classList.remove('hidden');
-    }
+    showLobbyCodeDisplays(lobbyId);
     document.getElementById('panel-connect').classList.add('hidden');
     showLanding(false);
     renderRoleBanner();
@@ -94,8 +86,7 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
   state.ws.onclose = e => {
     if (e.code === 4403 || _wsKicked) {
       log('You have been kicked from the lobby.', 'error');
-      document.getElementById('lobby-code-display').classList.add('hidden');
-      document.getElementById('pregame-lobby-code-display')?.classList.add('hidden');
+      hideLobbyCodeDisplays();
       document.getElementById('role-banner').className = '';
       document.getElementById('role-banner').textContent = '';
       document.getElementById('panel-connect').classList.remove('hidden');
@@ -146,8 +137,7 @@ function handleMessage(msg) {
 
     case 'maintenance_shutdown': {
       _wsMaintenance = true;
-      document.getElementById('lobby-code-display').classList.add('hidden');
-      document.getElementById('pregame-lobby-code-display')?.classList.add('hidden');
+      hideLobbyCodeDisplays();
       document.getElementById('role-banner').className = '';
       document.getElementById('role-banner').textContent = '';
       document.getElementById('panel-connect').classList.remove('hidden');

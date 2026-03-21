@@ -1078,6 +1078,35 @@ body.is-landing #landing-meta-panel {
   justify-content: center;
   text-align: center;
 }
+.pregame-lobby-code-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.pregame-lobby-code-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  margin: 0;
+  padding: 5px 10px;
+  border: 1px solid rgba(208, 187, 246, 0.42);
+  border-radius: 10px;
+  background: rgba(26, 10, 18, 0.72);
+  color: var(--lavender);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 10px 22px rgba(0,0,0,0.16);
+}
+.pregame-lobby-code-copy:hover,
+.pregame-lobby-code-copy:focus-visible {
+  border-color: var(--lavender);
+  color: var(--white);
+  background: rgba(34, 13, 24, 0.84);
+}
 .pregame-help-btn {
   min-width: 188px;
   margin: 0;

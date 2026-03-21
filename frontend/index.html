@@ -260,7 +260,19 @@
     <div class="pregame-main-cluster">
       <div class="pregame-top-row">
         <div class="pregame-top-stack">
-          <span id="pregame-lobby-code-display" class="pregame-lobby-code-chip hidden"></span>
+          <div class="pregame-lobby-code-row">
+            <span id="pregame-lobby-code-display" class="pregame-lobby-code-chip hidden"></span>
+            <button
+              type="button"
+              id="pregame-lobby-code-copy"
+              class="pregame-lobby-code-copy hidden"
+              onclick="copyLobbyCode()"
+              title="Copy lobby code"
+              aria-label="Copy lobby code"
+            >
+              Copy
+            </button>
+          </div>
           <button type="button" id="pregame-help-btn" class="pregame-help-btn">How to Play</button>
           <button type="button" id="pregame-changelog-btn" class="pregame-changelog-btn">What's New</button>
         </div>
