@@ -971,9 +971,6 @@ body.is-landing #landing-meta-panel {
 
 /* Pregame top controls */
 .pregame-top-row {
-  --pregame-players-trigger-offset: 18px;
-  --pregame-players-trigger-y: -48%;
-  position: relative;
   width: fit-content;
   max-width: 100%;
 }
@@ -992,33 +989,10 @@ body.is-landing #landing-meta-panel {
   pointer-events: auto;
 }
 .pregame-players-trigger {
-  position: absolute;
-  left: calc(100% + var(--pregame-players-trigger-offset));
-  top: 50%;
-  transform: translateY(var(--pregame-players-trigger-y));
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
-  padding: 0;
-  border: 1px solid rgba(208, 187, 246, 0.45);
-  border-radius: 16px;
-  background: rgba(26, 10, 18, 0.76);
-  color: var(--lavender);
-  font-size: 0.9rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  box-shadow: 0 10px 22px rgba(0,0,0,0.2);
-  z-index: 16;
-}
-.pregame-players-trigger:hover,
-.pregame-players-trigger:focus-visible {
-  border-color: var(--lavender);
-  color: var(--white);
-  background: rgba(34, 13, 24, 0.84);
-  transform: translateY(var(--pregame-players-trigger-y));
+  min-width: 164px;
 }
 
 /* Pregame active players modal */
@@ -1203,9 +1177,10 @@ body.is-landing #landing-meta-panel {
 .pregame-help-btn:hover {
   background: #6ACFA0;
 }
-.pregame-changelog-btn {
+.pregame-changelog-btn,
+.pregame-players-trigger {
   margin: 0;
-  padding: 10px 20px;
+  padding: 10px 16px;
   border: 1px solid rgba(208, 187, 246, 0.45);
   border-radius: 14px;
   background: rgba(26, 10, 18, 0.72);
@@ -1217,9 +1192,13 @@ body.is-landing #landing-meta-panel {
   position: relative;
   z-index: 12;
 }
-.pregame-changelog-btn:hover {
+.pregame-changelog-btn:hover,
+.pregame-changelog-btn:focus-visible,
+.pregame-players-trigger:hover,
+.pregame-players-trigger:focus-visible {
   border-color: var(--lavender);
   color: var(--white);
+  background: rgba(34, 13, 24, 0.84);
 }
 .pregame-host-controls {
   display: flex;
@@ -1811,17 +1790,11 @@ body.screen-pregame #log {
     gap: 10px;
   }
   .pregame-top-row {
-    --pregame-players-trigger-offset: 10px;
-    --pregame-players-trigger-y: -50%;
     width: min(100%, 320px);
   }
   .pregame-players-trigger {
-    width: 48px;
-    height: 48px;
-  }
-  .pregame-players-trigger:hover,
-  .pregame-players-trigger:focus-visible {
-    transform: translateY(var(--pregame-players-trigger-y));
+    min-width: 0;
+    width: 100%;
   }
   .pregame-players-modal {
     width: min(100%, calc(100vw - 24px));
