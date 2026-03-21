@@ -845,6 +845,30 @@ body.is-landing #landing-meta-panel {
   position: relative;
   pointer-events: none;
 }
+.pregame-exit-btn {
+  position: fixed;
+  top: 22px;
+  left: 22px;
+  padding: 10px 16px;
+  border: 1px solid rgba(208, 187, 246, 0.45);
+  border-radius: 14px;
+  background: rgba(26, 10, 18, 0.76);
+  color: var(--lavender);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(0,0,0,0.2);
+  z-index: 40;
+  pointer-events: auto;
+}
+.pregame-exit-btn:hover {
+  border-color: var(--lavender);
+  color: var(--white);
+}
+.pregame-exit-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
 .pregame-logo-shell {
   position: absolute;
   left: 50%;
@@ -1514,6 +1538,12 @@ body.screen-pregame #log {
     width: 100%;
     padding: 16px;
     border-radius: 18px;
+  }
+  .pregame-exit-btn {
+    top: 16px;
+    left: 16px;
+    padding: 9px 14px;
+    font-size: 0.8rem;
   }
   .pregame-logo-shell {
     bottom: calc(100% - 16px);

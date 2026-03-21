@@ -7,7 +7,7 @@ import { initModals } from './modals.js';
 import { initMusic } from './music.js';
 import { initCanvas, clearCanvas, undoStroke, setDrawColor, setDrawSize, toggleEraser, toggleFill } from './drawing.js';
 import { createLobby, joinLobby, setCustomBoards, copyBoardTemplate } from './lobby.js';
-import { startGame, submitHint, submitVotes, submitMorpGuess, submitEndgameGhostHint, submitEndgameGuess, resetToLobby, sendChat } from './actions.js';
+import { startGame, submitHint, submitVotes, submitMorpGuess, submitEndgameGhostHint, submitEndgameGuess, resetToLobby, leaveLobby, sendChat } from './actions.js';
 import { confirmDamage } from './rendering.js';
 import { initInteractions, toggleInteractionMenu } from './interactions.js';
 
@@ -24,6 +24,7 @@ window.submitMorpGuess = submitMorpGuess;
 window.submitEndgameGhostHint = submitEndgameGhostHint;
 window.submitEndgameGuess = submitEndgameGuess;
 window.resetToLobby = resetToLobby;
+window.leaveLobby = leaveLobby;
 window.sendChat = sendChat;
 window.toggleInteractionMenu = toggleInteractionMenu;
 window.confirmDamage = confirmDamage;

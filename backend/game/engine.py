@@ -371,6 +371,18 @@ class GameEngine:
             self.on_player_disconnect(target_id)
             return False
 
+    def leave_player(self, player_id: str) -> bool:
+        """Remove a player who intentionally leaves before the game starts.
+
+        Returns True when the lobby becomes empty.
+        """
+        if player_id not in self.lobby.players:
+            raise ValueError("Player not found.")
+        if self.lobby.started:
+            raise ValueError("Cannot leave after the game has started.")
+        self._remove_player_from_unstarted_lobby(player_id)
+        return not self.lobby.players
+
     def _remove_player_from_unstarted_lobby(self, player_id: str) -> bool:
         """Remove a player entirely if they leave before the game has started."""
         if self.lobby.started or player_id not in self.lobby.players:
@@ -400,6 +412,7 @@ class GameEngine:
             if p.is_connected and not p.is_ghost:
                 self.lobby.host_id = p.id
                 return
+        self.lobby.host_id = ""
 
     def _skip_disconnected_hints(self) -> None:
         rs = self.state.round_state
