@@ -206,6 +206,9 @@ class GameEngine:
             raise ValueError("Not in morp guess phase.")
         if morp_id not in rs.accused_ids:
             raise ValueError("Only an accused morp can submit a guess.")
+        # Validate guess is a board word (empty = timed out, allowed)
+        if guess and guess.strip().lower() not in [w.strip().lower() for w in rs.board.words]:
+            raise ValueError("Guess must be a word on the board.")
         correct = guess.strip().lower() == rs.target_word.strip().lower()
         if not correct:
             self.lobby.players[morp_id].take_damage()

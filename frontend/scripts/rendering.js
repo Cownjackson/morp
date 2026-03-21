@@ -38,6 +38,13 @@ export function renderBoard() {
     } else if (halfSet) {
       cell.classList.add(halfSet.has(word) ? 'half' : 'hidden-word');
     }
+    if (state.boardSelectionMode) {
+      cell.classList.add('selectable');
+      cell.addEventListener('click', () => _handleBoardWordClick(word));
+      if (state.boardWordSelected === word) {
+        cell.classList.add('word-selected');
+      }
+    }
     grid.appendChild(cell);
   }
   document.getElementById('half-board-note').style.display = halfSet ? 'block' : 'none';
@@ -411,6 +418,100 @@ export function disableAvatarDamage() {
   state.damageTarget = null;
   state._morpIdsForDamage = [];
   renderInGamePlayerRow();
+}
+
+// ─── Board word selection (morp guess phase) ─────────────────────────────────
+export function enableBoardWordSelection() {
+  state.boardSelectionMode = true;
+  state.boardWordSelected = null;
+  _updateWordGuessUI();
+  renderBoard();
+}
+
+function _handleBoardWordClick(word) {
+  state.boardWordSelected = state.boardWordSelected === word ? null : word;
+  _updateWordGuessUI();
+  renderBoard();
+}
+
+function _updateWordGuessUI() {
+  const btn = document.getElementById('btn-morp-guess');
+  const label = document.getElementById('morp-guess-selected-word');
+  if (state.boardWordSelected) {
+    btn.disabled = false;
+    if (label) label.textContent = state.boardWordSelected;
+  } else {
+    btn.disabled = true;
+    if (label) label.textContent = '—';
+  }
+}
+
+export function disableBoardWordSelection() {
+  state.boardSelectionMode = false;
+  state.boardWordSelected = null;
+  renderBoard();
+}
+
+// ─── Word toss animation ─────────────────────────────────────────────────────
+let _wordTossEl = null;
+let _wordTossRevealAt = null;
+
+export function animateWordGuess(word) {
+  // Find the board cell's position
+  const grid = document.getElementById('board-grid');
+  let originRect = { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
+  if (grid) {
+    for (const cell of grid.querySelectorAll('.word-cell')) {
+      if (cell.textContent.trim() === word) {
+        originRect = cell.getBoundingClientRect();
+        break;
+      }
+    }
+  }
+
+  const card = document.createElement('div');
+  card.className = 'word-toss-card';
+  card.textContent = word;
+  document.body.appendChild(card);
+  _wordTossEl = card;
+  _wordTossRevealAt = Date.now() + 1400; // 400ms fly + 1000ms suspense
+
+  const startX = originRect.left + originRect.width / 2;
+  const startY = originRect.top + originRect.height / 2;
+  card.style.left = startX + 'px';
+  card.style.top = startY + 'px';
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      card.classList.add('word-toss-flying');
+    });
+  });
+}
+
+export function resolveWordGuess(correct, onReveal) {
+  if (!_wordTossEl) {
+    // No animation in progress (e.g. timed out with no selection)
+    if (onReveal) onReveal();
+    return;
+  }
+  const remaining = Math.max(0, _wordTossRevealAt - Date.now());
+  setTimeout(() => {
+    if (_wordTossEl) {
+      _wordTossEl.classList.add(correct ? 'word-toss-correct' : 'word-toss-wrong');
+    }
+    setTimeout(() => {
+      if (_wordTossEl) {
+        _wordTossEl.classList.add('word-toss-hiding');
+        setTimeout(() => { _wordTossEl?.remove(); _wordTossEl = null; }, 500);
+      }
+      if (onReveal) onReveal();
+    }, 800);
+  }, remaining);
+}
+
+// ─── Damage animation placeholder ────────────────────────────────────────────
+export function playDamageAnimation(_targetId, _amount) {
+  // Placeholder — mechanic TBD by team
 }
 
 async function kickPlayer(targetId) {

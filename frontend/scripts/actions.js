@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { showScreen, setPhaseLabel } from './helpers.js';
-import { renderRoleBanner, renderPregameLobby, renderChat } from './rendering.js';
+import { renderRoleBanner, renderPregameLobby, renderChat, disableBoardWordSelection, animateWordGuess } from './rendering.js';
 import { _drawState, clearCanvas } from './drawing.js';
 import { _timers, clearTimer } from './timers.js';
 
@@ -37,12 +37,12 @@ export function submitVotes() {
 }
 
 export function submitMorpGuess() {
-  const input = document.getElementById('guess-input');
-  const guess = input.value.trim();
+  const guess = state.boardWordSelected;
   if (!guess) return;
   send({ type: 'submit_morp_guess', guess });
-  input.disabled = true;
+  disableBoardWordSelection();
   document.getElementById('btn-morp-guess').disabled = true;
+  animateWordGuess(guess);
 }
 
 export function submitEndgameGhostHint() {
@@ -77,6 +77,7 @@ export function _localResetToLobby() {
     isGhost: false, endgameTargetWord: null, hostId: null,
     drawingHints: false, lobbyStarted: false,
     avatarInteraction: null, damageTarget: null, _morpIdsForDamage: [],
+    boardSelectionMode: false, boardWordSelected: null,
   });
   Object.keys(_timers).forEach(clearTimer);
   renderRoleBanner();

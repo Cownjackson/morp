@@ -403,10 +403,8 @@
         <span id="guess-timer" class="big-timer">30</span>
       </div>
       <div id="morp-guess-input-block">
-        <div class="row">
-          <input type="text" id="guess-input" placeholder="Guess the target word…" style="width:260px">
-          <button id="btn-morp-guess" onclick="submitMorpGuess()">Submit</button>
-        </div>
+        <p style="color:#FEAED2;font-size:0.88em;margin-bottom:8px">click a word on the board to guess</p>
+        <button id="btn-morp-guess" onclick="submitMorpGuess()" disabled>Guess: <span id="morp-guess-selected-word">—</span></button>
       </div>
       <div id="guess-result" style="margin-top:8px;font-size:1.05em"></div>
     </div>

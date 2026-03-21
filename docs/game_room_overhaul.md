@@ -585,3 +585,24 @@ Each branch should list expected visual observations so testers know exactly wha
 - **Swap behavior:** clicking a different avatar switches the selection
 - **After confirm:** damage is dealt, all damageable styling clears
 - **Non-morp view:** non-morp players see "Waiting for morp to deal damage…" with no interactive avatars
+
+### `word-board-click` (Phase 6A)
+
+**Morp Guess Phase — expected observations (as the morp):**
+- When the morp guess phase starts, the word board cells become clickable (cursor changes to pointer)
+- **Hover effect:** moving the mouse over a board word shows a faint amber/gold border and subtle box-shadow
+- **Selection:** clicking a word highlights it with a solid amber border, gold text, and glow — clearly selected
+- **Swap behavior:** clicking a different word switches the selection; clicking the same word deselects it
+- **Submit button:** reads "Guess: —" and is disabled until a word is selected; updates to "Guess: [word]" when a word is clicked
+- **Word toss animation:** on submit, a floating card with the selected word flies from the board to the center of the screen (~400ms), hovers for ~1s suspense, then flashes green (correct) or red (wrong)
+- **After result:** the word card fades away, result text appears in the action area, and the target word is revealed on the board with the green target highlight
+- **Timer timeout:** if the timer expires with no selection, an empty guess is sent (auto-fail); if a word was selected, that word is submitted
+
+**Morp Guess Phase — expected observations (as non-morp):**
+- Board words are NOT clickable for non-morp players
+- Action area shows "Waiting for [morp name] to guess…"
+- Word toss animation is NOT visible to non-morp players (animation is local to the morp)
+- Result text and target word reveal appear after the morp submits
+
+**Backend validation:**
+- If the morp somehow submits a guess that's not a word on the board, the server rejects it with an error

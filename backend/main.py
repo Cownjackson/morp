@@ -48,6 +48,7 @@ _interaction_times: dict[str, float] = {}   # "lobby_id:player_id" -> last inter
 _INTERACTION_COOLDOWN = 1.5
 
 _TIMER_SECONDS = 30  # duration for morp-guess and endgame-guess timers
+_TIMER_GRACE_SECONDS = 2  # extra buffer before server auto-submits, gives client time to submit first
 
 
 @app.on_event("startup")
@@ -422,12 +423,14 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
         elif msg_type == "submit_morp_guess":
             _cancel_timer(lobby_id)
             rs = engine.state.round_state
-            correct = engine.submit_morp_guess(player_id, data.get("guess", ""))
+            guess = data.get("guess", "")
+            correct = engine.submit_morp_guess(player_id, guess)
             await manager.broadcast(lobby_id, {
                 "type": "morp_guess_result",
                 "morp_id": player_id,
                 "correct": correct,
                 "target_word": rs.target_word,
+                "guess": guess,
             })
             await manager.broadcast(lobby_id, _lobby_update(engine))
             await _check_round_end(lobby_id, engine)
@@ -704,7 +707,7 @@ def _schedule_morp_guess_timeout(
     lobby_id: str, engine: GameEngine, accused_morp_ids: list[str], target_word: str
 ):
     async def _run():
-        await asyncio.sleep(_TIMER_SECONDS)
+        await asyncio.sleep(_TIMER_SECONDS + _TIMER_GRACE_SECONDS)
         if engine.state.phase != GamePhase.MORP_GUESS:
             return
         # Auto-submit empty guess for any morp who hasn't guessed
@@ -722,6 +725,7 @@ def _schedule_morp_guess_timeout(
                     "morp_id": morp_id,
                     "correct": correct,
                     "target_word": target_word,
+                    "guess": "",
                     "timed_out": True,
                 })
             except ValueError:

@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
@@ -44,6 +44,8 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
       avatarInteraction: null,
       damageTarget: null,
       _morpIdsForDamage: [],
+      boardSelectionMode: false,
+      boardWordSelected: null,
     });
   }
 
@@ -176,6 +178,8 @@ function handleMessage(msg) {
       state.avatarInteraction = null;
       state.damageTarget = null;
       state._morpIdsForDamage = [];
+      state.boardSelectionMode = false;
+      state.boardWordSelected = null;
       renderBoard();
       renderInGamePlayerRow();
       renderChat();
@@ -228,16 +232,17 @@ function handleMessage(msg) {
       state._accusedMorpIds = msg.accused_morp_ids;
       const isMorpBeingAsked = msg.accused_morp_ids.includes(state.playerId);
       document.getElementById('morp-guess-input-block').classList.toggle('hidden', !isMorpBeingAsked);
-      document.getElementById('guess-input').disabled = false;
-      document.getElementById('btn-morp-guess').disabled = false;
       document.getElementById('guess-result').textContent =
         isMorpBeingAsked ? '' : `Waiting for ${msg.accused_morp_ids.map(playerName).join(', ')} to guess…`;
       document.getElementById('guess-result').style.color = '#705060';
+      if (isMorpBeingAsked) enableBoardWordSelection();
       if (msg.timers_enabled) {
         startTimer('guess-timer', msg.deadline, () => {
-          if (isMorpBeingAsked && !document.getElementById('guess-input').disabled) {
-            send({ type: 'submit_morp_guess', guess: '' });
-            document.getElementById('guess-input').disabled = true;
+          if (isMorpBeingAsked && state.boardSelectionMode) {
+            const guess = state.boardWordSelected || '';
+            send({ type: 'submit_morp_guess', guess });
+            if (guess) animateWordGuess(guess);
+            disableBoardWordSelection();
             document.getElementById('btn-morp-guess').disabled = true;
           }
         });
@@ -255,11 +260,16 @@ function handleMessage(msg) {
       const resultText = msg.correct
         ? `✓ ${playerName(msg.morp_id)} guessed correctly! Target: "${msg.target_word}"`
         : `✗ ${playerName(msg.morp_id)} guessed wrong. Target: "${msg.target_word}"${msg.timed_out ? ' (timed out)' : ''}`;
-      document.getElementById('guess-result').textContent = resultText;
-      document.getElementById('guess-result').style.color = msg.correct ? '#87DCAB' : '#FEAED2';
       log(resultText, msg.correct ? 'ok' : 'warn');
-      state.targetWord = msg.target_word;
-      renderBoard();
+      // Non-morp players (or morp timeout with no prior animation): start word toss now
+      const isMorpWhoGuessed = msg.morp_id === state.playerId;
+      if (!isMorpWhoGuessed && msg.guess) animateWordGuess(msg.guess);
+      resolveWordGuess(msg.correct, () => {
+        document.getElementById('guess-result').textContent = resultText;
+        document.getElementById('guess-result').style.color = msg.correct ? '#87DCAB' : '#FEAED2';
+        state.targetWord = msg.target_word;
+        renderBoard();
+      });
       break;
     }
 
