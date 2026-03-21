@@ -46,12 +46,24 @@
     rotation: 0,
     spin: 7,
     baseSize: 248,
-    minScale: 0.56,
-    maxScale: 1.18,
+    minScale: 0.45,
+    phoneMinScale: 0.38,
+    maxScale: 1.12,
+    scaleCurveMin: 1.08,
+    scaleCurveMax: 0.99,
+    compactWidthStart: 900,
+    compactWidthEnd: 390,
     speedScaleMultiplier: 0.82,
-    labelFontMin: 0.68,
-    labelFontMax: 0.88,
-    labelMaxWidthRatio: 1.4
+    label: {
+      gapPx: 0.4,
+      baseFontRem: 0.5,
+      fontScalePerPlayerScale: 0.28,
+      minFontRem: 0.84,
+      maxFontRem: 1.19,
+      maxWidthRatio: 1.4,
+      crownMinFontRem: 0.7,
+      crownFontOffsetRem: 0.04
+    }
   };
   const floatingPlayerSeatRatios = [
     { xRatio: 0.18, yRatio: 0.22, vx: 36, vy: 42, spin: 6 },
@@ -271,7 +283,29 @@
       sizeRanges.radiusMaxScale
     );
 
-    return { viewportScale, speedScale, radiusScale, smoothedScale };
+    return { baseViewportScale, viewportScale, speedScale, radiusScale, smoothedScale };
+  }
+
+  // Floating player moops stay on the unboosted base curve so phones get smaller sprites.
+  function getResponsivePlayerScale(baseViewportScale, smoothedScale) {
+    const basePlayerScale =
+      baseViewportScale *
+      lerp(prototypePlayerConfig.scaleCurveMin, prototypePlayerConfig.scaleCurveMax, smoothedScale);
+    const smallViewportProgress = smootherstep(
+      clamp(
+        (prototypePlayerConfig.compactWidthStart - window.innerWidth) /
+        (prototypePlayerConfig.compactWidthStart - prototypePlayerConfig.compactWidthEnd),
+        0,
+        1
+      )
+    );
+    const minPlayerScale = lerp(
+      prototypePlayerConfig.minScale,
+      prototypePlayerConfig.phoneMinScale,
+      smallViewportProgress
+    );
+
+    return clamp(basePlayerScale, minPlayerScale, prototypePlayerConfig.maxScale);
   }
 
   function getEntityCollisionBounds(block) {
@@ -489,11 +523,13 @@
 
   function renderBlock(block) {
     if (isPlayerEntity(block)) {
+      const bodyRotation = block.angle + block.jiggleAngle;
       block.element.style.transform = `translate(${block.x}px, ${block.y}px)`;
       if (block.bodyElement) {
-        block.bodyElement.style.transform =
-          `rotate(${block.angle + block.jiggleAngle}deg) ` +
-          `scale(${block.jiggleScaleX}, ${block.jiggleScaleY})`;
+        block.bodyElement.style.transform = `rotate(${bodyRotation}deg)`;
+      }
+      if (block.spriteElement) {
+        block.spriteElement.style.transform = `scale(${block.jiggleScaleX}, ${block.jiggleScaleY})`;
       }
       return;
     }
@@ -505,9 +541,9 @@
   }
 
   function renderPlayerEntityVisual(entity) {
-    if (!entity?.bodyElement) return;
-    entity.bodyElement.innerHTML = '';
-    entity.bodyElement.style.visibility = 'hidden';
+    if (!entity?.spriteElement) return;
+    entity.spriteElement.innerHTML = '';
+    entity.spriteElement.style.visibility = 'hidden';
 
     if (!entity.playerData?.spriteSrc) {
       return;
@@ -517,8 +553,8 @@
     img.className = 'bg-player-sprite';
     img.alt = '';
     img.src = entity.playerData.spriteSrc;
-    entity.bodyElement.appendChild(img);
-    entity.bodyElement.style.visibility = 'visible';
+    entity.spriteElement.appendChild(img);
+    entity.spriteElement.style.visibility = 'visible';
   }
 
   function updatePlayerEntityText(entity) {
@@ -533,13 +569,14 @@
   }
 
   function updatePlayerEntityLayout(entity, playerScale) {
-    if (!entity || !entity.element || !entity.bodyElement || !entity.labelElement || !entity.nameElement) return;
+    if (!entity || !entity.element || !entity.bodyElement || !entity.spriteElement || !entity.labelElement || !entity.nameElement) return;
 
+    const labelConfig = prototypePlayerConfig.label;
     const bodySize = Math.round(entity.baseWidth * playerScale);
     const labelFontSize = clamp(
-      0.5 + playerScale * 0.28,
-      prototypePlayerConfig.labelFontMin,
-      prototypePlayerConfig.labelFontMax
+      labelConfig.baseFontRem + playerScale * labelConfig.fontScalePerPlayerScale,
+      labelConfig.minFontRem,
+      labelConfig.maxFontRem
     );
 
     entity.width = bodySize;
@@ -549,12 +586,15 @@
     entity.element.style.height = `${bodySize}px`;
     entity.bodyElement.style.width = `${bodySize}px`;
     entity.bodyElement.style.height = `${bodySize}px`;
-    entity.labelElement.style.top = `${bodySize + 8}px`;
+    entity.spriteElement.style.width = `${bodySize}px`;
+    entity.spriteElement.style.height = `${bodySize}px`;
+    entity.labelElement.style.setProperty('--bg-player-label-gap', `${labelConfig.gapPx}px`);
     entity.nameElement.style.fontSize = `${labelFontSize}rem`;
-    entity.nameElement.style.maxWidth = `${Math.round(bodySize * prototypePlayerConfig.labelMaxWidthRatio)}px`;
+    entity.nameElement.style.maxWidth = `${Math.round(bodySize * labelConfig.maxWidthRatio)}px`;
 
     if (entity.crownElement) {
-      entity.crownElement.style.fontSize = `${Math.max(0.7, labelFontSize + 0.04)}rem`;
+      entity.crownElement.style.fontSize =
+        `${Math.max(labelConfig.crownMinFontRem, labelFontSize + labelConfig.crownFontOffsetRem)}rem`;
     }
   }
 
@@ -564,6 +604,9 @@
 
     const body = document.createElement('div');
     body.className = 'bg-player-body';
+
+    const sprite = document.createElement('div');
+    sprite.className = 'bg-player-sprite-shell';
 
     const label = document.createElement('div');
     label.className = 'bg-player-label';
@@ -576,7 +619,8 @@
     name.className = 'bg-player-name';
 
     label.append(crown, name);
-    wrapper.append(body, label);
+    body.append(sprite, label);
+    wrapper.appendChild(body);
     container.appendChild(wrapper);
 
     const entity = {
@@ -585,6 +629,7 @@
       playerData: getPrototypePlayerPayload(playerData),
       element: wrapper,
       bodyElement: body,
+      spriteElement: sprite,
       labelElement: label,
       crownElement: crown,
       nameElement: name,
@@ -1212,7 +1257,7 @@
     }
 
     function updateResponsiveLayout() {
-      const { viewportScale, speedScale, radiusScale, smoothedScale } = getResponsiveMetrics();
+      const { baseViewportScale, viewportScale, speedScale, radiusScale, smoothedScale } = getResponsiveMetrics();
 
       blocks.forEach((block) => {
         block.width = Math.round(block.baseWidth * viewportScale);
@@ -1230,11 +1275,7 @@
         block.vy = Math.sign(block.vy || block.baseVy) * Math.abs(block.baseVy * speedScale);
       });
 
-      const playerScale = clamp(
-        viewportScale * lerp(0.78, 1.02, smoothedScale),
-        prototypePlayerConfig.minScale,
-        prototypePlayerConfig.maxScale
-      );
+      const playerScale = getResponsivePlayerScale(baseViewportScale, smoothedScale);
       const playerSpeedScale = speedScale * prototypePlayerConfig.speedScaleMultiplier;
 
       playerEntities.forEach((entity) => {

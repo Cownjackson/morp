@@ -143,6 +143,14 @@
   height: 124px;
   transform-origin: center center;
   will-change: transform;
+  overflow: visible;
+}
+
+.bg-player-sprite-shell {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+  will-change: transform;
   filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.18));
   background: transparent;
 }
@@ -159,7 +167,7 @@
 
 .bg-player-label {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + var(--bg-player-label-gap, 0.4px));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
