@@ -36,19 +36,92 @@
     rectStretchMin: 30,
     rectStretchMax: 105,
     minSide: 150,
-    responsiveMinScale: 0.306,
-    responsiveMaxScale: 1.035,
-    baseCurvePower: 1.8,
-    narrowViewportWidth: 430,
-    narrowViewportMinBoost: 0.14,
-    radiusMinScale: 0.82,
-    radiusMaxScale: 1.04,
-    radiusShortSideClamp: 0.19,
+    radiusShortSideClamp: 0.19
+  };
+  // Shared responsive anchors for both block sprites and floating moops.
+  // These are blended continuously so the scene never snaps between classes.
+  // Ordered from smallest usable mobile viewport through large desktop.
+  const responsiveSceneConfig = Object.freeze({
     referenceWidth: 1680,
     referenceHeight: 980,
-    mobileBreakpoint: 960,
-    mobileSizeBoost: 1.25
-  };
+    minBaseScale: 0.306,
+    maxBaseScale: 1.035,
+    baseCurvePower: 1.65,
+    classMetricHeightWeight: 0.22,
+    browserChromePenalty: 0.55,
+    safePaddingShortSideRatio: 0.012,
+    safePaddingChromeRatio: 0.16,
+    minSafePadding: 14,
+    maxSafePadding: 72,
+    blockMinScale: 0.33,
+    blockMaxScale: 1.22,
+    blockRadiusMinScale: 0.82,
+    blockRadiusMaxScale: 1.04,
+    playerMinScale: 0.35,
+    playerMaxScale: 1.08,
+    profiles: [
+      {
+        classMetric: 520,
+        blockScaleMultiplier: 1.08,
+        playerScaleMultiplier: 1.14,
+        speedScaleMultiplier: 0.96,
+        radiusScaleMultiplier: 0.96,
+        spreadScale: 0.78,
+        safePadding: 16,
+        impulseRadiusMultiplier: 0.92,
+        impulseStrengthMultiplier: 0.82,
+        rippleRadiusMultiplier: 0.88
+      },
+      {
+        classMetric: 650,
+        blockScaleMultiplier: 1.16,
+        playerScaleMultiplier: 1.21,
+        speedScaleMultiplier: 0.98,
+        radiusScaleMultiplier: 0.98,
+        spreadScale: 0.83,
+        safePadding: 18,
+        impulseRadiusMultiplier: 0.97,
+        impulseStrengthMultiplier: 0.88,
+        rippleRadiusMultiplier: 0.92
+      },
+      {
+        classMetric: 980,
+        blockScaleMultiplier: 1.28,
+        playerScaleMultiplier: 1.3,
+        speedScaleMultiplier: 1,
+        radiusScaleMultiplier: 1,
+        spreadScale: 0.9,
+        safePadding: 22,
+        impulseRadiusMultiplier: 1,
+        impulseStrengthMultiplier: 0.93,
+        rippleRadiusMultiplier: 0.97
+      },
+      {
+        classMetric: 1400,
+        blockScaleMultiplier: 1,
+        playerScaleMultiplier: 1,
+        speedScaleMultiplier: 1,
+        radiusScaleMultiplier: 1,
+        spreadScale: 1,
+        safePadding: 28,
+        impulseRadiusMultiplier: 1,
+        impulseStrengthMultiplier: 1,
+        rippleRadiusMultiplier: 1
+      },
+      {
+        classMetric: 2300,
+        blockScaleMultiplier: 1.15,
+        playerScaleMultiplier: 1.02,
+        speedScaleMultiplier: 1.02,
+        radiusScaleMultiplier: 1.03,
+        spreadScale: 1.08,
+        safePadding: 38,
+        impulseRadiusMultiplier: 1.08,
+        impulseStrengthMultiplier: 1.04,
+        rippleRadiusMultiplier: 1.05
+      }
+    ]
+  });
   const prototypePlayerConfig = {
     id: 'local-prototype-player',
     xRatio: 0.48,
@@ -58,13 +131,6 @@
     rotation: 0,
     spin: 7,
     baseSize: 248,
-    minScale: 0.45,
-    phoneMinScale: 0.38,
-    maxScale: 1.12,
-    scaleCurveMin: 1.08,
-    scaleCurveMax: 0.99,
-    compactWidthStart: 900,
-    compactWidthEnd: 390,
     speedScaleMultiplier: 0.82,
     label: {
       gapPx: 0.4,
@@ -76,6 +142,10 @@
       crownMinFontRem: 0.7,
       crownFontOffsetRem: 0.04
     }
+  };
+  const motionConfig = {
+    minSpeedScale: 0.72,
+    maxSpeedScale: 1
   };
   const floatingPlayerSeatRatios = [
     { xRatio: 0.18, yRatio: 0.22, vx: 36, vy: 42, spin: 6 },
@@ -89,33 +159,6 @@
     { xRatio: 0.46, yRatio: 0.62, vx: 33, vy: -38, spin: 7 },
     { xRatio: 0.88, yRatio: 0.3, vx: -35, vy: 37, spin: -6 }
   ];
-  const responsiveBoostTiers = [
-    {
-      startWidth: 700,
-      startHeight: 960,
-      targetWidth: 820,
-      targetHeight: 1180,
-      boost: 1.08
-    },
-    {
-      startWidth: sizeRanges.referenceWidth,
-      startHeight: sizeRanges.referenceHeight,
-      targetWidth: 2560,
-      targetHeight: 1440,
-      boost: 1.15
-    },
-    {
-      startWidth: 2560,
-      startHeight: 1440,
-      targetWidth: 3840,
-      targetHeight: 2160,
-      boost: 1.3
-    }
-  ];
-  const motionRanges = {
-    responsiveMinSpeedScale: 0.72,
-    responsiveMaxSpeedScale: 1
-  };
   const interactionConfig = {
     impulseRadius: 320,
     impulseStrength: 150,
@@ -198,27 +241,45 @@
     return clamped * clamped * clamped * (clamped * (clamped * 6 - 15) + 10);
   }
 
-  function getViewportRatio(targetWidth, targetHeight) {
-    return Math.min(window.innerWidth / targetWidth, window.innerHeight / targetHeight);
+  let viewportState = null;
+
+  function mixResponsiveProfile(lowerProfile, upperProfile, amount) {
+    return {
+      blockScaleMultiplier: lerp(lowerProfile.blockScaleMultiplier, upperProfile.blockScaleMultiplier, amount),
+      playerScaleMultiplier: lerp(lowerProfile.playerScaleMultiplier, upperProfile.playerScaleMultiplier, amount),
+      speedScaleMultiplier: lerp(lowerProfile.speedScaleMultiplier, upperProfile.speedScaleMultiplier, amount),
+      radiusScaleMultiplier: lerp(lowerProfile.radiusScaleMultiplier, upperProfile.radiusScaleMultiplier, amount),
+      spreadScale: lerp(lowerProfile.spreadScale, upperProfile.spreadScale, amount),
+      safePadding: lerp(lowerProfile.safePadding, upperProfile.safePadding, amount),
+      impulseRadiusMultiplier: lerp(lowerProfile.impulseRadiusMultiplier, upperProfile.impulseRadiusMultiplier, amount),
+      impulseStrengthMultiplier: lerp(lowerProfile.impulseStrengthMultiplier, upperProfile.impulseStrengthMultiplier, amount),
+      rippleRadiusMultiplier: lerp(lowerProfile.rippleRadiusMultiplier, upperProfile.rippleRadiusMultiplier, amount)
+    };
   }
 
-  function getTierBoost() {
-    let boost = 1;
+  function getResponsiveProfile(classMetric) {
+    const { profiles } = responsiveSceneConfig;
+    if (classMetric <= profiles[0].classMetric) {
+      return profiles[0];
+    }
 
-    responsiveBoostTiers.forEach((tier) => {
-      const startRatio = Math.min(
-        tier.startWidth / tier.targetWidth,
-        tier.startHeight / tier.targetHeight
-      );
-      const targetRatio = getViewportRatio(tier.targetWidth, tier.targetHeight);
-      const progress = smootherstep(
-        clamp((targetRatio - startRatio) / (1 - startRatio), 0, 1)
-      );
+    for (let index = 1; index < profiles.length; index += 1) {
+      const upperProfile = profiles[index];
+      if (classMetric <= upperProfile.classMetric) {
+        const lowerProfile = profiles[index - 1];
+        const amount = smootherstep(
+          clamp(
+            (classMetric - lowerProfile.classMetric) /
+            (upperProfile.classMetric - lowerProfile.classMetric),
+            0,
+            1
+          )
+        );
+        return mixResponsiveProfile(lowerProfile, upperProfile, amount);
+      }
+    }
 
-      boost = lerp(boost, tier.boost, progress);
-    });
-
-    return boost;
+    return profiles[profiles.length - 1];
   }
 
   function shuffle(values) {
@@ -230,6 +291,24 @@
     }
 
     return copy;
+  }
+
+  function getViewportSnapshot() {
+    const layoutWidth =
+      window.innerWidth ||
+      document.documentElement.clientWidth ||
+      responsiveSceneConfig.referenceWidth;
+    const layoutHeight =
+      window.innerHeight ||
+      document.documentElement.clientHeight ||
+      responsiveSceneConfig.referenceHeight;
+
+    return {
+      layoutWidth,
+      layoutHeight,
+      visibleWidth: Math.max(1, Math.round(window.visualViewport?.width || layoutWidth)),
+      visibleHeight: Math.max(1, Math.round(window.visualViewport?.height || layoutHeight))
+    };
   }
 
   function generateBlockSize(shapeMode) {
@@ -257,67 +336,118 @@
         };
   }
 
-  function getResponsiveMetrics() {
-    const widthScale = window.innerWidth / sizeRanges.referenceWidth;
-    const heightScale = window.innerHeight / sizeRanges.referenceHeight;
-    const rawScale = clamp(
-      Math.min(widthScale, heightScale, sizeRanges.responsiveMaxScale),
-      sizeRanges.responsiveMinScale,
-      sizeRanges.responsiveMaxScale
+  function measureSceneViewport(snapshot = getViewportSnapshot()) {
+    const { layoutWidth, layoutHeight, visibleWidth, visibleHeight } = snapshot;
+    const browserChromeHeight = Math.max(Math.round(layoutHeight - visibleHeight), 0);
+    const shortSide = Math.min(visibleWidth, visibleHeight);
+    const baseFitScale = Math.min(
+      visibleWidth / responsiveSceneConfig.referenceWidth,
+      visibleHeight / responsiveSceneConfig.referenceHeight
     );
-    const normalizedScale =
-      (rawScale - sizeRanges.responsiveMinScale) /
-      (sizeRanges.responsiveMaxScale - sizeRanges.responsiveMinScale);
-    const smoothedScale = smootherstep(normalizedScale);
-    const sizeCurveScale = smoothedScale ** sizeRanges.baseCurvePower;
-    const narrowViewportRatio = clamp(window.innerWidth / sizeRanges.narrowViewportWidth, 0, 1);
-    const narrowViewportAdjustment =
-      smootherstep(1 - narrowViewportRatio) * sizeRanges.narrowViewportMinBoost;
-    const baseViewportScale = clamp(
-      sizeRanges.responsiveMinScale +
-        (sizeRanges.responsiveMaxScale - sizeRanges.responsiveMinScale) * sizeCurveScale -
-        narrowViewportAdjustment,
-      sizeRanges.responsiveMinScale,
-      sizeRanges.responsiveMaxScale
-    );
-    const mobileSizeBoost = window.innerWidth < sizeRanges.mobileBreakpoint ? sizeRanges.mobileSizeBoost : 1;
-    const viewportScale = baseViewportScale * getTierBoost() * mobileSizeBoost;
-    const speedScale = clamp(
-      motionRanges.responsiveMinSpeedScale +
-        (motionRanges.responsiveMaxSpeedScale - motionRanges.responsiveMinSpeedScale) * normalizedScale,
-      motionRanges.responsiveMinSpeedScale,
-      motionRanges.responsiveMaxSpeedScale
-    );
-    const radiusScale = clamp(
-      sizeRanges.radiusMinScale +
-        (sizeRanges.radiusMaxScale - sizeRanges.radiusMinScale) * smoothedScale ** 1.15,
-      sizeRanges.radiusMinScale,
-      sizeRanges.radiusMaxScale
-    );
-
-    return { baseViewportScale, viewportScale, speedScale, radiusScale, smoothedScale };
-  }
-
-  // Floating player moops stay on the unboosted base curve so phones get smaller sprites.
-  function getResponsivePlayerScale(baseViewportScale, smoothedScale) {
-    const basePlayerScale =
-      baseViewportScale *
-      lerp(prototypePlayerConfig.scaleCurveMin, prototypePlayerConfig.scaleCurveMax, smoothedScale);
-    const smallViewportProgress = smootherstep(
+    const fitProgress = smootherstep(
       clamp(
-        (prototypePlayerConfig.compactWidthStart - window.innerWidth) /
-        (prototypePlayerConfig.compactWidthStart - prototypePlayerConfig.compactWidthEnd),
+        (baseFitScale - responsiveSceneConfig.minBaseScale) /
+        (responsiveSceneConfig.maxBaseScale - responsiveSceneConfig.minBaseScale),
         0,
         1
       )
     );
-    const minPlayerScale = lerp(
-      prototypePlayerConfig.minScale,
-      prototypePlayerConfig.phoneMinScale,
-      smallViewportProgress
+    const baseScale = clamp(
+      responsiveSceneConfig.minBaseScale +
+      (responsiveSceneConfig.maxBaseScale - responsiveSceneConfig.minBaseScale) *
+        (fitProgress ** responsiveSceneConfig.baseCurvePower),
+      responsiveSceneConfig.minBaseScale,
+      responsiveSceneConfig.maxBaseScale
     );
+    const classMetric = Math.max(
+      0,
+      visibleWidth +
+        (visibleHeight * responsiveSceneConfig.classMetricHeightWeight) -
+        (browserChromeHeight * responsiveSceneConfig.browserChromePenalty)
+    );
+    const profile = getResponsiveProfile(classMetric);
+    // Safe padding grows a bit on compact screens and when mobile browser chrome
+    // reduces the visible height, which keeps the scene from crowding the edges.
+    const safePadding = Math.round(
+      clamp(
+        profile.safePadding +
+          (shortSide * responsiveSceneConfig.safePaddingShortSideRatio) +
+          (browserChromeHeight * responsiveSceneConfig.safePaddingChromeRatio),
+        responsiveSceneConfig.minSafePadding,
+        responsiveSceneConfig.maxSafePadding
+      )
+    );
+    const bounds = {
+      left: safePadding,
+      top: safePadding,
+      right: Math.max((safePadding + 1), visibleWidth - safePadding),
+      bottom: Math.max((safePadding + 1), visibleHeight - safePadding)
+    };
+    bounds.width = Math.max(bounds.right - bounds.left, 1);
+    bounds.height = Math.max(bounds.bottom - bounds.top, 1);
 
-    return clamp(basePlayerScale, minPlayerScale, prototypePlayerConfig.maxScale);
+    return {
+      layoutWidth,
+      layoutHeight,
+      visibleWidth,
+      visibleHeight,
+      blockScale: clamp(
+        baseScale * profile.blockScaleMultiplier,
+        responsiveSceneConfig.blockMinScale,
+        responsiveSceneConfig.blockMaxScale
+      ),
+      playerScale: clamp(
+        baseScale * profile.playerScaleMultiplier,
+        responsiveSceneConfig.playerMinScale,
+        responsiveSceneConfig.playerMaxScale
+      ),
+      speedScale: clamp(
+        lerp(motionConfig.minSpeedScale, motionConfig.maxSpeedScale, fitProgress) * profile.speedScaleMultiplier,
+        motionConfig.minSpeedScale,
+        motionConfig.maxSpeedScale * 1.02
+      ),
+      radiusScale: clamp(
+        lerp(
+          responsiveSceneConfig.blockRadiusMinScale,
+          responsiveSceneConfig.blockRadiusMaxScale,
+          fitProgress ** 1.1
+        ) * profile.radiusScaleMultiplier,
+        responsiveSceneConfig.blockRadiusMinScale,
+        responsiveSceneConfig.blockRadiusMaxScale * 1.04
+      ),
+      spreadScale: profile.spreadScale,
+      bounds,
+      impulseRadius:
+        Math.max(interactionConfig.impulseRadius * 0.78, shortSide * 0.42) * profile.impulseRadiusMultiplier,
+      impulseStrength:
+        lerp(
+          interactionConfig.impulseStrength * 0.82,
+          interactionConfig.impulseStrength,
+          clamp(visibleWidth / 1024, 0, 1)
+        ) * profile.impulseStrengthMultiplier,
+      rippleEndRadius:
+        Math.max(interactionConfig.rippleEndRadius, shortSide * 0.17) * profile.rippleRadiusMultiplier
+    };
+  }
+
+  function getSceneViewport() {
+    const snapshot = getViewportSnapshot();
+
+    if (
+      !viewportState ||
+      viewportState.layoutWidth !== snapshot.layoutWidth ||
+      viewportState.layoutHeight !== snapshot.layoutHeight ||
+      viewportState.visibleWidth !== snapshot.visibleWidth ||
+      viewportState.visibleHeight !== snapshot.visibleHeight
+    ) {
+      viewportState = measureSceneViewport(snapshot);
+    }
+
+    return viewportState;
+  }
+
+  function spreadSceneRatio(ratio, spreadScale) {
+    return clamp(0.5 + (((ratio ?? 0.5) - 0.5) * spreadScale), 0, 1);
   }
 
   function getEntityCollisionBounds(block) {
@@ -423,7 +553,7 @@
     );
   }
 
-  function bounceOffWalls(block, viewportWidth, viewportHeight) {
+  function bounceOffWalls(block, bounds) {
     const hitbox = getHitbox(block);
     const extents = getRotatedExtents(hitbox);
     const minX = hitbox.centerX - extents.x;
@@ -434,22 +564,22 @@
     let normalX = 0;
     let normalY = 0;
 
-    if (minX <= 0) {
-      block.x += -minX;
+    if (minX <= bounds.left) {
+      block.x += bounds.left - minX;
       block.vx = Math.abs(block.vx) * restitution;
       normalX = 1;
-    } else if (maxX >= viewportWidth) {
-      block.x -= maxX - viewportWidth;
+    } else if (maxX >= bounds.right) {
+      block.x -= maxX - bounds.right;
       block.vx = -Math.abs(block.vx) * restitution;
       normalX = -1;
     }
 
-    if (minY <= 0) {
-      block.y += -minY;
+    if (minY <= bounds.top) {
+      block.y += bounds.top - minY;
       block.vy = Math.abs(block.vy) * restitution;
       normalY = 1;
-    } else if (maxY >= viewportHeight) {
-      block.y -= maxY - viewportHeight;
+    } else if (maxY >= bounds.bottom) {
+      block.y -= maxY - bounds.bottom;
       block.vy = -Math.abs(block.vy) * restitution;
       normalY = -1;
     }
@@ -1321,15 +1451,14 @@
       block.jiggleTime = 0;
     }
 
-    function updateResponsiveLayout() {
+    function updateResponsiveLayout(viewport = getSceneViewport()) {
       syncThemeStyles();
-      const { baseViewportScale, viewportScale, speedScale, radiusScale, smoothedScale } = getResponsiveMetrics();
 
       blocks.forEach((block) => {
-        block.width = Math.round(block.baseWidth * viewportScale);
-        block.height = Math.round(block.baseHeight * viewportScale);
+        block.width = Math.round(block.baseWidth * viewport.blockScale);
+        block.height = Math.round(block.baseHeight * viewport.blockScale);
         const shortestSide = Math.min(block.width, block.height);
-        const scaledRadius = block.baseRadius * radiusScale;
+        const scaledRadius = block.baseRadius * viewport.radiusScale;
         block.radius = Math.min(
           scaledRadius,
           Math.max(8, shortestSide * sizeRanges.radiusShortSideClamp)
@@ -1337,33 +1466,34 @@
         block.element.style.width = `${block.width}px`;
         block.element.style.height = `${block.height}px`;
         block.element.style.borderRadius = `${block.radius}px`;
-        block.vx = Math.sign(block.vx || block.baseVx) * Math.abs(block.baseVx * speedScale);
-        block.vy = Math.sign(block.vy || block.baseVy) * Math.abs(block.baseVy * speedScale);
+        block.vx = Math.sign(block.vx || block.baseVx) * Math.abs(block.baseVx * viewport.speedScale);
+        block.vy = Math.sign(block.vy || block.baseVy) * Math.abs(block.baseVy * viewport.speedScale);
       });
 
-      const playerScale = getResponsivePlayerScale(baseViewportScale, smoothedScale);
-      const playerSpeedScale = speedScale * prototypePlayerConfig.speedScaleMultiplier;
+      const playerSpeedScale = viewport.speedScale * prototypePlayerConfig.speedScaleMultiplier;
 
       playerEntities.forEach((entity) => {
-        updatePlayerEntityLayout(entity, playerScale);
+        updatePlayerEntityLayout(entity, viewport.playerScale);
         entity.vx = Math.sign(entity.vx || entity.baseVx) * Math.abs(entity.baseVx * playerSpeedScale);
         entity.vy = Math.sign(entity.vy || entity.baseVy) * Math.abs(entity.baseVy * playerSpeedScale);
       });
     }
 
-    function placeBlocks() {
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-
-      updateResponsiveLayout();
+    function placeBlocks(viewport = getSceneViewport()) {
+      const sceneBounds = viewport.bounds;
+      updateResponsiveLayout(viewport);
 
       getPhysicsEntities().forEach((entity) => {
-        const maxX = Math.max(viewportWidth - entity.width, 0);
-        const maxY = Math.max(viewportHeight - entity.height, 0);
+        const maxX = Math.max(sceneBounds.width - entity.width, 0);
+        const maxY = Math.max(sceneBounds.height - entity.height, 0);
 
-        entity.x = clamp(maxX * entity.xRatio, 0, maxX);
-        entity.y = clamp(maxY * entity.yRatio, 0, maxY);
-        bounceOffWalls(entity, viewportWidth, viewportHeight);
+        entity.x =
+          sceneBounds.left +
+          clamp(maxX * spreadSceneRatio(entity.xRatio, viewport.spreadScale), 0, maxX);
+        entity.y =
+          sceneBounds.top +
+          clamp(maxY * spreadSceneRatio(entity.yRatio, viewport.spreadScale), 0, maxY);
+        bounceOffWalls(entity, sceneBounds);
         renderBlock(entity);
       });
     }
@@ -1384,10 +1514,7 @@
         y,
         bornAt: performance.now(),
         startRadius: interactionConfig.rippleStartRadius,
-        endRadius: Math.max(
-          interactionConfig.rippleEndRadius,
-          Math.min(window.innerWidth, window.innerHeight) * 0.17
-        )
+        endRadius: getSceneViewport().rippleEndRadius
       });
     }
 
@@ -1435,15 +1562,9 @@
     }
 
     function applyImpulse(x, y) {
-      const responsiveRadius = Math.max(
-        interactionConfig.impulseRadius * 0.78,
-        Math.min(window.innerWidth, window.innerHeight) * 0.42
-      );
-      const responsiveStrength = lerp(
-        interactionConfig.impulseStrength * 0.82,
-        interactionConfig.impulseStrength,
-        clamp(window.innerWidth / 1024, 0, 1)
-      );
+      const viewport = getSceneViewport();
+      const responsiveRadius = viewport.impulseRadius;
+      const responsiveStrength = viewport.impulseStrength;
 
       getPhysicsEntities().forEach((block) => {
         const centerX = block.x + block.width / 2;
@@ -1486,8 +1607,8 @@
       const delta = Math.min((now - lastTime) / 1000, 0.033);
       lastTime = now;
 
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
+      const viewport = getSceneViewport();
+      const sceneBounds = viewport.bounds;
       const physicsEntities = getPhysicsEntities();
 
       // Integrate positions
@@ -1514,7 +1635,7 @@
 
       // Wall bounce — single pass after collision resolution, with jiggle + corner ripple
       physicsEntities.forEach((block) => {
-        const wallHit = bounceOffWalls(block, viewportWidth, viewportHeight);
+        const wallHit = bounceOffWalls(block, sceneBounds);
         if (wallHit) {
           const speed = Math.hypot(block.vx, block.vy);
           applyCollisionJiggle(block, wallHit.normalX, wallHit.normalY, speed * 0.4);
@@ -1529,8 +1650,8 @@
           }
           if (now - block.lastWallHitX < interactionConfig.cornerRippleWindow &&
               now - block.lastWallHitY < interactionConfig.cornerRippleWindow) {
-            const cornerX = block.lastWallHitNX < 0 ? viewportWidth : 0;
-            const cornerY = block.lastWallHitNY < 0 ? viewportHeight : 0;
+            const cornerX = block.lastWallHitNX < 0 ? sceneBounds.right : sceneBounds.left;
+            const cornerY = block.lastWallHitNY < 0 ? sceneBounds.bottom : sceneBounds.top;
             spawnRipple(cornerX, cornerY);
             triggerCornerFanfare(block);
             block.lastWallHitX = -Infinity;
@@ -1553,23 +1674,30 @@
     }
 
     window.addEventListener('resize', () => {
+      viewportState = null;
       scheduleLayoutRefresh(1);
     });
     window.addEventListener('load', () => {
+      viewportState = null;
       scheduleLayoutRefresh(2);
     }, { once: true });
     window.addEventListener('pageshow', () => {
+      viewportState = null;
       scheduleLayoutRefresh(1);
     });
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', () => {
+      const handleVisualViewportChange = () => {
+        viewportState = null;
         scheduleLayoutRefresh(1);
-      }, { passive: true });
+      };
+      window.visualViewport.addEventListener('resize', handleVisualViewportChange, { passive: true });
+      window.visualViewport.addEventListener('scroll', handleVisualViewportChange, { passive: true });
     }
     interactionLayer.addEventListener('pointerdown', handlePointerDown, { passive: true });
 
     if (document.fonts?.ready) {
       document.fonts.ready.then(() => {
+        viewportState = null;
         scheduleLayoutRefresh(2);
       });
     }
@@ -1585,6 +1713,7 @@
       });
     }
 
+    viewportState = measureSceneViewport();
     runLayoutRefresh();
     requestAnimationFrame((now) => {
       lastTime = now;
