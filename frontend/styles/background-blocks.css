@@ -38,6 +38,19 @@
   background: transparent;
 }
 
+.background-corner-trigger-box {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  box-sizing: border-box;
+  pointer-events: none;
+  opacity: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
 .swatch {
   position: fixed;
   top: 0;
