@@ -147,6 +147,13 @@
     minSpeedScale: 0.72,
     maxSpeedScale: 1
   };
+  const softKeyboardConfig = Object.freeze({
+    minHeightDrop: 120,
+    minHeightDropRatio: 0.18,
+    maxWidthDelta: 120,
+    maxWidthDeltaRatio: 0.12,
+    settleFrames: 3
+  });
   const floatingPlayerSeatRatios = [
     { xRatio: 0.18, yRatio: 0.22, vx: 36, vy: 42, spin: 6 },
     { xRatio: 0.74, yRatio: 0.18, vx: -38, vy: 39, spin: -5 },
@@ -242,6 +249,14 @@
   }
 
   let viewportState = null;
+  let stableViewportSnapshot = null;
+  const keyboardViewportState = {
+    focusedElement: null,
+    baselineSnapshot: null,
+    locked: false,
+    settling: false,
+    settleRaf: 0
+  };
 
   function mixResponsiveProfile(lowerProfile, upperProfile, amount) {
     return {
@@ -309,6 +324,85 @@
       visibleWidth: Math.max(1, Math.round(window.visualViewport?.width || layoutWidth)),
       visibleHeight: Math.max(1, Math.round(window.visualViewport?.height || layoutHeight))
     };
+  }
+
+  function isTextEntryElement(element) {
+    if (!element || element.disabled || element.readOnly) {
+      return false;
+    }
+
+    if (element.isContentEditable) {
+      return true;
+    }
+
+    const tagName = element.tagName?.toLowerCase();
+    if (tagName === 'textarea') {
+      return true;
+    }
+
+    if (tagName !== 'input') {
+      return false;
+    }
+
+    const type = (element.getAttribute('type') || 'text').toLowerCase();
+    return ![
+      'button',
+      'checkbox',
+      'color',
+      'file',
+      'hidden',
+      'image',
+      'radio',
+      'range',
+      'reset',
+      'submit'
+    ].includes(type);
+  }
+
+  function hasFocusedTextEntry() {
+    return (
+      isTextEntryElement(keyboardViewportState.focusedElement) ||
+      isTextEntryElement(document.activeElement)
+    );
+  }
+
+  function isSoftKeyboardViewportShift(
+    snapshot,
+    baselineSnapshot = keyboardViewportState.baselineSnapshot || stableViewportSnapshot
+  ) {
+    if (!window.visualViewport || !baselineSnapshot) {
+      return false;
+    }
+
+    const requiredHeightDrop = Math.max(
+      softKeyboardConfig.minHeightDrop,
+      baselineSnapshot.visibleHeight * softKeyboardConfig.minHeightDropRatio
+    );
+    const maxWidthDelta = Math.max(
+      softKeyboardConfig.maxWidthDelta,
+      baselineSnapshot.visibleWidth * softKeyboardConfig.maxWidthDeltaRatio
+    );
+    const heightDrop = baselineSnapshot.visibleHeight - snapshot.visibleHeight;
+    const widthDelta = Math.abs(baselineSnapshot.visibleWidth - snapshot.visibleWidth);
+    const layoutWidthDelta = Math.abs(baselineSnapshot.layoutWidth - snapshot.layoutWidth);
+
+    return (
+      heightDrop >= requiredHeightDrop &&
+      widthDelta <= maxWidthDelta &&
+      layoutWidthDelta <= maxWidthDelta
+    );
+  }
+
+  function shouldPreserveSceneViewport(snapshot) {
+    if (keyboardViewportState.settling) {
+      return true;
+    }
+
+    if (!(hasFocusedTextEntry() || keyboardViewportState.locked)) {
+      return false;
+    }
+
+    return isSoftKeyboardViewportShift(snapshot);
   }
 
   function generateBlockSize(shapeMode) {
@@ -431,7 +525,10 @@
   }
 
   function getSceneViewport() {
-    const snapshot = getViewportSnapshot();
+    const rawSnapshot = getViewportSnapshot();
+    const snapshot = shouldPreserveSceneViewport(rawSnapshot)
+      ? (stableViewportSnapshot || rawSnapshot)
+      : rawSnapshot;
 
     if (
       !viewportState ||
@@ -806,7 +903,7 @@
     };
 
     updatePlayerEntityText(entity);
-    updatePlayerEntityLayout(entity, 1);
+    updatePlayerEntityLayout(entity, getSceneViewport().playerScale);
     renderPlayerEntityVisual(entity);
 
     return entity;
@@ -1173,6 +1270,28 @@
       entity.element.classList.remove('hidden');
     }
 
+    function syncPlayerEntityToViewport(entity, viewport = getSceneViewport()) {
+      const playerSpeedScale = viewport.speedScale * prototypePlayerConfig.speedScaleMultiplier;
+      updatePlayerEntityLayout(entity, viewport.playerScale);
+      entity.vx = Math.sign(entity.vx || entity.baseVx) * Math.abs(entity.baseVx * playerSpeedScale);
+      entity.vy = Math.sign(entity.vy || entity.baseVy) * Math.abs(entity.baseVy * playerSpeedScale);
+    }
+
+    function positionEntityInViewport(entity, viewport = getSceneViewport()) {
+      const sceneBounds = viewport.bounds;
+      const maxX = Math.max(sceneBounds.width - entity.width, 0);
+      const maxY = Math.max(sceneBounds.height - entity.height, 0);
+
+      entity.x =
+        sceneBounds.left +
+        clamp(maxX * spreadSceneRatio(entity.xRatio, viewport.spreadScale), 0, maxX);
+      entity.y =
+        sceneBounds.top +
+        clamp(maxY * spreadSceneRatio(entity.yRatio, viewport.spreadScale), 0, maxY);
+      bounceOffWalls(entity, sceneBounds);
+      renderBlock(entity);
+    }
+
     function detachPlayerEntity(entity) {
       const index = playerEntities.indexOf(entity);
       if (index >= 0) {
@@ -1226,6 +1345,7 @@
     function createPlayerEntityFromPlayer(playerData = {}) {
       const entity = createPlayerEntity(container, playerData);
       const seat = getFloatingPlayerSeat(playerData.id, playerEntitiesById.size);
+      const viewport = getSceneViewport();
       entity.xRatio = seat.xRatio;
       entity.yRatio = seat.yRatio;
       entity.vx = seat.vx;
@@ -1234,6 +1354,8 @@
       entity.baseVy = seat.vy;
       entity.spin = seat.spin;
       attachPlayerEntity(entity);
+      syncPlayerEntityToViewport(entity, viewport);
+      positionEntityInViewport(entity, viewport);
       playerEntitiesById.set(playerData.id, entity);
       return entity;
     }
@@ -1279,6 +1401,7 @@
       setBackgroundMoopMode(backgroundMoopModes.PREGAME);
       syncPregameLobbyMoops(players);
     }
+
     function triggerCornerFanfare(block) {
       if (!block?.dvdImg) {
         return;
@@ -1347,6 +1470,69 @@
 
     function scheduleLayoutRefresh(frameCount = 1) {
       scheduleRefresh('layout', runLayoutRefresh, frameCount);
+    }
+
+    function cancelKeyboardViewportRestore() {
+      if (keyboardViewportState.settleRaf) {
+        cancelAnimationFrame(keyboardViewportState.settleRaf);
+        keyboardViewportState.settleRaf = 0;
+      }
+      keyboardViewportState.settling = false;
+    }
+
+    function commitSceneViewportChange(snapshot, frameCount = 1) {
+      cancelKeyboardViewportRestore();
+      viewportState = null;
+      stableViewportSnapshot = snapshot;
+      keyboardViewportState.locked = false;
+      keyboardViewportState.baselineSnapshot = hasFocusedTextEntry() ? snapshot : null;
+      scheduleLayoutRefresh(frameCount);
+    }
+
+    function scheduleKeyboardViewportRestore(frameCount = 1) {
+      keyboardViewportState.settling = true;
+      if (keyboardViewportState.settleRaf) {
+        cancelAnimationFrame(keyboardViewportState.settleRaf);
+      }
+
+      const settle = (remainingFrames) => {
+        if (remainingFrames > 0) {
+          keyboardViewportState.settleRaf = requestAnimationFrame(() => settle(remainingFrames - 1));
+          return;
+        }
+
+        keyboardViewportState.settleRaf = 0;
+        const snapshot = getViewportSnapshot();
+        if (isSoftKeyboardViewportShift(snapshot)) {
+          scheduleKeyboardViewportRestore(frameCount);
+          return;
+        }
+
+        commitSceneViewportChange(snapshot, frameCount);
+      };
+
+      settle(softKeyboardConfig.settleFrames);
+    }
+
+    function handleSceneViewportChange(frameCount = 1) {
+      const snapshot = getViewportSnapshot();
+      if (hasFocusedTextEntry() && !keyboardViewportState.baselineSnapshot) {
+        keyboardViewportState.baselineSnapshot = snapshot;
+      }
+
+      if (isSoftKeyboardViewportShift(snapshot) && (hasFocusedTextEntry() || keyboardViewportState.locked)) {
+        cancelKeyboardViewportRestore();
+        keyboardViewportState.locked = true;
+        scheduleLogoRefresh(1);
+        return;
+      }
+
+      if (keyboardViewportState.locked && !hasFocusedTextEntry()) {
+        scheduleKeyboardViewportRestore(frameCount);
+        return;
+      }
+
+      commitSceneViewportChange(snapshot, frameCount);
     }
 
     function updateLogoPaint(now) {
@@ -1470,31 +1656,16 @@
         block.vy = Math.sign(block.vy || block.baseVy) * Math.abs(block.baseVy * viewport.speedScale);
       });
 
-      const playerSpeedScale = viewport.speedScale * prototypePlayerConfig.speedScaleMultiplier;
-
       playerEntities.forEach((entity) => {
-        updatePlayerEntityLayout(entity, viewport.playerScale);
-        entity.vx = Math.sign(entity.vx || entity.baseVx) * Math.abs(entity.baseVx * playerSpeedScale);
-        entity.vy = Math.sign(entity.vy || entity.baseVy) * Math.abs(entity.baseVy * playerSpeedScale);
+        syncPlayerEntityToViewport(entity, viewport);
       });
     }
 
     function placeBlocks(viewport = getSceneViewport()) {
-      const sceneBounds = viewport.bounds;
       updateResponsiveLayout(viewport);
 
       getPhysicsEntities().forEach((entity) => {
-        const maxX = Math.max(sceneBounds.width - entity.width, 0);
-        const maxY = Math.max(sceneBounds.height - entity.height, 0);
-
-        entity.x =
-          sceneBounds.left +
-          clamp(maxX * spreadSceneRatio(entity.xRatio, viewport.spreadScale), 0, maxX);
-        entity.y =
-          sceneBounds.top +
-          clamp(maxY * spreadSceneRatio(entity.yRatio, viewport.spreadScale), 0, maxY);
-        bounceOffWalls(entity, sceneBounds);
-        renderBlock(entity);
+        positionEntityInViewport(entity, viewport);
       });
     }
 
@@ -1673,22 +1844,38 @@
       requestAnimationFrame(animate);
     }
 
+    document.addEventListener('focusin', (event) => {
+      if (!isTextEntryElement(event.target)) {
+        return;
+      }
+
+      keyboardViewportState.focusedElement = event.target;
+      keyboardViewportState.baselineSnapshot = getViewportSnapshot();
+      cancelKeyboardViewportRestore();
+    });
+    document.addEventListener('focusout', (event) => {
+      if (event.target === keyboardViewportState.focusedElement) {
+        keyboardViewportState.focusedElement = null;
+        if (keyboardViewportState.locked) {
+          handleSceneViewportChange(2);
+        } else {
+          keyboardViewportState.baselineSnapshot = null;
+        }
+      }
+    });
+
     window.addEventListener('resize', () => {
-      viewportState = null;
-      scheduleLayoutRefresh(1);
+      handleSceneViewportChange(1);
     });
     window.addEventListener('load', () => {
-      viewportState = null;
-      scheduleLayoutRefresh(2);
+      handleSceneViewportChange(2);
     }, { once: true });
     window.addEventListener('pageshow', () => {
-      viewportState = null;
-      scheduleLayoutRefresh(1);
+      handleSceneViewportChange(1);
     });
     if (window.visualViewport) {
       const handleVisualViewportChange = () => {
-        viewportState = null;
-        scheduleLayoutRefresh(1);
+        handleSceneViewportChange(1);
       };
       window.visualViewport.addEventListener('resize', handleVisualViewportChange, { passive: true });
       window.visualViewport.addEventListener('scroll', handleVisualViewportChange, { passive: true });
@@ -1697,8 +1884,7 @@
 
     if (document.fonts?.ready) {
       document.fonts.ready.then(() => {
-        viewportState = null;
-        scheduleLayoutRefresh(2);
+        commitSceneViewportChange(getViewportSnapshot(), 2);
       });
     }
 
@@ -1713,7 +1899,8 @@
       });
     }
 
-    viewportState = measureSceneViewport();
+    stableViewportSnapshot = getViewportSnapshot();
+    viewportState = measureSceneViewport(stableViewportSnapshot);
     runLayoutRefresh();
     requestAnimationFrame((now) => {
       lastTime = now;
