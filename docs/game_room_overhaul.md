@@ -1,8 +1,8 @@
 # Game Room Flow Overhaul — Design Document
 
-**Status:** Planning
-**Branch:** `gameplay-enhancements`
-**Last updated:** 2026-03-20
+**Status:** In Progress
+**Branch:** `gameplay-enhancements` (base), feature branches per phase
+**Last updated:** 2026-03-21
 
 ---
 
@@ -252,9 +252,9 @@ This means in a wrong-accusation scenario, the final two reveals are: the wrongl
 
 ---
 
-## Phase 6A: Morp Guess Phase — Click Word Board
+## Phase 6A: Morp Guess Phase — Click Word Board ✅
 
-**Current:** Morp types guess into a text input. Free-text.
+**Status:** Complete — shipped on `word-board-click` branch.
 
 **Target:** Morp clicks a word on the board, then clicks submit. Guess animates to center before result reveal.
 
@@ -348,9 +348,16 @@ None. Ghost state already tracked.
 
 ---
 
-## Phase 9: Endgame Transition — Sudden Death Announcement
+## Phase 9: Endgame Transition — Sudden Death Announcement (partially implemented)
 
-**Current:** `endgame_round_start` fires. No fanfare.
+**Status:** Transition pause screen shipped on `word-board-click` branch. Full-screen fanfare deferred.
+
+**Implemented:**
+- Endgame no longer auto-starts after final voting phase
+- Round-end screen shows "Two players remain — Sudden Death!" announcement
+- Host clicks "Start Sudden Death" to begin the endgame round
+
+**Remaining:** Full-screen overlay, impact animation, color shift, screen shake, SFX.
 
 **Target:** Dramatic full-screen announcement.
 
@@ -371,9 +378,22 @@ None. `endgame_round_start` already fires.
 
 ---
 
-## Phase 10: Endgame Shootout — Quick Draw Energy
+## Phase 10: Endgame Shootout — Quick Draw Energy (partially implemented)
 
-**Current:** Ghosts hint, finalists type guesses in an input field. First correct guess wins.
+**Status:** Core mechanics shipped on `word-board-click` branch. Presentation/fanfare (Ready… DRAW!, etc.) deferred.
+
+**Implemented:**
+- Finalists click board words to guess (reuses Phase 6A mechanic)
+- Board selection enabled during ghost hint phase (finalists can lock in early)
+- Two-step engine: guesses accumulate, resolve together when both submit
+- Side-by-side word toss animations with simultaneous reveal
+- First-correct-wins tiebreaking via submission order
+- Draw mechanic: both auto-submitted correct = no damage
+- Slower correct guesser gets yellow card, winner gets green
+- Animation lock prevents HP/state spoilers during word toss
+- Server grace period on timers so frontend auto-submit fires first
+
+**Remaining:** "Ready… DRAW!" presentation sequence, one-shot lockout (currently multi-guess allowed), visual fanfare.
 
 **Target:** Snappy "quick draw" energy. Finalists race to click correct word on the board.
 
@@ -463,8 +483,8 @@ None. `endgame_round_start` already fires.
 | 8 | Add `reveal_order` to `accusation_result` | 5 | High | Low |
 | 9 | Auto-start next round timer after `round_end` | 7 | High | Medium |
 | 10 | New message: `round_starting` with countdown | 7 | High | Low |
-| 11 | Validate morp guess is a board word | 6A | Medium | Low |
-| 12 | Validate endgame guess is a board word | 10 | Medium | Low |
+| 11 | ~~Validate morp guess is a board word~~ | 6A | ~~Medium~~ | ~~Low~~ | ✅ Done |
+| 12 | ~~Validate endgame guess is a board word~~ | 10 | ~~Medium~~ | ~~Low~~ | ✅ Done |
 | 13 | One-shot endgame lockout (reject further guesses after wrong answer) | 10 | Medium | Low |
 | 14 | Disconnect draw detection (game over if ≤1 connected non-ghost players remain) | 11 | Medium | Medium |
 | 15 | (Future) Game stats in `game_over` message | 11 | Low | Medium |
@@ -477,8 +497,8 @@ Each branch groups related phases by dependency and scope. Small PRs, easy to re
 
 | Branch | Phases | Why grouped |
 |--------|--------|-------------|
-| `vote-and-damage-avatars` | 4, 6B | Same UI pattern (click avatars), no backend changes |
-| `word-board-click` | 6A | Small scope, small backend validation |
+| `vote-and-damage-avatars` | 4, 6B | Same UI pattern (click avatars), no backend changes | ✅ Merged |
+| `word-board-click` | 6A, 9 (partial), 10 (partial) | Board click guess + endgame simultaneous reveal + animation lock + sudden death pause | 🔄 Ready to merge |
 | `hint-display-overhaul` | 3 | Large, self-contained, needs backend work |
 | `role-reveal` | 2, 5 | Both role-related; Phase 2 pure frontend, Phase 5 needs backend |
 | `round-transitions` | 7, 8 | Round lifecycle (auto-transition + death animation) |
@@ -491,9 +511,9 @@ Each branch groups related phases by dependency and scope. Small PRs, easy to re
 
 | Order | Phase | Branch | Reason |
 |-------|-------|--------|--------|
-| 1 | Phase 4 — Vote via avatars | `vote-and-damage-avatars` | Isolated, no backend changes, quick win |
-| 2 | Phase 6B — Damage via avatars | `vote-and-damage-avatars` | Same pattern as voting |
-| 3 | Phase 6A — Word board click for guess | `word-board-click` | Small backend validation needed |
+| 1 | Phase 4 — Vote via avatars | `vote-and-damage-avatars` | ✅ Shipped |
+| 2 | Phase 6B — Damage via avatars | `vote-and-damage-avatars` | ✅ Shipped |
+| 3 | Phase 6A — Word board click for guess | `word-board-click` | ✅ Shipped (+ endgame mechanics, animation lock, sudden death pause) |
 | 4 | Phase 2 — Board fade + role reveal | `role-reveal` | Pure frontend animation |
 | 5 | Phase 5 — Dramatic role reveal | `role-reveal` | Needs backend `reveal_order` |
 | 6 | Phase 3 — Hint display overhaul | `hint-display-overhaul` | Most complex frontend work |
@@ -601,8 +621,49 @@ Each branch should list expected visual observations so testers know exactly wha
 **Morp Guess Phase — expected observations (as non-morp):**
 - Board words are NOT clickable for non-morp players
 - Action area shows "Waiting for [morp name] to guess…"
-- Word toss animation is NOT visible to non-morp players (animation is local to the morp)
-- Result text and target word reveal appear after the morp submits
+- Word toss animation IS visible to all players (starts from server echo)
+- HP/damage does not update until after the word toss animation completes
+- If morp times out with no selection, "failed to guess!" message shows for ~2s before game progresses
+- Result text and target word reveal appear after animation completes
+
+**Animation lock — expected observations:**
+- During word toss animation, HP bars do not change and next phase does not start
+- If host is the morp and guesses wrong, animation plays fully before next round button appears
+- 5s safety timeout: if animation somehow gets stuck, game progresses after 5s
 
 **Backend validation:**
 - If the morp somehow submits a guess that's not a word on the board, the server rejects it with an error
+
+### `word-board-click` — Endgame (Phases 9 + 10 partial)
+
+**Sudden Death transition — expected observations:**
+- After the final voting/damage phase eliminates enough players, a "Sudden Death" pause screen appears
+- Shows "Two players remain — Sudden Death!" announcement
+- Host sees "Start Sudden Death" button; non-hosts see waiting text
+- Endgame does NOT auto-start
+
+**Endgame guess — expected observations (as finalist):**
+- Board words are clickable from the start of the endgame round (during ghost hint phase)
+- Selecting a word during ghost hints is preserved when hint phase ends
+- Submit button reads "Guess: [word]" when a word is selected
+- After submitting, board selection is disabled and button is disabled
+- No animation plays on submit — animation waits for both finalists to submit
+
+**Endgame simultaneous reveal — expected observations:**
+- After both finalists submit (or timer expires), both word toss cards animate side-by-side
+- Cards fly to 35vw and 65vw positions (or centered if only one guess)
+- Both cards reveal correct/wrong simultaneously after 1.4s suspense
+- Winner's card flashes green, loser's card flashes red
+- If both guess correctly: winner (first submitter) gets green, slower guesser gets yellow/amber
+- HP does not update until after the animation completes
+
+**Endgame draw — expected observations:**
+- If both finalists have the correct word selected when the timer expires (auto-submit), both cards flash green
+- Result text shows "Draw! Both auto-submitted correctly"
+- Neither player takes damage
+- If one player manually submits and the other auto-submits, it is NOT a draw — first submitter wins
+
+**Endgame timeout — expected observations:**
+- If a finalist has a word selected when timer expires, it auto-submits
+- If no word selected, empty guess is sent (always wrong)
+- One-card animation if only one finalist guessed; no animation if neither guessed
