@@ -142,6 +142,31 @@ def test_non_accused_player_cannot_submit_guess():
         engine.submit_morp_guess(safe_ids[0], rs.target_word)
 
 
+def test_morp_guess_must_be_board_word():
+    engine = make_engine_at_voting(num_players=4, num_morps=1, seed=1)
+    rs = engine.state.round_state
+    morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
+
+    vote_all_for(engine, morp_id)
+    engine.resolve_accusation()
+
+    with pytest.raises(ValueError, match="word on the board"):
+        engine.submit_morp_guess(morp_id, "notaboardword")
+
+
+def test_morp_empty_guess_allowed_for_timeout():
+    engine = make_engine_at_voting(num_players=4, num_morps=1, seed=1)
+    morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
+
+    vote_all_for(engine, morp_id)
+    engine.resolve_accusation()
+
+    hp_before = engine.lobby.players[morp_id].hp
+    correct = engine.submit_morp_guess(morp_id, "")
+    assert correct is False
+    assert engine.lobby.players[morp_id].hp == hp_before - 1
+
+
 def test_morp_correct_guess_takes_no_damage():
     engine = make_engine_at_voting(num_players=4, num_morps=1, seed=1)
     rs = engine.state.round_state

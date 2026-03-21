@@ -67,6 +67,8 @@ class EndgameRoundState(BaseModel):
     target_word: str
     ghost_hints: list[Hint] = Field(default_factory=list)
     guesses: dict[str, str] = Field(default_factory=dict)   # player_id -> guess text
+    guess_order: list[str] = Field(default_factory=list)     # player IDs in submission order
+    auto_submitted: set[str] = Field(default_factory=set)    # player IDs whose guess was auto-submitted by timer
     safe_player_id: str | None = None                        # set when someone guesses correctly
 
 

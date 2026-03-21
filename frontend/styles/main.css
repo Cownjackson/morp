@@ -900,6 +900,72 @@ body.is-landing #landing-meta-panel {
 .word-cell.half       { background: #1A1018; border-color: #554040; }
 .word-cell.hidden-word { background: #100810; border-color: #180D1E; color: #221435; }
 
+/* Board word selection (morp guess phase) */
+.word-cell.selectable {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.word-cell.selectable:hover {
+  border-color: rgba(209, 145, 42, 0.5);
+  box-shadow: 0 0 8px rgba(209, 145, 42, 0.2);
+}
+.word-cell.word-selected {
+  border-color: #D1912A !important;
+  background: #1E1508 !important;
+  color: #FFCE18;
+  box-shadow: 0 0 14px rgba(209, 145, 42, 0.35) !important;
+  font-weight: bold;
+}
+
+/* Word toss animation */
+.word-toss-card {
+  position: fixed;
+  background: #180D1E;
+  border: 2px solid #D1912A;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.3em;
+  font-weight: 600;
+  color: #FFCE18;
+  z-index: 9999;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1);
+  transition: left 0.4s cubic-bezier(0.2, 0, 0.3, 1),
+              top 0.4s cubic-bezier(0.2, 0, 0.3, 1),
+              transform 0.4s cubic-bezier(0.2, 0, 0.3, 1);
+}
+.word-toss-card.word-toss-flying {
+  left: 50vw !important;
+  top: 40vh !important;
+  transform: translate(-50%, -50%) scale(1.5);
+}
+.word-toss-card.word-toss-correct {
+  border-color: #87DCAB;
+  color: #87DCAB;
+  background: #081E14;
+  box-shadow: 0 0 30px rgba(135, 220, 171, 0.5);
+  transition: border-color 0.3s, color 0.3s, background 0.3s, box-shadow 0.3s;
+}
+.word-toss-card.word-toss-slow-correct {
+  border-color: #D1912A;
+  color: #FFCE18;
+  background: #1E1408;
+  box-shadow: 0 0 30px rgba(209, 145, 42, 0.5);
+  transition: border-color 0.3s, color 0.3s, background 0.3s, box-shadow 0.3s;
+}
+.word-toss-card.word-toss-wrong {
+  border-color: #B21232;
+  color: #FEAED2;
+  background: #200810;
+  box-shadow: 0 0 30px rgba(178, 18, 50, 0.5);
+  transition: border-color 0.3s, color 0.3s, background 0.3s, box-shadow 0.3s;
+}
+.word-toss-card.word-toss-hiding {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
 /* ── Action area ── */
 #action-area,
 .action-area-card {

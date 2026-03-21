@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
@@ -60,6 +60,8 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
       avatarInteraction: null,
       damageTarget: null,
       _morpIdsForDamage: [],
+      boardSelectionMode: false,
+      boardWordSelected: null,
     });
   }
 
@@ -124,10 +126,44 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
 
 
 
+// ─── Animation lock — defer state-changing messages while animations play ────
+let _animationLock = false;
+let _deferredQueue = [];
+let _animationLockTimer = null;
+const _ANIMATION_LOCK_TIMEOUT_MS = 5000;
+
+const _DEFERRED_TYPES = new Set([
+  'lobby_update', 'round_end', 'damage_dealt', 'damage_phase',
+  'endgame_round_end', 'round_start', 'endgame_round_start', 'game_over',
+]);
+
+function _startAnimationLock() {
+  _animationLock = true;
+  clearTimeout(_animationLockTimer);
+  _animationLockTimer = setTimeout(_endAnimationLock, _ANIMATION_LOCK_TIMEOUT_MS);
+}
+
+function _endAnimationLock() {
+  _animationLock = false;
+  clearTimeout(_animationLockTimer);
+  const queued = _deferredQueue.splice(0);
+  for (const m of queued) _processMessage(m);
+}
+
 // ─── Message handler ──────────────────────────────────────────────────────────
 function handleMessage(msg) {
   log(`← ${msg.type}`, 'info');
 
+  if (_animationLock && _DEFERRED_TYPES.has(msg.type)) {
+    log(`   ⏸ deferred (animation lock)`, 'info');
+    _deferredQueue.push(msg);
+    return;
+  }
+
+  _processMessage(msg);
+}
+
+function _processMessage(msg) {
   switch (msg.type) {
 
     case 'kicked': {
@@ -186,6 +222,8 @@ function handleMessage(msg) {
       state.avatarInteraction = null;
       state.damageTarget = null;
       state._morpIdsForDamage = [];
+      state.boardSelectionMode = false;
+      state.boardWordSelected = null;
       renderBoard();
       renderInGamePlayerRow();
       renderChat();
@@ -238,16 +276,16 @@ function handleMessage(msg) {
       state._accusedMorpIds = msg.accused_morp_ids;
       const isMorpBeingAsked = msg.accused_morp_ids.includes(state.playerId);
       document.getElementById('morp-guess-input-block').classList.toggle('hidden', !isMorpBeingAsked);
-      document.getElementById('guess-input').disabled = false;
-      document.getElementById('btn-morp-guess').disabled = false;
       document.getElementById('guess-result').textContent =
         isMorpBeingAsked ? '' : `Waiting for ${msg.accused_morp_ids.map(playerName).join(', ')} to guess…`;
       document.getElementById('guess-result').style.color = '#705060';
+      if (isMorpBeingAsked) enableBoardWordSelection();
       if (msg.timers_enabled) {
         startTimer('guess-timer', msg.deadline, () => {
-          if (isMorpBeingAsked && !document.getElementById('guess-input').disabled) {
-            send({ type: 'submit_morp_guess', guess: '' });
-            document.getElementById('guess-input').disabled = true;
+          if (isMorpBeingAsked && state.boardSelectionMode) {
+            const guess = state.boardWordSelected || '';
+            send({ type: 'submit_morp_guess', guess });
+            disableBoardWordSelection();
             document.getElementById('btn-morp-guess').disabled = true;
           }
         });
@@ -265,11 +303,26 @@ function handleMessage(msg) {
       const resultText = msg.correct
         ? `✓ ${playerName(msg.morp_id)} guessed correctly! Target: "${msg.target_word}"`
         : `✗ ${playerName(msg.morp_id)} guessed wrong. Target: "${msg.target_word}"${msg.timed_out ? ' (timed out)' : ''}`;
-      document.getElementById('guess-result').textContent = resultText;
-      document.getElementById('guess-result').style.color = msg.correct ? '#87DCAB' : '#FEAED2';
       log(resultText, msg.correct ? 'ok' : 'warn');
-      state.targetWord = msg.target_word;
-      renderBoard();
+      _startAnimationLock();
+      if (msg.guess) {
+        animateWordGuess(msg.guess);
+        resolveWordGuess(msg.correct, () => {
+          document.getElementById('guess-result').textContent = resultText;
+          document.getElementById('guess-result').style.color = msg.correct ? '#87DCAB' : '#FEAED2';
+          state.targetWord = msg.target_word;
+          renderBoard();
+          _endAnimationLock();
+        });
+      } else {
+        // No guess submitted — show failure message with a brief delay for readability
+        document.getElementById('guess-result').textContent =
+          `✗ ${playerName(msg.morp_id)} failed to guess! Target: "${msg.target_word}"`;
+        document.getElementById('guess-result').style.color = '#FEAED2';
+        state.targetWord = msg.target_word;
+        renderBoard();
+        setTimeout(_endAnimationLock, 2000);
+      }
       break;
     }
 
@@ -293,19 +346,32 @@ function handleMessage(msg) {
       break;
 
     case 'round_end': {
-      setPhaseLabel('ROUND OVER');
+      const isEndgameTransition = !!msg.endgame_transition;
+      setPhaseLabel(isEndgameTransition ? 'SUDDEN DEATH' : 'ROUND OVER');
       const rc = document.getElementById('round-end-content');
       rc.innerHTML = '';
+      if (isEndgameTransition) {
+        const announce = document.createElement('p');
+        announce.style.cssText = 'color:#FFCE18;font-size:1.1em;margin-bottom:8px';
+        announce.textContent = 'Two players remain — Sudden Death!';
+        rc.appendChild(announce);
+      }
       if (state.isHost) {
         const btn = document.createElement('button');
-        btn.className = 'primary'; btn.textContent = 'Next Round ▶';
+        btn.className = 'primary';
+        btn.textContent = isEndgameTransition ? 'Start Sudden Death ▶' : 'Next Round ▶';
         btn.onclick = () => { send({ type: 'next_round' }); btn.disabled = true; };
         rc.appendChild(btn);
       } else {
-        rc.innerHTML = '<p style="color:#453060;font-size:0.88em">Waiting for host to start next round…</p>';
+        const wait = document.createElement('p');
+        wait.style.cssText = 'color:#453060;font-size:0.88em';
+        wait.textContent = isEndgameTransition
+          ? 'Waiting for host to start sudden death…'
+          : 'Waiting for host to start next round…';
+        rc.appendChild(wait);
       }
       showAction('round-end');
-      log('Round over.', 'ok');
+      log(isEndgameTransition ? 'Sudden Death!' : 'Round over.', 'ok');
       break;
     }
 
@@ -335,8 +401,7 @@ function handleMessage(msg) {
         document.getElementById('endgame-ghost-waiting').style.display = 'none';
         document.getElementById('endgame-ghost-hint-input').disabled   = false;
       } else {
-        document.getElementById('endgame-guess-input').disabled  = false;
-        document.getElementById('btn-endgame-guess').disabled    = false;
+        enableBoardWordSelection();
       }
       document.getElementById('endgame-guess-result').textContent = '';
 
@@ -384,20 +449,22 @@ function handleMessage(msg) {
       document.getElementById('endgame-hint-timer').style.display  = 'none';
       document.getElementById('endgame-ghost-section').classList.add('hidden');
       const guessTimerEl = document.getElementById('endgame-guess-timer');
+      const isFinalist2 = !state.isGhost;
+      if (isFinalist2 && !state.boardSelectionMode) enableBoardWordSelection();
       if (msg.timers_enabled) {
         guessTimerEl.style.display = 'inline-block';
-        const isFinalist2 = !state.isGhost;
         startTimer('endgame-guess-timer', msg.guess_deadline, () => {
-          if (isFinalist2 && !document.getElementById('endgame-guess-input').disabled) {
-            send({ type: 'endgame_submit_guess', guess: '' });
-            document.getElementById('endgame-guess-input').disabled = true;
-            document.getElementById('btn-endgame-guess').disabled   = true;
+          if (isFinalist2 && state.boardSelectionMode) {
+            const guess = state.boardWordSelected || '';
+            send({ type: 'endgame_submit_guess', guess, auto_submitted: true });
+            disableBoardWordSelection();
+            document.getElementById('btn-endgame-guess').disabled = true;
           }
         });
       } else {
         guessTimerEl.style.display = 'none';
       }
-      if (!state.isGhost) document.getElementById('endgame-finalist-section').classList.remove('hidden');
+      if (isFinalist2) document.getElementById('endgame-finalist-section').classList.remove('hidden');
       setEndgamePhaseLabel('Guess!');
       log('Hint phase over: guess now!', 'warn');
       break;
@@ -406,43 +473,46 @@ function handleMessage(msg) {
     case 'endgame_hints_revealed':
       break;
 
-    case 'endgame_guess_result': {
-      if (msg.round_over) {
-        clearTimer('endgame-hint-timer');
-        clearTimer('endgame-guess-timer');
-      }
+    case 'endgame_guesses_revealed': {
+      clearTimer('endgame-hint-timer');
+      clearTimer('endgame-guess-timer');
+      disableBoardWordSelection();
+      _startAnimationLock();
       const resEl = document.getElementById('endgame-guess-result');
-      if (msg.round_over) {
-        const winner = msg.safe_player_id ? playerName(msg.safe_player_id) : null;
-        resEl.innerHTML = winner
-          ? `<span style="color:#87DCAB">✓ ${winner} guessed correctly! Target: "${msg.target_word}"</span>`
-          : `<span style="color:#FEAED2">✗ Nobody got it. Target: "${msg.target_word}"</span>`;
-      } else {
-        const line = document.createElement('div');
-        line.style.color = '#FEAED2';
-        line.textContent = `✗ ${playerName(msg.player_id)} guessed wrong.`;
-        resEl.appendChild(line);
-        if (msg.player_id === state.playerId) {
-          document.getElementById('endgame-guess-input').disabled  = true;
-          document.getElementById('btn-endgame-guess').disabled    = true;
-        }
+      if (msg.timed_out) {
+        resEl.innerHTML = `<span style="color:#FEAED2">⏰ Time's up!</span>`;
       }
+      animateEndgameReveal(msg.results, msg.safe_player_id, msg.draw, () => {
+        const winner = msg.safe_player_id ? playerName(msg.safe_player_id) : null;
+        resEl.innerHTML = msg.draw
+          ? `<span style="color:#FFCE18">Draw! Both auto-submitted correctly. Target: "${msg.target_word}"</span>`
+          : winner
+            ? `<span style="color:#87DCAB">✓ ${winner} guessed correctly! Target: "${msg.target_word}"</span>`
+            : `<span style="color:#FEAED2">✗ Nobody got it. Target: "${msg.target_word}"</span>`;
+        for (const r of msg.results) {
+          const line = document.createElement('div');
+          line.style.color = r.correct ? '#87DCAB' : '#FEAED2';
+          line.style.fontSize = '0.85em';
+          line.textContent = r.guess
+            ? `${playerName(r.player_id)}: "${r.guess}" ${r.correct ? '✓' : '✗'}`
+            : `${playerName(r.player_id)}: (no guess)`;
+          resEl.appendChild(line);
+        }
+        state.targetWord = msg.target_word;
+        renderBoard();
+        _endAnimationLock();
+      });
+      log(msg.timed_out ? `Time's up. Target: "${msg.target_word}"` : `Endgame guesses revealed.`, 'warn');
       break;
     }
 
-    case 'endgame_timeout':
-      clearTimer('endgame-hint-timer');
-      clearTimer('endgame-guess-timer');
-      document.getElementById('endgame-guess-result').innerHTML =
-        `<span style="color:#FEAED2">⏰ Time's up! Target was: "${msg.target_word}"</span>`;
-      log(`Time's up. Target: "${msg.target_word}"`, 'warn');
-      break;
-
     case 'endgame_round_end': {
       const ec = document.getElementById('round-end-content');
-      ec.innerHTML = msg.safe_player_id
-        ? `<p style="color:#C09AB8;margin-bottom:8px">${playerName(msg.safe_player_id)} survived. Target: "${msg.target_word}"</p>`
-        : `<p style="color:#FEAED2;margin-bottom:8px">Nobody guessed correctly. Target: "${msg.target_word}"</p>`;
+      ec.innerHTML = msg.draw
+        ? `<p style="color:#FFCE18;margin-bottom:8px">Draw! Both auto-submitted correctly. Target: "${msg.target_word}"</p>`
+        : msg.safe_player_id
+          ? `<p style="color:#C09AB8;margin-bottom:8px">${playerName(msg.safe_player_id)} survived. Target: "${msg.target_word}"</p>`
+          : `<p style="color:#FEAED2;margin-bottom:8px">Nobody guessed correctly. Target: "${msg.target_word}"</p>`;
       if (state.isHost) {
         const btn = document.createElement('button');
         btn.className = 'primary'; btn.textContent = 'Next Sudden Death Round ▶';

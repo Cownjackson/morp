@@ -38,6 +38,13 @@ export function renderBoard() {
     } else if (halfSet) {
       cell.classList.add(halfSet.has(word) ? 'half' : 'hidden-word');
     }
+    if (state.boardSelectionMode) {
+      cell.classList.add('selectable');
+      cell.addEventListener('click', () => _handleBoardWordClick(word));
+      if (state.boardWordSelected === word) {
+        cell.classList.add('word-selected');
+      }
+    }
     grid.appendChild(cell);
   }
   document.getElementById('half-board-note').style.display = halfSet ? 'block' : 'none';
@@ -450,6 +457,185 @@ export function disableAvatarDamage() {
   state.damageTarget = null;
   state._morpIdsForDamage = [];
   renderInGamePlayerRow();
+}
+
+// ─── Board word selection (morp guess phase) ─────────────────────────────────
+export function enableBoardWordSelection() {
+  state.boardSelectionMode = true;
+  state.boardWordSelected = null;
+  _updateWordGuessUI();
+  renderBoard();
+}
+
+function _handleBoardWordClick(word) {
+  state.boardWordSelected = state.boardWordSelected === word ? null : word;
+  _updateWordGuessUI();
+  renderBoard();
+}
+
+function _updateWordGuessUI() {
+  // Update whichever guess button is active (morp guess or endgame guess)
+  for (const [btnId, labelId] of [
+    ['btn-morp-guess', 'morp-guess-selected-word'],
+    ['btn-endgame-guess', 'endgame-guess-selected-word'],
+  ]) {
+    const btn = document.getElementById(btnId);
+    const label = document.getElementById(labelId);
+    if (!btn) continue;
+    if (state.boardWordSelected) {
+      btn.disabled = false;
+      if (label) label.textContent = state.boardWordSelected;
+    } else {
+      btn.disabled = true;
+      if (label) label.textContent = '—';
+    }
+  }
+}
+
+export function disableBoardWordSelection() {
+  state.boardSelectionMode = false;
+  state.boardWordSelected = null;
+  renderBoard();
+}
+
+// ─── Word toss animation ─────────────────────────────────────────────────────
+let _wordTossEl = null;
+let _wordTossRevealAt = null;
+
+export function animateWordGuess(word) {
+  // Find the board cell's position
+  const grid = document.getElementById('board-grid');
+  let originRect = { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
+  if (grid) {
+    for (const cell of grid.querySelectorAll('.word-cell')) {
+      if (cell.textContent.trim() === word) {
+        originRect = cell.getBoundingClientRect();
+        break;
+      }
+    }
+  }
+
+  const card = document.createElement('div');
+  card.className = 'word-toss-card';
+  card.textContent = word;
+  document.body.appendChild(card);
+  _wordTossEl = card;
+  _wordTossRevealAt = Date.now() + 1400; // 400ms fly + 1000ms suspense
+
+  const startX = originRect.left + originRect.width / 2;
+  const startY = originRect.top + originRect.height / 2;
+  card.style.left = startX + 'px';
+  card.style.top = startY + 'px';
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      card.classList.add('word-toss-flying');
+    });
+  });
+}
+
+export function resolveWordGuess(correct, onReveal) {
+  if (!_wordTossEl) {
+    // No animation in progress (e.g. timed out with no selection)
+    if (onReveal) onReveal();
+    return;
+  }
+  const remaining = Math.max(0, _wordTossRevealAt - Date.now());
+  setTimeout(() => {
+    if (_wordTossEl) {
+      _wordTossEl.classList.add(correct ? 'word-toss-correct' : 'word-toss-wrong');
+    }
+    setTimeout(() => {
+      if (_wordTossEl) {
+        _wordTossEl.classList.add('word-toss-hiding');
+        setTimeout(() => { _wordTossEl?.remove(); _wordTossEl = null; }, 500);
+      }
+      if (onReveal) onReveal();
+    }, 800);
+  }, remaining);
+}
+
+/**
+ * Animate the simultaneous endgame guess reveal.
+ * results: [{player_id, guess, correct}, ...] — in submission order
+ * safePlayerId: the winner (first correct guesser), or null
+ * onDone: callback after all animations finish
+ */
+export function animateEndgameReveal(results, safePlayerId, isDraw, onDone) {
+  const guessesWithWords = results.filter(r => r.guess);
+  if (guessesWithWords.length === 0) {
+    if (onDone) onDone();
+    return;
+  }
+
+  const grid = document.getElementById('board-grid');
+  const cards = [];
+  const offsets = guessesWithWords.length === 1
+    ? [{ x: '50vw', y: '40vh' }]
+    : [{ x: '35vw', y: '40vh' }, { x: '65vw', y: '40vh' }];
+
+  guessesWithWords.forEach((r, i) => {
+    let originRect = { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
+    if (grid) {
+      for (const cell of grid.querySelectorAll('.word-cell')) {
+        if (cell.textContent.trim() === r.guess) {
+          originRect = cell.getBoundingClientRect();
+          break;
+        }
+      }
+    }
+    const card = document.createElement('div');
+    card.className = 'word-toss-card';
+    card.textContent = r.guess;
+    document.body.appendChild(card);
+
+    const startX = originRect.left + originRect.width / 2;
+    const startY = originRect.top + originRect.height / 2;
+    card.style.left = startX + 'px';
+    card.style.top = startY + 'px';
+    card.dataset.flyX = offsets[i].x;
+    card.dataset.flyY = offsets[i].y;
+
+    // Determine card style: draw = both green, correct winner = green, slower correct = yellow, wrong = red
+    let style = 'wrong';
+    if (isDraw) {
+      style = 'correct';
+    } else if (r.correct) {
+      style = (safePlayerId && r.player_id === safePlayerId) ? 'correct' : 'slow-correct';
+    }
+    cards.push({ el: card, style });
+  });
+
+  // Fly all cards
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      cards.forEach(c => {
+        c.el.style.left = c.el.dataset.flyX;
+        c.el.style.top = c.el.dataset.flyY;
+        c.el.style.transform = 'translate(-50%, -50%) scale(1.5)';
+      });
+    });
+  });
+
+  // After fly (400ms) + suspense (1000ms), reveal result
+  setTimeout(() => {
+    cards.forEach(c => {
+      c.el.classList.add(`word-toss-${c.style}`);
+    });
+    // Hold the reveal, then fade out
+    setTimeout(() => {
+      cards.forEach(c => {
+        c.el.classList.add('word-toss-hiding');
+        setTimeout(() => c.el.remove(), 500);
+      });
+      if (onDone) onDone();
+    }, 800);
+  }, 1400);
+}
+
+// ─── Damage animation placeholder ────────────────────────────────────────────
+export function playDamageAnimation(_targetId, _amount) {
+  // Placeholder — mechanic TBD by team
 }
 
 async function kickPlayer(targetId) {

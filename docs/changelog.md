@@ -6,6 +6,15 @@ Completed work, newest first. Add an entry when a PR merges or a standalone chan
 
 ## 2026-03-21
 
+- **[feature]** Word board click for morp guess — morp clicks board words instead of typing; word toss animation with server-echo timing; board word validation on backend (Phase 6A)
+- **[feature]** Endgame board click + simultaneous reveal — finalists click board words to guess; guesses accumulate until both submit, then resolve together with side-by-side word toss animations; first-correct-wins tiebreaking with submission order tracking (Phase 10 partial)
+- **[feature]** Animation lock system — defers lobby_update, round_end, damage, and other state-changing messages while word toss animations play; prevents early HP/damage reveals and host-skips-animation bugs; 5s safety timeout
+- **[feature]** Endgame draw mechanic — when both finalists' correct guesses are auto-submitted by the timer, the round is a draw with no damage; frontend sends `auto_submitted` flag
+- **[feature]** No-guess indicator — "failed to guess!" message with 2s pause when morp times out with no word selected
+- **[feature]** Slower correct guesser yellow card — in endgame, when both guess correctly, the slower submitter's word toss card flashes yellow/amber instead of green
+- **[fix]** Endgame no longer auto-starts after final voting phase — transition pauses at "Sudden Death" announcement screen; host clicks to start
+- **[fix]** Finalists can submit endgame guess during ghost hint phase — board selection enabled at endgame round start
+- **[fix]** Board selection preserved across hint phase end — finalist's pre-selected word no longer cleared when ghost hint phase transitions to guess phase
 - **[feature]** Lobby UI layout polish — active players button repositioned for a cleaner lobby layout (PR #23)
 - **[feature]** Moop customization menu refinement — customizer UI and cosmetics handling cleanup (PR #22)
 - **[feature]** Background block corner bounces — corner bounce effects cleaned up and expanded (PR #21)
@@ -13,6 +22,8 @@ Completed work, newest first. Add an entry when a PR merges or a standalone chan
 - **[bug]** Responsive background scaling — background sizing and refresh behavior cleaned up for better mobile rendering (PR #19)
 - **[feature]** Bouncing moop tuning — size and motion tweaks for the lobby background effect (PR #18)
 - **[feature]** Lobby controls update — added lobby copy button, active players button, and exit-to-main-menu button (PR #17)
+- **[feature]** Avatar-based voting and damage targeting — players click avatars to vote/deal damage instead of buttons; mint/red glow selection indicators (Phases 4 + 6B)
+- **[dev]** Game room flow overhaul design doc — 12-phase spec with backend change requests, branching strategy, testing checklists
 
 ## 2026-03-20
 

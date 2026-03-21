@@ -18,6 +18,8 @@ export const state = {
   avatarInteraction: null,   // null | 'vote' | 'damage'
   damageTarget: null,        // pid selected for damage
   _morpIdsForDamage: [],     // morp ids during damage phase
+  boardSelectionMode: false, // true when morp can click board words to guess
+  boardWordSelected: null,   // word string currently selected for morp guess
 };
 
 export function send(msg) { state.ws.send(JSON.stringify(msg)); }

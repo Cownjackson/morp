@@ -238,9 +238,7 @@ document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
   const id = document.activeElement.id;
   if (id === 'hint-input')               submitHint();
-  if (id === 'guess-input')              submitMorpGuess();
   if (id === 'endgame-ghost-hint-input') submitEndgameGhostHint();
-  if (id === 'endgame-guess-input')      submitEndgameGuess();
   if (id === 'join-code')                joinLobby();
   if (id === 'chat-input')               sendChat();
 });
