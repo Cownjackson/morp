@@ -98,6 +98,13 @@ def _cancel_timer(lobby_id: str) -> None:
         task.cancel()
 
 
+def _destroy_lobby(lobby_id: str) -> None:
+    _cancel_timer(lobby_id)
+    _engines.pop(lobby_id, None)
+    for k in [k for k in _interaction_times if k.startswith(f"{lobby_id}:")]:
+        del _interaction_times[k]
+
+
 # ── Frontend ──────────────────────────────────────────────────────────────────
 
 @app.get("/")
@@ -115,6 +122,10 @@ class JoinRequest(BaseModel):
 class KickRequest(BaseModel):
     player_id: str
     target_id: str
+
+
+class LeaveRequest(BaseModel):
+    player_id: str
 
 
 class CustomBoardEntry(BaseModel):
@@ -195,6 +206,29 @@ async def kick_player(lobby_id: str, body: KickRequest):
         await _broadcast_voting_open(lobby_id, engine)
     elif phase_before == GamePhase.VOTING and phase_after == GamePhase.ACCUSATION:
         await _handle_accusation(lobby_id, engine)
+
+    return {"ok": True}
+
+
+@app.post("/lobby/{lobby_id}/leave")
+async def leave_lobby(lobby_id: str, body: LeaveRequest):
+    engine = _get_engine(lobby_id)
+    try:
+        lobby_empty = engine.leave_player(body.player_id)
+    except ValueError as e:
+        message = str(e)
+        status_code = 409 if "started" in message else 404 if "not found" in message.lower() else 403
+        raise HTTPException(status_code=status_code, detail=message)
+
+    ws = manager._connections.get(lobby_id, {}).get(body.player_id)
+    if ws:
+        await ws.close(code=4000)
+    manager.disconnect(lobby_id, body.player_id)
+
+    if lobby_empty:
+        _destroy_lobby(lobby_id)
+    else:
+        await manager.broadcast(lobby_id, _lobby_update(engine))
 
     return {"ok": True}
 
@@ -303,13 +337,14 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
         hints_before = len(rs.hints) if rs and phase_before == GamePhase.HINT else 0
 
         manager.disconnect(lobby_id, player_id)
+        if player_id not in engine.lobby.players:
+            if engine.all_disconnected():
+                _destroy_lobby(lobby_id)
+            return
         engine.on_player_disconnect(player_id)
 
         if engine.all_disconnected():
-            _cancel_timer(lobby_id)
-            _engines.pop(lobby_id, None)
-            for k in [k for k in _interaction_times if k.startswith(f"{lobby_id}:")]:
-                del _interaction_times[k]
+            _destroy_lobby(lobby_id)
             return
 
         await manager.broadcast(lobby_id, _lobby_update(engine))

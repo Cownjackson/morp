@@ -2,25 +2,42 @@
 export function initModals() {
   const openModal = (overlay) => overlay?.classList.add('open');
   const closeModal = (overlay) => overlay?.classList.remove('open');
-  const bindOpenButton = (buttonId, overlay) => {
-    document.getElementById(buttonId)?.addEventListener('click', () => openModal(overlay));
+  const bindModal = ({ overlayId, openButtonIds, closeButtonId }) => {
+    const overlay = document.getElementById(overlayId);
+    if (!overlay) return null;
+
+    openButtonIds.forEach((buttonId) => {
+      document.getElementById(buttonId)?.addEventListener('click', () => openModal(overlay));
+    });
+
+    document.getElementById(closeButtonId)?.addEventListener('click', () => closeModal(overlay));
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) closeModal(overlay);
+    });
+
+    return overlay;
   };
 
   // Changelog modal
-  const changelog = document.getElementById('changelog-overlay');
-  bindOpenButton('changelog-btn', changelog);
-  bindOpenButton('pregame-changelog-btn', changelog);
-  bindOpenButton('changelog-btn-footer', changelog);
-  document.getElementById('changelog-close').addEventListener('click', () => closeModal(changelog));
-  changelog.addEventListener('click', e => { if (e.target === changelog) closeModal(changelog); });
+  bindModal({
+    overlayId: 'changelog-overlay',
+    openButtonIds: ['changelog-btn', 'pregame-changelog-btn', 'changelog-btn-footer'],
+    closeButtonId: 'changelog-close'
+  });
 
   // Help modal
-  const help = document.getElementById('help-overlay');
-  bindOpenButton('help-btn', help);
-  bindOpenButton('pregame-help-btn', help);
-  bindOpenButton('help-btn-footer', help);
-  document.getElementById('help-close').addEventListener('click', () => closeModal(help));
-  help.addEventListener('click', e => { if (e.target === help) closeModal(help); });
+  bindModal({
+    overlayId: 'help-overlay',
+    openButtonIds: ['help-btn', 'pregame-help-btn', 'help-btn-footer'],
+    closeButtonId: 'help-close'
+  });
+
+  // Pregame active players modal
+  bindModal({
+    overlayId: 'pregame-players-overlay',
+    openButtonIds: ['pregame-players-btn'],
+    closeButtonId: 'pregame-players-close'
+  });
 
   // Credits modal
   const credits = document.getElementById('credits-overlay');

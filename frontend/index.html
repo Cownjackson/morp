@@ -148,6 +148,18 @@
   </div>
 </div>
 
+<!-- Active players modal -->
+<div id="pregame-players-overlay" class="modal-overlay">
+  <div id="pregame-players-modal" class="modal-box pregame-players-modal">
+    <button id="pregame-players-close" class="modal-close">&times;</button>
+    <div class="pregame-players-modal-header">
+      <h2>Active Players</h2>
+      <span id="pregame-players-count" class="pregame-players-count">0</span>
+    </div>
+    <div id="pregame-players-list" class="pregame-players-list"></div>
+  </div>
+</div>
+
 <div id="role-banner"></div>
 
 <div class="landing-main-cluster" id="landing-main-cluster">
@@ -233,6 +245,7 @@
 
 <!-- Pre-game lobby layout (shown after connecting, before the game starts) -->
 <div id="pregame-layout" class="stage-layout lobby-stage hidden">
+  <button type="button" id="pregame-exit-btn" class="pregame-exit-btn" onclick="leaveLobby()">Exit to Main Menu</button>
   <div id="pregame-action-area" class="action-area-card">
     <div class="pregame-logo-shell" id="pregame-logo" aria-hidden="true">
       <div class="logo-area pregame-logo-area">
@@ -245,10 +258,33 @@
       </div>
     </div>
     <div class="pregame-main-cluster">
-      <div class="pregame-top-stack">
-        <span id="pregame-lobby-code-display" class="pregame-lobby-code-chip hidden"></span>
-        <button type="button" id="pregame-help-btn" class="pregame-help-btn">How to Play</button>
-        <button type="button" id="pregame-changelog-btn" class="pregame-changelog-btn">What's New</button>
+      <div class="pregame-top-row">
+        <div class="pregame-top-stack">
+          <div class="pregame-lobby-code-row">
+            <span id="pregame-lobby-code-display" class="pregame-lobby-code-chip hidden"></span>
+            <button
+              type="button"
+              id="pregame-lobby-code-copy"
+              class="pregame-lobby-code-copy hidden"
+              onclick="copyLobbyCode()"
+              title="Copy lobby code"
+              aria-label="Copy lobby code"
+            >
+              Copy
+            </button>
+          </div>
+          <button type="button" id="pregame-help-btn" class="pregame-help-btn">How to Play</button>
+          <button type="button" id="pregame-changelog-btn" class="pregame-changelog-btn">What's New</button>
+        </div>
+        <button
+          type="button"
+          id="pregame-players-btn"
+          class="pregame-players-trigger"
+          title="View active players"
+          aria-label="View active players"
+        >
+          AP
+        </button>
       </div>
       <div id="pregame-host-controls" class="pregame-host-controls hidden">
         <div class="pregame-controls-top">
@@ -280,9 +316,7 @@
         <div class="pregame-panel-footer">
           <button type="button" id="btn-start" onclick="startGame()" disabled>Start Game</button>
         </div>
-        <div id="pregame-phase-label" class="pregame-phase-label"></div>
       </div>
-      <p id="pregame-lobby-waiting">Waiting for players…</p>
     </div>
   </div>
 
