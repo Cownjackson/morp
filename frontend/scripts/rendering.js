@@ -170,6 +170,26 @@ function renderPlayers(containerId, { avatarSize = 80 } = {}) {
     wrap.appendChild(circle);
     wrap.appendChild(nameEl);
     wrap.appendChild(hpEl);
+
+    // ── Avatar interaction state (vote / damage) ──
+    if (state.avatarInteraction === 'vote') {
+      if (!p.is_ghost && p.id !== state.playerId) {
+        wrap.classList.add('voteable');
+        wrap.addEventListener('click', () => _handleAvatarVoteClick(p.id));
+        if (state.selectedVotes.includes(p.id)) {
+          wrap.classList.add('vote-selected');
+        }
+      }
+    } else if (state.avatarInteraction === 'damage') {
+      if (!p.is_ghost && !state._morpIdsForDamage.includes(p.id)) {
+        wrap.classList.add('damageable');
+        wrap.addEventListener('click', () => _handleAvatarDamageClick(p.id));
+        if (state.damageTarget === p.id) {
+          wrap.classList.add('damage-selected');
+        }
+      }
+    }
+
     el.appendChild(wrap);
   }
 
@@ -290,37 +310,46 @@ export function checkYourTurn() {
   renderInGamePlayerRow();
 }
 
-// ─── Voting ───────────────────────────────────────────────────────────────────
-export function renderVoteButtons() {
-  const el = document.getElementById('vote-buttons');
-  el.innerHTML = '';
-  document.getElementById('vote-count-label').textContent = state.numVotes;
+// ─── Voting (avatar-based) ────────────────────────────────────────────────────
+export function enableAvatarVoting() {
+  state.avatarInteraction = 'vote';
+  state.selectedVotes = [];
   document.getElementById('vote-waiting').style.display = 'none';
-
-  for (const p of Object.values(state.players)) {
-    if (p.is_ghost || p.id === state.playerId) continue;
-    const btn = document.createElement('button');
-    btn.className = 'vote-btn';
-    btn.textContent = p.name; btn.dataset.pid = p.id;
-    btn.onclick = () => toggleVote(p.id, btn);
-    el.appendChild(btn);
-  }
-  updateVoteSubmitBtn();
+  _updateVoteUI();
+  renderInGamePlayerRow();
 }
 
-function toggleVote(pid, btn) {
+function _handleAvatarVoteClick(pid) {
   const idx = state.selectedVotes.indexOf(pid);
   if (idx >= 0) {
-    state.selectedVotes.splice(idx, 1); btn.classList.remove('selected');
+    state.selectedVotes.splice(idx, 1);
   } else if (state.selectedVotes.length < state.numVotes) {
-    state.selectedVotes.push(pid); btn.classList.add('selected');
+    state.selectedVotes.push(pid);
+  } else if (state.numVotes === 1) {
+    // Swap: replace the single selection
+    state.selectedVotes[0] = pid;
   }
-  updateVoteSubmitBtn();
+  _updateVoteUI();
+  renderInGamePlayerRow();
 }
 
-function updateVoteSubmitBtn() {
-  document.getElementById('btn-submit-votes').disabled =
-    state.selectedVotes.length !== state.numVotes;
+function _updateVoteUI() {
+  const btn = document.getElementById('btn-submit-votes');
+  btn.disabled = state.selectedVotes.length !== state.numVotes;
+  const countEl = document.getElementById('vote-count-label');
+  if (state.numVotes > 1) {
+    btn.textContent = 'Submit Votes';
+    countEl.textContent = `${state.selectedVotes.length}/${state.numVotes} selected`;
+    countEl.style.display = 'inline';
+  } else {
+    btn.textContent = 'Submit Vote';
+    countEl.style.display = 'none';
+  }
+}
+
+export function disableAvatarVoting() {
+  state.avatarInteraction = null;
+  renderInGamePlayerRow();
 }
 
 // ─── Accusation ───────────────────────────────────────────────────────────────
@@ -341,21 +370,47 @@ export function renderAccusation(msg) {
   });
 }
 
-// ─── Damage ───────────────────────────────────────────────────────────────────
-export function renderDamageButtons(morpIds) {
-  const el = document.getElementById('damage-buttons');
-  el.innerHTML = '';
-  for (const p of Object.values(state.players)) {
-    if (p.is_ghost || morpIds.includes(p.id)) continue;
-    const btn = document.createElement('button');
-    btn.className = 'danger';
-    btn.textContent = `✕ ${p.name}`;
-    btn.onclick = () => {
-      send({ type: 'morp_deal_damage', target_id: p.id });
-      el.querySelectorAll('button').forEach(b => b.disabled = true);
-    };
-    el.appendChild(btn);
+// ─── Damage (avatar-based) ────────────────────────────────────────────────────
+export function enableAvatarDamage(morpIds) {
+  state.avatarInteraction = 'damage';
+  state._morpIdsForDamage = morpIds;
+  state.damageTarget = null;
+  _updateDamageUI();
+  renderInGamePlayerRow();
+}
+
+function _handleAvatarDamageClick(pid) {
+  state.damageTarget = state.damageTarget === pid ? null : pid;
+  _updateDamageUI();
+  renderInGamePlayerRow();
+}
+
+function _updateDamageUI() {
+  const btn = document.getElementById('btn-confirm-damage');
+  btn.disabled = !state.damageTarget;
+  const label = document.getElementById('damage-target-label');
+  if (state.damageTarget) {
+    const name = state.players[state.damageTarget]?.name || '???';
+    label.textContent = name;
+    label.style.display = 'inline';
+  } else {
+    label.style.display = 'none';
   }
+}
+
+export function confirmDamage() {
+  if (!state.damageTarget) return;
+  send({ type: 'morp_deal_damage', target_id: state.damageTarget });
+  state.avatarInteraction = null;
+  document.getElementById('btn-confirm-damage').disabled = true;
+  renderInGamePlayerRow();
+}
+
+export function disableAvatarDamage() {
+  state.avatarInteraction = null;
+  state.damageTarget = null;
+  state._morpIdsForDamage = [];
+  renderInGamePlayerRow();
 }
 
 async function kickPlayer(targetId) {

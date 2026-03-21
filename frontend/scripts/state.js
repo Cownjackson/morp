@@ -15,6 +15,9 @@ export const state = {
   _accusedMorpIds: [],
   isGhost: false, endgameTargetWord: null,
   drawingHints: false,
+  avatarInteraction: null,   // null | 'vote' | 'damage'
+  damageTarget: null,        // pid selected for damage
+  _morpIdsForDamage: [],     // morp ids during damage phase
 };
 
 export function send(msg) { state.ws.send(JSON.stringify(msg)); }

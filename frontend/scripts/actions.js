@@ -76,6 +76,7 @@ export function _localResetToLobby() {
     speechBubbles: {}, selectedVotes: [], numVotes: 1,
     isGhost: false, endgameTargetWord: null, hostId: null,
     drawingHints: false, lobbyStarted: false,
+    avatarInteraction: null, damageTarget: null, _morpIdsForDamage: [],
   });
   Object.keys(_timers).forEach(clearTimer);
   renderRoleBanner();

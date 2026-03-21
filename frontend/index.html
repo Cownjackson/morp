@@ -384,9 +384,9 @@
 
     <!-- VOTING -->
     <div id="act-vote" class="action-section hidden">
-      <h3>Vote — pick <span id="vote-count-label"></span> suspect(s)</h3>
-      <div id="vote-buttons" style="margin-bottom:8px"></div>
-      <button id="btn-submit-votes" onclick="submitVotes()" disabled>Submit Votes</button>
+      <h3>click players to accuse</h3>
+      <span id="vote-count-label" style="display:none;color:#D1912A;font-size:0.88em;margin-bottom:8px"></span>
+      <button id="btn-submit-votes" onclick="submitVotes()" disabled>Submit Vote</button>
       <span id="vote-waiting" style="display:none;margin-left:12px;color:#453060;font-size:0.88em">Votes submitted — waiting…</span>
     </div>
 
@@ -415,8 +415,10 @@
     <div id="act-damage" class="action-section hidden">
       <h3>Damage Phase</h3>
       <div id="damage-morp-action" class="hidden">
-        <p style="color:#FEAED2;font-size:0.88em;margin-bottom:8px">You are the morp — choose a player to damage:</p>
-        <div id="damage-buttons"></div>
+        <p style="color:#FEAED2;font-size:0.88em;margin-bottom:8px">click a player to deal damage</p>
+        <button id="btn-confirm-damage" onclick="confirmDamage()" disabled class="danger">
+          Deal damage to <span id="damage-target-label" style="display:none"></span>
+        </button>
       </div>
       <p id="damage-waiting" style="display:none;color:#453060;font-size:0.88em">Waiting for morp to deal damage…</p>
     </div>

@@ -1158,13 +1158,35 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
 .toggle-row { display: flex; gap: 8px; align-items: center; justify-content: center; }
 .toggle-row label { cursor: pointer; color: #907880; font-size: 0.88em; }
 
-/* vote buttons */
-.vote-btn {
-  background: #180D1E; color: #E8C8DC;
-  border: 1px solid #2E1A40;
+/* ── Avatar voting ── */
+.avatar-wrap.voteable .moop-avatar {
+  outline: 3px solid transparent;
+  outline-offset: 3px;
+  transition: outline-color 0.15s ease, box-shadow 0.15s ease;
 }
-.vote-btn.selected { background: #280818; color: #FEAED2; border-color: #6A1040; }
-.vote-btn:hover:not(.selected):not(:disabled) { background: #221435; }
+.avatar-wrap.voteable:hover .moop-avatar {
+  outline-color: rgba(135, 220, 171, 0.45);
+  box-shadow: 0 0 12px rgba(135, 220, 171, 0.2);
+}
+.avatar-wrap.vote-selected .moop-avatar {
+  outline-color: var(--mint) !important;
+  box-shadow: 0 0 16px rgba(135, 220, 171, 0.4) !important;
+}
+
+/* ── Avatar damage targeting ── */
+.avatar-wrap.damageable .moop-avatar {
+  outline: 3px solid transparent;
+  outline-offset: 3px;
+  transition: outline-color 0.15s ease, box-shadow 0.15s ease;
+}
+.avatar-wrap.damageable:hover .moop-avatar {
+  outline-color: rgba(178, 16, 48, 0.55);
+  box-shadow: 0 0 12px rgba(178, 16, 48, 0.25);
+}
+.avatar-wrap.damage-selected .moop-avatar {
+  outline-color: var(--punch) !important;
+  box-shadow: 0 0 16px rgba(178, 16, 48, 0.45) !important;
+}
 
 /* timers */
 .big-timer { font-size: 1.6em; font-weight: bold; color: #D1912A; }
@@ -1235,7 +1257,7 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
   left: auto; right: calc(100% + 4px); transform: none;
 }
 .speech-bubble.skipped { color: #3A2848; font-style: italic; }
-.speech-bubble.drawing-bubble { width: 364px; padding: 4px; }
+.speech-bubble.drawing-bubble { width: 146px; padding: 4px; }
 .speech-bubble.drawing-bubble canvas { max-width: 100%; border-radius: 3px; display: block; }
 
 /* ── Drawing panel ── */
