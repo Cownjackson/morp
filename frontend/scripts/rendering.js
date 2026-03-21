@@ -557,10 +557,10 @@ export function animateEndgameReveal(results, safePlayerId, isDraw, onDone) {
     card.dataset.flyX = offsets[i].x;
     card.dataset.flyY = offsets[i].y;
 
-    // Determine card style: draw = both yellow, correct winner = green, slower correct = yellow, wrong = red
+    // Determine card style: draw = both green, correct winner = green, slower correct = yellow, wrong = red
     let style = 'wrong';
     if (isDraw) {
-      style = 'slow-correct';
+      style = 'correct';
     } else if (r.correct) {
       style = (safePlayerId && r.player_id === safePlayerId) ? 'correct' : 'slow-correct';
     }

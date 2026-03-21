@@ -440,7 +440,7 @@ function _processMessage(msg) {
       document.getElementById('endgame-ghost-section').classList.add('hidden');
       const guessTimerEl = document.getElementById('endgame-guess-timer');
       const isFinalist2 = !state.isGhost;
-      if (isFinalist2) enableBoardWordSelection();
+      if (isFinalist2 && !state.boardSelectionMode) enableBoardWordSelection();
       if (msg.timers_enabled) {
         guessTimerEl.style.display = 'inline-block';
         startTimer('endgame-guess-timer', msg.guess_deadline, () => {
