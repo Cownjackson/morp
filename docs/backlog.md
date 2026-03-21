@@ -17,6 +17,7 @@ Items move here when planned, to `changelog.md` when shipped.
 
 ## Queued
 
+- [ ] **[bug]** Post-game join softlock — if a 4th player joins after a 3-player game ends but before host returns to lobby, the new player becomes host but cannot start the next game; lobby is softlocked — unowned
 - [ ] **[bug]** Blank drawing renders brighter than base canvas — submitted empty drawing has unexpected brightness — unowned
 - [ ] **[feature]** Ghost heckling interactions — implemented but untested; needs a proper test pass — unowned
 - [ ] **[feature]** num_morps picker in lobby UI — expose existing engine config in the lobby; needs UX thought (max morps relative to player count) — unowned

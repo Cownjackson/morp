@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, renderVoteButtons, renderAccusation, renderDamageButtons, checkYourTurn, renderChat } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
@@ -41,6 +41,9 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
       isGhost: false,
       endgameTargetWord: null,
       drawingHints: false,
+      avatarInteraction: null,
+      damageTarget: null,
+      _morpIdsForDamage: [],
     });
   }
 
@@ -170,6 +173,9 @@ function handleMessage(msg) {
       state.hints      = [];
       state.speechBubbles = {};
       state.endgameTargetWord = null;
+      state.avatarInteraction = null;
+      state.damageTarget = null;
+      state._morpIdsForDamage = [];
       renderBoard();
       renderInGamePlayerRow();
       renderChat();
@@ -201,16 +207,18 @@ function handleMessage(msg) {
           is_drawing: h.is_drawing || false, drawing_data: h.drawing_data || null,
         };
       }
-      renderInGamePlayerRow();
       if (!state.isGhost) {
-        renderVoteButtons();
+        enableAvatarVoting();
         showAction('vote');
+      } else {
+        renderInGamePlayerRow();
       }
       setPhaseLabel('VOTING');
       log('Voting open!', 'ok');
       break;
 
     case 'accusation_result':
+      disableAvatarVoting();
       renderAccusation(msg);
       showAction('accusation');
       setPhaseLabel('ACCUSATION');
@@ -259,13 +267,18 @@ function handleMessage(msg) {
       const isMorp = msg.morp_ids.includes(state.playerId);
       document.getElementById('damage-morp-action').classList.toggle('hidden', !isMorp);
       document.getElementById('damage-waiting').style.display = isMorp ? 'none' : 'block';
-      if (isMorp) renderDamageButtons(msg.morp_ids);
+      if (isMorp) enableAvatarDamage(msg.morp_ids);
       showAction('damage');
       setPhaseLabel('DAMAGE');
       break;
     }
 
     case 'damage_dealt':
+      if (state.avatarInteraction === 'damage') {
+        state.avatarInteraction = null;
+        state.damageTarget = null;
+        state._morpIdsForDamage = [];
+      }
       log(`${playerName(msg.from_id)} → ${playerName(msg.to_id)} (${msg.hp_remaining} HP${msg.eliminated ? ', eliminated' : ''})`, 'warn');
       break;
 

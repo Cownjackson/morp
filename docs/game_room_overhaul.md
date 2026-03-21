@@ -193,6 +193,12 @@ None.
 - [x] ~~Multi-vote counter~~ → Yes, shown only when `num_votes > 1`.
 - [x] ~~Vote timer default~~ → 45s.
 
+### Post-Vote Visualization
+- After voting resolves, display **red arrows** from each player to the player they accused
+- Arrows visible to all players during the accusation/reveal sequence
+- Adds transparency and social drama ("you voted for ME?!")
+- Implementation deferred — needs design thought on arrow rendering (SVG overlay? canvas layer?)
+
 ---
 
 ## Phase 5: Role Reveal After Voting — One-by-One Dramatic Reveal
@@ -465,22 +471,38 @@ None. `endgame_round_start` already fires.
 
 ---
 
+## Branching Strategy
+
+Each branch groups related phases by dependency and scope. Small PRs, easy to review, easy to revert. Branch from main, PR back to main.
+
+| Branch | Phases | Why grouped |
+|--------|--------|-------------|
+| `vote-and-damage-avatars` | 4, 6B | Same UI pattern (click avatars), no backend changes |
+| `word-board-click` | 6A | Small scope, small backend validation |
+| `hint-display-overhaul` | 3 | Large, self-contained, needs backend work |
+| `role-reveal` | 2, 5 | Both role-related; Phase 2 pure frontend, Phase 5 needs backend |
+| `round-transitions` | 7, 8 | Round lifecycle (auto-transition + death animation) |
+| `endgame-overhaul` | 9, 10, 11 | Endgame is one connected flow |
+| `magnetic-snap` | 1 | Isolated cross-layout animation |
+
+---
+
 ## Implementation Order (suggested)
 
-| Order | Phase | Reason |
-|-------|-------|--------|
-| 1 | Phase 4 — Vote via avatars | Isolated, no backend changes, quick win |
-| 2 | Phase 6B — Damage via avatars | Same pattern as voting |
-| 3 | Phase 6A — Word board click for guess | Small backend validation needed |
-| 4 | Phase 2 — Board fade + role reveal | Pure frontend animation |
-| 5 | Phase 3 — Hint display overhaul | Most complex frontend work |
-| 6 | Phase 5 — Dramatic role reveal | Needs backend `reveal_order` |
-| 7 | Phase 7 — Auto-transition | Needs backend timer |
-| 8 | Phase 1 — Magnetic snap | Pure frontend, cross-layout animation |
-| 9 | Phase 10 — Endgame shootout | Needs backend changes + creative iteration |
-| 10 | Phase 9 — Sudden death announcement | Pure frontend overlay |
-| 11 | Phase 11 — Game end announcement | Pure frontend overlay |
-| 12 | Phase 8 — Death animation | Placeholder, waiting on art |
+| Order | Phase | Branch | Reason |
+|-------|-------|--------|--------|
+| 1 | Phase 4 — Vote via avatars | `vote-and-damage-avatars` | Isolated, no backend changes, quick win |
+| 2 | Phase 6B — Damage via avatars | `vote-and-damage-avatars` | Same pattern as voting |
+| 3 | Phase 6A — Word board click for guess | `word-board-click` | Small backend validation needed |
+| 4 | Phase 2 — Board fade + role reveal | `role-reveal` | Pure frontend animation |
+| 5 | Phase 5 — Dramatic role reveal | `role-reveal` | Needs backend `reveal_order` |
+| 6 | Phase 3 — Hint display overhaul | `hint-display-overhaul` | Most complex frontend work |
+| 7 | Phase 7 — Auto-transition | `round-transitions` | Needs backend timer |
+| 8 | Phase 8 — Death animation | `round-transitions` | Placeholder, waiting on art |
+| 9 | Phase 1 — Magnetic snap | `magnetic-snap` | Pure frontend, cross-layout animation |
+| 10 | Phase 9 — Sudden death announcement | `endgame-overhaul` | Pure frontend overlay |
+| 11 | Phase 10 — Endgame shootout | `endgame-overhaul` | Needs backend changes + creative iteration |
+| 12 | Phase 11 — Game end announcement | `endgame-overhaul` | Pure frontend overlay |
 
 ---
 
@@ -526,3 +548,40 @@ None. `endgame_round_start` already fires.
 | One-shot endgame guessing — playtest viability | 10 | May need alternatives if too punishing (see Phase 10 design notes) |
 | Game stats / results screen | 11 | Future task, ties into BisnisPinguin's lobby UI work |
 | Disconnect draw detection | 11 | Backend needs to trigger game over when ≤1 connected non-ghost players remain |
+
+---
+
+## Development Guidelines
+
+**User testing before merge.** Every branch must go through a user testing pass before merging to main. Add test cases to `user_testing.md` as part of the PR. Feedback from testing may result in iteration before merge — do not skip this step.
+
+**Atomic commits.** For larger tasks spanning multiple files or concerns, break work into atomic commits that each represent a coherent, self-contained change. This makes review easier and reverts safer.
+
+**Backlog and changelog discipline.** When starting a new task, check `backlog.md` for related queued items that may be superseded or affected. When a branch merges, move completed items out of the backlog and add a dated entry to `changelog.md`. The backlog is the single source of truth for what's planned; the changelog is the record of what shipped.
+
+---
+
+## Testing Checklists
+
+Each branch should list expected visual observations so testers know exactly what to look for.
+
+### `vote-and-damage-avatars` (Phases 4 + 6B)
+
+**Voting Phase — expected observations:**
+- When voting opens, non-self non-ghost avatars become interactive
+- **Hover glow:** moving the mouse over a voteable avatar shows a faint mint green outline (3px, semi-transparent) and subtle green box-shadow around the moop
+- **Selection ring:** clicking an avatar shows a solid mint green outline with stronger glow — clearly distinct from the hover state
+- **Swap behavior:** with 1 morp, clicking a different avatar swaps the selection (no need to deselect first)
+- **Deselect:** clicking the already-selected avatar removes the selection
+- **Submit button:** disabled until a vote is selected; reads "Submit Vote" (singular) for 1 morp
+- **After submit:** "Votes submitted — waiting…" text appears; submit button stays disabled
+- **After accusation resolves:** all voteable styling (outlines, glows) clears from avatars
+
+**Damage Phase — expected observations:**
+- If you are the morp, non-ghost non-morp avatars become interactive
+- **Hover glow:** moving the mouse over a damageable avatar shows a faint punch red outline and subtle red box-shadow
+- **Selection ring:** clicking an avatar shows a solid punch red outline with stronger glow
+- **Confirm button:** "Deal damage to [name]" button enables and shows the selected player's name
+- **Swap behavior:** clicking a different avatar switches the selection
+- **After confirm:** damage is dealt, all damageable styling clears
+- **Non-morp view:** non-morp players see "Waiting for morp to deal damage…" with no interactive avatars
