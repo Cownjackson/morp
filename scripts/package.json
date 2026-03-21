@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Dev utility scripts for Morp",
   "dependencies": {
+    "dotenv": "*",
     "playwright": "*"
   }
 }
