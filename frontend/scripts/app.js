@@ -36,13 +36,6 @@ window.undoStroke = undoStroke;
 window.clearCanvas = clearCanvas;
 
 function initPregameInfoToggles() {
-  const waitingLabel = document.getElementById('pregame-lobby-waiting');
-  if (waitingLabel) waitingLabel.textContent = 'Waiting for players...';
-  const pregamePhaseLabel = document.getElementById('pregame-phase-label');
-  if (pregamePhaseLabel && !pregamePhaseLabel.textContent.trim()) {
-    pregamePhaseLabel.textContent = 'WAITING';
-  }
-
   const menuConfigs = [
     {
       menu: document.getElementById('pregame-options-menu'),

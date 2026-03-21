@@ -21,8 +21,6 @@ export function playerName(id) {
 
 export function setPhaseLabel(text) {
   document.getElementById('phase-label').textContent = text;
-  const pregamePhaseLabel = document.getElementById('pregame-phase-label');
-  if (pregamePhaseLabel) pregamePhaseLabel.textContent = text;
 }
 
 export function setEndgamePhaseLabel(text) {
