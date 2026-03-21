@@ -1,33 +1,38 @@
-import { COSMETICS } from './constants.js';
+import {
+  COSMETIC_CATEGORIES,
+  getCosmeticItem,
+  normalizeEquippedCosmetics
+} from './constants.js';
 
 const DEFAULT_CANVAS_SIZE = 256;
 const imageCache = new Map();
 const spriteCache = new Map();
 
 function normalizeCosmetics(cosmeticsObj = {}) {
-  return {
-    color: cosmeticsObj.color || cosmeticsObj.colors || 'trumskin',
-    hat: cosmeticsObj.hat || cosmeticsObj.hats || 'none',
-    eyes: cosmeticsObj.eyes || 'eyes',
-    face: cosmeticsObj.face || 'none',
-    accessory: cosmeticsObj.accessory || cosmeticsObj.accessories || 'none'
-  };
+  return normalizeEquippedCosmetics(cosmeticsObj);
 }
 
 function getCosmeticFile(category, id) {
-  const item = COSMETICS[category]?.find((entry) => entry.id === id);
-  return item?.file || null;
+  return getCosmeticItem(category, id)?.file || null;
 }
 
 export function getMoopLayerFiles(cosmeticsObj = {}) {
   const cosmetics = normalizeCosmetics(cosmeticsObj);
+  const categoryLayers = COSMETIC_CATEGORIES
+    .filter((category) => category.spriteLayerClass)
+    .map((category) => ({
+      cls: category.spriteLayerClass,
+      file: getCosmeticFile(category.id, cosmetics[category.id]),
+      renderBeforeBase: Boolean(category.renderBeforeBase)
+    }));
+
+  const layersBeforeBase = categoryLayers.filter((layer) => layer.renderBeforeBase);
+  const layersAfterBase = categoryLayers.filter((layer) => !layer.renderBeforeBase);
+
   return [
-    { cls: 'layer-color', file: getCosmeticFile('colors', cosmetics.color) },
+    ...layersBeforeBase,
     { cls: 'layer-base', file: 'cosmetics/moop.png' },
-    { cls: 'layer-eyes', file: getCosmeticFile('eyes', cosmetics.eyes) },
-    { cls: 'layer-face', file: getCosmeticFile('face', cosmetics.face) },
-    { cls: 'layer-acc', file: getCosmeticFile('accessories', cosmetics.accessory) },
-    { cls: 'layer-hat', file: getCosmeticFile('hats', cosmetics.hat) }
+    ...layersAfterBase
   ].filter((layer) => !!layer.file);
 }
 
