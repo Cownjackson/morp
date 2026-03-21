@@ -254,26 +254,65 @@ async function syncPregameLobbyBackgroundMoops() {
   syncPregameLobbyMoops(payload);
 }
 
+function createPregamePlayerBadge(text, className = '') {
+  const badge = document.createElement('span');
+  badge.className = className ? `pregame-player-badge ${className}` : 'pregame-player-badge';
+  badge.textContent = text;
+  return badge;
+}
+
+function createPregamePlayerItem(player) {
+  const item = document.createElement('div');
+  item.className = 'pregame-player-item';
+  if (player.is_connected === false) item.classList.add('is-muted');
+
+  const nameWrap = document.createElement('div');
+  nameWrap.className = 'pregame-player-name-wrap';
+
+  const nameEl = document.createElement('span');
+  nameEl.className = 'pregame-player-name';
+  nameEl.textContent = player.name;
+  nameWrap.appendChild(nameEl);
+
+  if (player.id === state.playerId) {
+    nameWrap.appendChild(createPregamePlayerBadge('you'));
+  }
+
+  if (player.id === state.hostId) {
+    nameWrap.appendChild(createPregamePlayerBadge('host', 'host'));
+  }
+
+  const statusEl = document.createElement('span');
+  statusEl.className = 'pregame-player-status';
+  statusEl.textContent = player.is_connected === false ? 'joining' : 'connected';
+
+  item.appendChild(nameWrap);
+  item.appendChild(statusEl);
+  return item;
+}
+
+function renderPregamePlayersPanel(players) {
+  const pregamePlayersList = document.getElementById('pregame-players-list');
+  const pregamePlayersCount = document.getElementById('pregame-players-count');
+  if (!pregamePlayersList || !pregamePlayersCount) return;
+
+  pregamePlayersList.replaceChildren(...players.map(createPregamePlayerItem));
+  pregamePlayersCount.textContent = String(players.length);
+}
+
 export function renderPregameLobby() {
   syncPregameLobbyBackgroundMoops();
   const isHost = state.isHost;
   const pregameHostControls = document.getElementById('pregame-host-controls');
-  const pregameWaiting = document.getElementById('pregame-lobby-waiting');
-  const pregamePhaseLabel = document.getElementById('pregame-phase-label');
-  const headerPhaseLabel = document.getElementById('phase-label');
   const startButton = document.getElementById('btn-start');
-  const currentPhase = headerPhaseLabel?.textContent?.trim() || 'WAITING';
+  const players = Object.values(state.players);
 
   pregameHostControls.classList.toggle('hidden', !isHost);
-  pregameWaiting.style.display = isHost ? 'none' : 'block';
-
-  if (pregamePhaseLabel) {
-    pregamePhaseLabel.textContent = currentPhase;
-    pregamePhaseLabel.classList.toggle('hidden', !isHost);
-  }
 
   startButton.disabled =
-    !isHost || state.lobbyStarted || Object.values(state.players).length < 3;
+    !isHost || state.lobbyStarted || players.length < 3;
+
+  renderPregamePlayersPanel(players);
 
   refreshBackgroundLogoPaint({ delayed: true, late: true });
 }

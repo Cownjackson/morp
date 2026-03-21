@@ -1,5 +1,5 @@
 import { state, send } from './state.js';
-import { log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showScreen } from './helpers.js';
+import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
 import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
@@ -8,9 +8,9 @@ import { _drawState, clearCanvas } from './drawing.js';
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 let _wsRetries = 0;
-let _wsOpened = false;
 let _wsKicked = false;
 let _wsMaintenance = false;
+let _wsIntentionalClose = false;
 const _WS_MAX_RETRIES = 4;
 const _WS_RETRY_BASE_MS = 1500;
 
@@ -18,10 +18,26 @@ export function _setConnectBusy(busy) {
   document.querySelectorAll('#panel-connect button').forEach(b => b.disabled = busy);
 }
 
+export function markIntentionalClose() {
+  _wsIntentionalClose = true;
+}
+
+export function clearIntentionalClose() {
+  _wsIntentionalClose = false;
+}
+
+export function closeWS() {
+  const ws = state.ws;
+  state.ws = null;
+  if (ws && ws.readyState < WebSocket.CLOSING) {
+    ws.close(4000, 'Leaving lobby');
+  }
+}
+
 export function connectWS(lobbyId, playerId, name, isRetry) {
   state.lobbyId = lobbyId; state.playerId = playerId; state.playerName = name;
   if (!isRetry) {
-    _wsRetries = 0; _wsOpened = false; _wsKicked = false; _wsMaintenance = false;
+    _wsRetries = 0; _wsKicked = false; _wsMaintenance = false; _wsIntentionalClose = false;
     Object.assign(state, {
       lobbyStarted: false,
       isHost: false,
@@ -52,18 +68,9 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
   state.ws = new WebSocket(`${document.getElementById('server-url').value}/ws/${lobbyId}/${playerId}`);
 
   state.ws.onopen = () => {
-    _wsOpened = true;
     _wsRetries = 0;
     log(`Connected to lobby ${lobbyId} as ${name}`, 'ok');
-    const codeEl = document.getElementById('lobby-code-display');
-    const lobbyCodeText = 'Lobby Code: ' + lobbyId;
-    codeEl.textContent = lobbyCodeText;
-    codeEl.classList.remove('hidden');
-    const pregameCodeEl = document.getElementById('pregame-lobby-code-display');
-    if (pregameCodeEl) {
-      pregameCodeEl.textContent = lobbyCodeText;
-      pregameCodeEl.classList.remove('hidden');
-    }
+    showLobbyCodeDisplays(lobbyId);
     document.getElementById('panel-connect').classList.add('hidden');
     showLanding(false);
     renderRoleBanner();
@@ -81,8 +88,7 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
   state.ws.onclose = e => {
     if (e.code === 4403 || _wsKicked) {
       log('You have been kicked from the lobby.', 'error');
-      document.getElementById('lobby-code-display').classList.add('hidden');
-      document.getElementById('pregame-lobby-code-display')?.classList.add('hidden');
+      hideLobbyCodeDisplays();
       document.getElementById('role-banner').className = '';
       document.getElementById('role-banner').textContent = '';
       document.getElementById('panel-connect').classList.remove('hidden');
@@ -96,6 +102,11 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
       return;
     }
     if (_wsMaintenance) {
+      _setConnectBusy(false);
+      return;
+    }
+    if (_wsIntentionalClose) {
+      _wsIntentionalClose = false;
       _setConnectBusy(false);
       return;
     }
@@ -162,8 +173,7 @@ function _processMessage(msg) {
 
     case 'maintenance_shutdown': {
       _wsMaintenance = true;
-      document.getElementById('lobby-code-display').classList.add('hidden');
-      document.getElementById('pregame-lobby-code-display')?.classList.add('hidden');
+      hideLobbyCodeDisplays();
       document.getElementById('role-banner').className = '';
       document.getElementById('role-banner').textContent = '';
       document.getElementById('panel-connect').classList.remove('hidden');

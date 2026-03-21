@@ -7,7 +7,7 @@ import { initModals } from './modals.js';
 import { initMusic } from './music.js';
 import { initCanvas, clearCanvas, undoStroke, setDrawColor, setDrawSize, toggleEraser, toggleFill } from './drawing.js';
 import { createLobby, joinLobby, setCustomBoards, copyBoardTemplate } from './lobby.js';
-import { startGame, submitHint, submitVotes, submitMorpGuess, submitEndgameGhostHint, submitEndgameGuess, resetToLobby, sendChat } from './actions.js';
+import { startGame, submitHint, submitVotes, submitMorpGuess, submitEndgameGhostHint, submitEndgameGuess, resetToLobby, leaveLobby, copyLobbyCode, sendChat } from './actions.js';
 import { confirmDamage } from './rendering.js';
 import { initInteractions, toggleInteractionMenu } from './interactions.js';
 
@@ -24,6 +24,8 @@ window.submitMorpGuess = submitMorpGuess;
 window.submitEndgameGhostHint = submitEndgameGhostHint;
 window.submitEndgameGuess = submitEndgameGuess;
 window.resetToLobby = resetToLobby;
+window.leaveLobby = leaveLobby;
+window.copyLobbyCode = copyLobbyCode;
 window.sendChat = sendChat;
 window.toggleInteractionMenu = toggleInteractionMenu;
 window.confirmDamage = confirmDamage;
@@ -35,13 +37,6 @@ window.undoStroke = undoStroke;
 window.clearCanvas = clearCanvas;
 
 function initPregameInfoToggles() {
-  const waitingLabel = document.getElementById('pregame-lobby-waiting');
-  if (waitingLabel) waitingLabel.textContent = 'Waiting for players...';
-  const pregamePhaseLabel = document.getElementById('pregame-phase-label');
-  if (pregamePhaseLabel && !pregamePhaseLabel.textContent.trim()) {
-    pregamePhaseLabel.textContent = 'WAITING';
-  }
-
   const menuConfigs = [
     {
       menu: document.getElementById('pregame-options-menu'),
@@ -229,6 +224,8 @@ showLanding(true);
 initMoopCustomizer();
 initLandingNameAutosize();
 syncBackgroundPrototypePlayer();
+document.body.dataset.appShellReady = 'true';
+window.dispatchEvent(new Event('morp:app-shell-ready'));
 
 const playerNameInput = document.getElementById('player-name');
 if (playerNameInput) {

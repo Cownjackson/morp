@@ -432,6 +432,41 @@ def test_kick_unknown_player_raises():
         engine.kick_player(host, "nonexistent")
 
 
+# --- leave player ---
+
+def test_leave_in_lobby_removes_player():
+    engine = make_engine(num_players=3)
+    leaver = "p1"
+    lobby_empty = engine.leave_player(leaver)
+    assert lobby_empty is False
+    assert leaver not in engine.lobby.players
+
+
+def test_leave_in_lobby_reassigns_host():
+    engine = make_engine(num_players=3)
+    original_host = engine.lobby.host_id
+    lobby_empty = engine.leave_player(original_host)
+    assert lobby_empty is False
+    assert engine.lobby.host_id != original_host
+    assert engine.lobby.host_id in engine.lobby.players
+
+
+def test_leave_last_player_marks_lobby_empty():
+    engine = make_engine(num_players=1)
+    only_player = next(iter(engine.lobby.players))
+    lobby_empty = engine.leave_player(only_player)
+    assert lobby_empty is True
+    assert engine.lobby.players == {}
+    assert engine.lobby.host_id == ""
+
+
+def test_leave_after_game_start_rejected():
+    engine = make_engine(num_players=3)
+    engine.start_game(seed=1)
+    with pytest.raises(ValueError, match="Cannot leave after the game has started"):
+        engine.leave_player("p0")
+
+
 # --- host reassignment ---
 
 def test_host_reassigned_when_host_disconnects():

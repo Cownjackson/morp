@@ -434,6 +434,67 @@ def test_kick_in_lobby_broadcasts_lobby_update(client):
         assert not any(p["id"] == target_id for p in update["players"])
 
 
+# --- Leave lobby ---
+
+def test_leave_in_lobby_removes_player(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+    leaver_id = player_ids[1]
+    r = client.post(f"/lobby/{lobby_id}/leave", json={"player_id": leaver_id})
+    assert r.status_code == 200
+    assert leaver_id not in _engines[lobby_id].lobby.players
+
+
+def test_leave_in_lobby_reassigns_host_and_broadcasts_update(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+    host_id = player_ids[0]
+
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2, \
+         client.websocket_connect(f"/ws/{lobby_id}/{host_id}") as ws0:
+        drain_until(ws1, "lobby_update")
+        drain_until(ws2, "lobby_update")
+        drain_until(ws0, "lobby_update")
+        drain_until(ws1, "lobby_update")
+        drain_until(ws2, "lobby_update")
+
+        r = client.post(f"/lobby/{lobby_id}/leave", json={"player_id": host_id})
+        assert r.status_code == 200
+
+        update = None
+        for _ in range(3):
+            candidate = drain_until(ws1, "lobby_update")
+            if not any(player["id"] == host_id for player in candidate["players"]):
+                update = candidate
+                break
+        assert update is not None
+        assert update["host_id"] in (player_ids[1], player_ids[2])
+        assert not any(player["id"] == host_id for player in update["players"])
+
+
+def test_leave_last_player_deletes_lobby(client):
+    lobby_id = client.post("/lobby/create").json()["lobby_id"]
+    player_id = client.post(f"/lobby/{lobby_id}/join", json={"name": "Alice"}).json()["player_id"]
+    r = client.post(f"/lobby/{lobby_id}/leave", json={"player_id": player_id})
+    assert r.status_code == 200
+    assert lobby_id not in _engines
+
+
+def test_leave_rejected_after_game_start(client):
+    lobby_id, player_ids = _setup_lobby(client, num_players=3)
+    with client.websocket_connect(f"/ws/{lobby_id}/{player_ids[0]}") as ws0, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[1]}") as ws1, \
+         client.websocket_connect(f"/ws/{lobby_id}/{player_ids[2]}") as ws2:
+        for ws in (ws0, ws1, ws2):
+            drain_until(ws, "lobby_update")
+        ws0.send_json({"type": "start_game", "timers_enabled": False})
+        for ws in (ws0, ws1, ws2):
+            drain_until(ws, "role_assigned")
+            drain_until(ws, "round_start")
+
+        r = client.post(f"/lobby/{lobby_id}/leave", json={"player_id": player_ids[1]})
+        assert r.status_code == 409
+
+
 # --- Custom board upload ---
 
 _VALID_BOARD = {"board_hint": "Test Theme", "words": [f"word{i}" for i in range(10)]}

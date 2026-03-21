@@ -1,8 +1,9 @@
 import { state, send } from './state.js';
-import { showScreen, setPhaseLabel } from './helpers.js';
+import { showScreen, setPhaseLabel, showLanding, httpBase, log, hideLobbyCodeDisplays, setLobbyCodeCopyButtonState } from './helpers.js';
 import { renderRoleBanner, renderPregameLobby, renderChat, disableBoardWordSelection } from './rendering.js';
 import { _drawState, clearCanvas } from './drawing.js';
 import { _timers, clearTimer } from './timers.js';
+import { _setConnectBusy, markIntentionalClose, clearIntentionalClose, closeWS } from './websocket.js';
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
 export function startGame() {
@@ -91,6 +92,135 @@ export function _localResetToLobby() {
 export function resetToLobby() {
   _localResetToLobby();
   if (state.isHost && state.ws) send({ type: 'reset_game' });
+}
+
+let _leavingLobby = false;
+let _copyLobbyCodeResetTimeout = 0;
+
+function resetLobbyCodeCopyButton() {
+  window.clearTimeout(_copyLobbyCodeResetTimeout);
+  _copyLobbyCodeResetTimeout = 0;
+  setLobbyCodeCopyButtonState(false);
+}
+
+function _setLeaveUiBusy(busy) {
+  _setConnectBusy(busy);
+  document.getElementById('pregame-exit-btn')?.toggleAttribute('disabled', busy);
+}
+
+function _localReturnToMainMenu() {
+  Object.assign(state, {
+    ws: null,
+    screen: 'landing',
+    lobbyId: null,
+    playerId: null,
+    playerName: null,
+    lobbyStarted: false,
+    isHost: false,
+    hostId: null,
+    role: null,
+    halfBoard: null,
+    targetWord: null,
+    board: null,
+    turnOrder: [],
+    hints: [],
+    players: {},
+    chatMessages: [],
+    speechBubbles: {},
+    selectedVotes: [],
+    numVotes: 1,
+    _accusedMorpIds: [],
+    isGhost: false,
+    endgameTargetWord: null,
+    drawingHints: false,
+    avatarInteraction: null,
+    damageTarget: null,
+    _morpIdsForDamage: [],
+  });
+  Object.keys(_timers).forEach(clearTimer);
+  renderRoleBanner();
+  document.getElementById('board-area').classList.add('hidden');
+  hideLobbyCodeDisplays();
+  resetLobbyCodeCopyButton();
+  document.getElementById('role-banner').className = '';
+  document.getElementById('role-banner').textContent = '';
+  document.getElementById('panel-connect').classList.remove('hidden');
+  showLanding(true);
+  renderChat();
+  setPhaseLabel('');
+}
+
+export async function copyLobbyCode() {
+  if (!state.lobbyId) return;
+
+  const lobbyCode = state.lobbyId.trim();
+  if (!lobbyCode) return;
+
+  const fallbackCopy = () => {
+    const input = document.createElement('textarea');
+    input.value = lobbyCode;
+    input.setAttribute('readonly', '');
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand('copy');
+    document.body.removeChild(input);
+  };
+
+  try {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(lobbyCode);
+      } catch {
+        fallbackCopy();
+      }
+    } else {
+      fallbackCopy();
+    }
+
+    const button = document.getElementById('pregame-lobby-code-copy');
+    if (!button) return;
+    resetLobbyCodeCopyButton();
+    setLobbyCodeCopyButtonState(true);
+    _copyLobbyCodeResetTimeout = window.setTimeout(() => {
+      resetLobbyCodeCopyButton();
+    }, 1200);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    log(`Copy failed: ${message}`, 'error');
+    resetLobbyCodeCopyButton();
+  }
+}
+
+export async function leaveLobby() {
+  if (_leavingLobby || !state.lobbyId || !state.playerId) return;
+  _leavingLobby = true;
+  _setLeaveUiBusy(true);
+  markIntentionalClose();
+
+  try {
+    const response = await fetch(`${httpBase()}/lobby/${state.lobbyId}/leave`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_id: state.playerId }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      clearIntentionalClose();
+      throw new Error(body.detail || `Error ${response.status}`);
+    }
+    closeWS();
+    _localReturnToMainMenu();
+  } catch (error) {
+    clearIntentionalClose();
+    const message = error instanceof Error ? error.message : String(error);
+    log(`Leave failed: ${message}`, 'error');
+  } finally {
+    _setLeaveUiBusy(false);
+    _leavingLobby = false;
+  }
 }
 
 let _chatCooldown = false;

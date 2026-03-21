@@ -38,6 +38,19 @@
   background: transparent;
 }
 
+.background-corner-trigger-box {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  box-sizing: border-box;
+  pointer-events: none;
+  opacity: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
 .swatch {
   position: fixed;
   top: 0;
@@ -143,6 +156,14 @@
   height: 124px;
   transform-origin: center center;
   will-change: transform;
+  overflow: visible;
+}
+
+.bg-player-sprite-shell {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+  will-change: transform;
   filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.18));
   background: transparent;
 }
@@ -159,7 +180,7 @@
 
 .bg-player-label {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + var(--bg-player-label-gap, 0.4px));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
