@@ -1,14 +1,26 @@
 (function () {
   const swatchConfigs = [
-    { selector: '.swatch-1', xRatio: 0.03, yRatio: 0.05, vx: 55, vy: 46, rotation: 4, spin: 7 },
-    { selector: '.swatch-2', xRatio: 0.58, yRatio: 0.04, vx: -53, vy: 43, rotation: -5, spin: -6 },
-    { selector: '.swatch-3', xRatio: 0.04, yRatio: 0.46, vx: 58, vy: -42, rotation: 3, spin: 8 },
-    { selector: '.swatch-4', xRatio: 0.57, yRatio: 0.58, vx: -49, vy: -54, rotation: -4, spin: -7 },
-    { selector: '.swatch-5', xRatio: 0.12, yRatio: 0.7, vx: 52, vy: -50, rotation: 5, spin: 6 },
-    { selector: '.swatch-6', xRatio: 0.42, yRatio: 0.16, vx: 47, vy: 53, rotation: -3, spin: -9 },
-    { selector: '.swatch-7', xRatio: 0.74, yRatio: 0.36, vx: -56, vy: 44, rotation: 6, spin: 7 },
-    { selector: '.swatch-8', xRatio: 0.29, yRatio: 0.74, vx: 54, vy: -58, rotation: -6, spin: -8 }
+    { selector: '.swatch-1', xRatio: 0.03, yRatio: 0.05, vx: 55, vy: 46, rotation: 4, spin: 7, colorVariable: '--grape', baseRadius: 44 },
+    { selector: '.swatch-2', xRatio: 0.58, yRatio: 0.04, vx: -53, vy: 43, rotation: -5, spin: -6, colorVariable: '--eggplant', baseRadius: 40 },
+    { selector: '.swatch-3', xRatio: 0.04, yRatio: 0.46, vx: 58, vy: -42, rotation: 3, spin: 8, colorVariable: '--trumskin', baseRadius: 36 },
+    { selector: '.swatch-4', xRatio: 0.57, yRatio: 0.58, vx: -49, vy: -54, rotation: -4, spin: -7, colorVariable: '--mint', baseRadius: 44 },
+    { selector: '.swatch-5', xRatio: 0.12, yRatio: 0.7, vx: 52, vy: -50, rotation: 5, spin: 6, colorVariable: '--punch', baseRadius: 38 },
+    { selector: '.swatch-6', xRatio: 0.42, yRatio: 0.16, vx: 47, vy: 53, rotation: -3, spin: -9, colorVariable: '--mustard', baseRadius: 32 },
+    { selector: '.swatch-7', xRatio: 0.74, yRatio: 0.36, vx: -56, vy: 44, rotation: 6, spin: 7, colorVariable: '--pinky', baseRadius: 34 },
+    { selector: '.swatch-8', xRatio: 0.29, yRatio: 0.74, vx: 54, vy: -58, rotation: -6, spin: -8, colorVariable: '--shreks-toe', baseRadius: 30 }
   ];
+  const themeFallbacks = Object.freeze({
+    '--eggplant': '#820D51',
+    '--grape': '#6528CE',
+    '--punch': '#B21030',
+    '--mint': '#87DCAB',
+    '--mustard': '#D1912A',
+    '--pinky': '#FEAED2',
+    '--trumskin': '#CC6711',
+    '--shreks-toe': '#A3AF0A',
+    '--sky': '#71B2E6',
+    '--peach': '#FFE1B1'
+  });
 
   const restitution = 0.98;
   const minSpeed = 42;
@@ -677,6 +689,9 @@
 
   function hexToRgb(hex) {
     const normalized = hex.trim();
+    if (normalized.startsWith('rgb')) {
+      return parseRgbString(normalized);
+    }
     const value = normalized.startsWith('#') ? normalized.slice(1) : normalized;
 
     if (value.length !== 6) {
@@ -706,6 +721,15 @@
       g: Number.parseFloat(matches[1]),
       b: Number.parseFloat(matches[2])
     };
+  }
+
+  function getThemeColorRgb(cssVariable) {
+    const value =
+      getComputedStyle(document.documentElement).getPropertyValue(cssVariable).trim() ||
+      themeFallbacks[cssVariable] ||
+      '#FFFFFF';
+
+    return hexToRgb(value);
   }
 
   function darkenColor(color, factor) {
@@ -895,17 +919,17 @@
       container.appendChild(interactionLayer);
     }
 
-    const paletteColors = ripplePalette.map((cssVariable) =>
-      hexToRgb(getComputedStyle(document.documentElement).getPropertyValue(cssVariable))
-    );
+    let paletteColors = [];
     const ripples = [];
     let rippleIndex = 0;
     const logoTargetIds = ['landing-logo-text', 'pregame-logo-text'];
     let logoTextElements = [];
     let logoLetters = [];
-    const defaultLogoFill = hexToRgb(getComputedStyle(document.documentElement).getPropertyValue('--punch'));
-    const defaultLogoShadow = darkenColor(defaultLogoFill, logoPaintConfig.shadowDarkness);
+    let defaultLogoFill = getThemeColorRgb('--punch');
+    let defaultLogoShadow = darkenColor(defaultLogoFill, logoPaintConfig.shadowDarkness);
     let logoBoundsRaf = 0;
+    let layoutRefreshRaf = 0;
+    let logoRefreshRaf = 0;
 
     function syncLogoTargets() {
       logoTextElements = logoTargetIds
@@ -916,6 +940,16 @@
       ), []);
     }
 
+    function syncThemeStyles() {
+      paletteColors = ripplePalette.map((cssVariable) => getThemeColorRgb(cssVariable));
+      defaultLogoFill = getThemeColorRgb('--punch');
+      defaultLogoShadow = darkenColor(defaultLogoFill, logoPaintConfig.shadowDarkness);
+
+      blocks.forEach((block) => {
+        block.colorRgb = getThemeColorRgb(block.colorVariable);
+      });
+    }
+
     const shapeModes = shuffle([
       'square', 'square', 'square', 'square',
       'rectangle', 'rectangle', 'rectangle', 'rectangle'
@@ -924,7 +958,7 @@
     const blocks = swatchConfigs.map((config) => {
       const element = container.querySelector(config.selector);
       const { width, height } = generateBlockSize(shapeModes.pop());
-      const baseRadius = parseFloat(getComputedStyle(element).borderTopLeftRadius) || 0;
+      const baseRadius = config.baseRadius;
 
       element.style.width = `${width}px`;
       element.style.height = `${height}px`;
@@ -943,7 +977,8 @@
         height,
         baseWidth: width,
         baseHeight: height,
-        color: getComputedStyle(element).backgroundColor,
+        colorVariable: config.colorVariable,
+        colorRgb: getThemeColorRgb(config.colorVariable),
         radius: baseRadius,
         baseRadius,
         x: 0,
@@ -1154,6 +1189,55 @@
       refresh(frameCount);
     }
 
+    function runLogoRefresh() {
+      syncThemeStyles();
+      updateLogoLetterBounds();
+      scheduleLogoBoundsRefresh(1);
+    }
+
+    function scheduleLogoRefresh(frameCount = 1) {
+      if (logoRefreshRaf) {
+        cancelAnimationFrame(logoRefreshRaf);
+      }
+
+      const refresh = (remainingFrames) => {
+        if (remainingFrames > 0) {
+          logoRefreshRaf = requestAnimationFrame(() => refresh(remainingFrames - 1));
+          return;
+        }
+
+        logoRefreshRaf = 0;
+        runLogoRefresh();
+      };
+
+      refresh(frameCount);
+    }
+
+    function runLayoutRefresh() {
+      syncThemeStyles();
+      updateLogoLetterBounds();
+      placeBlocks();
+      scheduleLogoBoundsRefresh(1);
+    }
+
+    function scheduleLayoutRefresh(frameCount = 1) {
+      if (layoutRefreshRaf) {
+        cancelAnimationFrame(layoutRefreshRaf);
+      }
+
+      const refresh = (remainingFrames) => {
+        if (remainingFrames > 0) {
+          layoutRefreshRaf = requestAnimationFrame(() => refresh(remainingFrames - 1));
+          return;
+        }
+
+        layoutRefreshRaf = 0;
+        runLayoutRefresh();
+      };
+
+      refresh(frameCount);
+    }
+
     function updateLogoPaint(now) {
       if (!logoLetters.length) {
         return;
@@ -1200,7 +1284,7 @@
 
           const score = overlapWidth * overlapHeight;
           if (score > bestByLetter[index].score) {
-            bestByLetter[index] = { score, color: parseRgbString(block.color) };
+            bestByLetter[index] = { score, color: block.colorRgb };
           }
         });
       });
@@ -1257,6 +1341,7 @@
     }
 
     function updateResponsiveLayout() {
+      syncThemeStyles();
       const { baseViewportScale, viewportScale, speedScale, radiusScale, smoothedScale } = getResponsiveMetrics();
 
       blocks.forEach((block) => {
@@ -1487,18 +1572,25 @@
     }
 
     window.addEventListener('resize', () => {
-      updateLogoLetterBounds();
-      placeBlocks();
-      scheduleLogoBoundsRefresh(1);
+      scheduleLayoutRefresh(1);
     });
+    window.addEventListener('load', () => {
+      scheduleLayoutRefresh(2);
+    }, { once: true });
+    window.addEventListener('pageshow', () => {
+      scheduleLayoutRefresh(1);
+    });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+        scheduleLayoutRefresh(1);
+      }, { passive: true });
+    }
     interactionLayer.addEventListener('pointerdown', handlePointerDown, { passive: true });
-    updateLogoLetterBounds();
-    scheduleLogoBoundsRefresh();
+    syncThemeStyles();
 
     if (document.fonts?.ready) {
       document.fonts.ready.then(() => {
-        updateLogoLetterBounds();
-        scheduleLogoBoundsRefresh();
+        scheduleLayoutRefresh(2);
       });
     }
 
@@ -1506,15 +1598,14 @@
 
     if (typeof ResizeObserver !== 'undefined' && logoTextElements.length) {
       const logoObserver = new ResizeObserver(() => {
-        updateLogoLetterBounds();
-        scheduleLogoBoundsRefresh(1);
+        scheduleLogoRefresh(1);
       });
       logoTextElements.forEach((logoTextElement) => {
         logoObserver.observe(logoTextElement);
       });
     }
 
-    placeBlocks();
+    runLayoutRefresh();
     requestAnimationFrame((now) => {
       lastTime = now;
       animate(now);
@@ -1528,9 +1619,7 @@
     window.syncBackgroundPlayers = syncBackgroundPlayers;
     window.setBackgroundPrototypePlayer = syncPrototypePlayer;
     window.refreshBackgroundLogoPaint = () => {
-      syncLogoTargets();
-      updateLogoLetterBounds();
-      scheduleLogoBoundsRefresh(1);
+      scheduleLogoRefresh(1);
     };
     syncPrototypePlayer(window.backgroundPrototypePlayerData || {});
     container.dataset.initialized = 'true';
@@ -1538,9 +1627,33 @@
 
   window.initBackgroundBlocks = initBackgroundBlocks;
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => initBackgroundBlocks(), { once: true });
-  } else {
+  function waitForDomReady() {
+    if (document.readyState === 'loading') {
+      return new Promise((resolve) => {
+        document.addEventListener('DOMContentLoaded', resolve, { once: true });
+      });
+    }
+
+    return Promise.resolve();
+  }
+
+  function waitForAppShellReady() {
+    if (document.body?.dataset.appShellReady === 'true' || document.readyState === 'complete') {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      const finish = () => resolve();
+      window.addEventListener('morp:app-shell-ready', finish, { once: true });
+      window.addEventListener('load', finish, { once: true });
+    });
+  }
+
+  async function bootstrapBackgroundBlocks() {
+    await waitForDomReady();
+    await waitForAppShellReady();
     initBackgroundBlocks();
   }
+
+  bootstrapBackgroundBlocks();
 })();
