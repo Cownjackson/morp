@@ -844,6 +844,7 @@ export function showEnvelopeReveal(role, onDismiss) {
     }, 300);
   }
 
+  // TODO: consider auto-opening the envelope after ~3s if the player hasn't clicked
   overlay.addEventListener('click', () => {
     if (phase === 'closed') openEnvelope();
     else if (phase === 'revealed') dismiss();
