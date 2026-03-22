@@ -135,7 +135,6 @@ const _ANIMATION_LOCK_TIMEOUT_MS = 5000;
 
 const _DEFERRED_TYPES = new Set([
   'lobby_update', 'round_end', 'damage_dealt', 'damage_phase',
-  'morp_guess_phase',
   'endgame_round_end', 'round_start', 'endgame_round_start', 'game_over',
 ]);
 

@@ -55,7 +55,11 @@ _PHASE_GATE_TIMEOUT = 30  # generous fallback if no client signals phase_ready
 
 
 async def _wait_for_phase_ready(lobby_id: str):
-    """Block until any client sends phase_ready, or timeout."""
+    """Block until any client sends phase_ready, or timeout.
+
+    Currently proceeds on the first signal. Consider waiting for all
+    connected clients if animation pacing feels uneven across players.
+    """
     event = asyncio.Event()
     _phase_gates[lobby_id] = event
     try:
