@@ -4,6 +4,16 @@ Completed work, newest first. Add an entry when a PR merges or a standalone chan
 
 ---
 
+## 2026-03-22
+
+- **[feature]** Envelope role reveal — on round start, players see a sealed envelope with wax seal; click to open reveals their role letter (safe/morp) with layered envelope art and SFX; board fades in after dismissal (Phase 2)
+- **[feature]** Dramatic role reveal after voting — all non-ghost players get closed envelopes on their avatars; envelopes open one by one in server-dictated order (safe first, accused safe second-to-last, morp last) with letter_open SFX; ~1.5s per reveal with extra morp pause (Phase 5)
+- **[feature]** Client-ready signaling (`phase_ready`) — frontend signals backend when animation-gated transitions complete; replaces hardcoded animation duration sleeps; backend waits with 30s timeout fallback
+- **[feature]** `reveal_order` in `accusation_result` — server builds ordered reveal array for all non-ghost players; `build_reveal_order()` in voting module with 4 unit tests
+- **[fix]** Animation lock supports custom timeouts — `_startAnimationLock(timeoutMs)` for longer animations; deferred messages with deadlines get shifted forward by lock duration
+- **[fix]** Removed vestigial accusation result panel — dramatic reveal replaces old instant accusation display; cleaned up HTML, renderAccusation(), ACTIONS entry
+- **[dev]** Art assets — envelope_closed, envelope_opened_back, envelope_opened_front, safe_letter, morp_letter PNGs; letter_open.mp3 SFX
+
 ## 2026-03-21
 
 - **[feature]** Word board click for morp guess — morp clicks board words instead of typing; word toss animation with server-echo timing; board word validation on backend (Phase 6A)

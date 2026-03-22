@@ -17,8 +17,8 @@ Items move here when planned, to `changelog.md` when shipped.
   - [x] Phase 6A — Word board click (`word-board-click`, merged)
   - [x] Phase 9 — Sudden Death pause screen (partial, `word-board-click`, merged)
   - [x] Phase 10 — Endgame board click + simultaneous reveal (partial, `word-board-click`, merged)
-  - [ ] Phase 2 — Role assignment & board reveal
-  - [ ] Phase 5 — Dramatic role reveal
+  - [x] Phase 2 — Role assignment & board reveal (`role-reveal`, merged)
+  - [x] Phase 5 — Dramatic role reveal (`role-reveal`, merged)
   - [ ] Phase 3 — Hint display overhaul
   - [ ] Phase 7 — Auto round transition
   - [ ] Phase 8 — Death animation

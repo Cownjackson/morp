@@ -480,7 +480,7 @@ None. `endgame_round_start` already fires.
 | 5 | Vote timer implementation (configurable duration, abstain on timeout) | 4 | High | Medium |
 | 6 | New config: `vote_timer_duration` in lobby config (default 45s, range 5s–5min) | 4 | High | Low |
 | 7 | Early close: reduce timer to min(remaining, 5s) when all votes are in | 4 | High | Low |
-| 8 | Add `reveal_order` to `accusation_result` | 5 | High | Low |
+| 8 | ~~Add `reveal_order` to `accusation_result`~~ | 5 | ~~High~~ | ~~Low~~ | ✅ Done |
 | 9 | Auto-start next round timer after `round_end` | 7 | High | Medium |
 | 10 | New message: `round_starting` with countdown | 7 | High | Low |
 | 11 | ~~Validate morp guess is a board word~~ | 6A | ~~Medium~~ | ~~Low~~ | ✅ Done |
@@ -498,9 +498,9 @@ Each branch groups related phases by dependency and scope. Small PRs, easy to re
 | Branch | Phases | Why grouped |
 |--------|--------|-------------|
 | `vote-and-damage-avatars` | 4, 6B | Same UI pattern (click avatars), no backend changes | ✅ Merged |
-| `word-board-click` | 6A, 9 (partial), 10 (partial) | Board click guess + endgame simultaneous reveal + animation lock + sudden death pause | 🔄 Ready to merge |
+| `word-board-click` | 6A, 9 (partial), 10 (partial) | Board click guess + endgame simultaneous reveal + animation lock + sudden death pause | ✅ Merged |
+| `role-reveal` | 2, 5 | Both role-related; Phase 2 pure frontend, Phase 5 needs backend + phase_ready signaling | ✅ Merged |
 | `hint-display-overhaul` | 3 | Large, self-contained, needs backend work |
-| `role-reveal` | 2, 5 | Both role-related; Phase 2 pure frontend, Phase 5 needs backend |
 | `round-transitions` | 7, 8 | Round lifecycle (auto-transition + death animation) |
 | `endgame-overhaul` | 9, 10, 11 | Endgame is one connected flow |
 | `magnetic-snap` | 1 | Isolated cross-layout animation |
@@ -514,8 +514,8 @@ Each branch groups related phases by dependency and scope. Small PRs, easy to re
 | 1 | Phase 4 — Vote via avatars | `vote-and-damage-avatars` | ✅ Shipped |
 | 2 | Phase 6B — Damage via avatars | `vote-and-damage-avatars` | ✅ Shipped |
 | 3 | Phase 6A — Word board click for guess | `word-board-click` | ✅ Shipped (+ endgame mechanics, animation lock, sudden death pause) |
-| 4 | Phase 2 — Board fade + role reveal | `role-reveal` | Pure frontend animation |
-| 5 | Phase 5 — Dramatic role reveal | `role-reveal` | Needs backend `reveal_order` |
+| 4 | Phase 2 — Board fade + role reveal | `role-reveal` | ✅ Shipped (envelope reveal + board fade) |
+| 5 | Phase 5 — Dramatic role reveal | `role-reveal` | ✅ Shipped (+ phase_ready signaling, animation lock improvements) |
 | 6 | Phase 3 — Hint display overhaul | `hint-display-overhaul` | Most complex frontend work |
 | 7 | Phase 7 — Auto-transition | `round-transitions` | Needs backend timer |
 | 8 | Phase 8 — Death animation | `round-transitions` | Placeholder, waiting on art |
