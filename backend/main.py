@@ -664,6 +664,7 @@ async def _handle_accusation(lobby_id: str, engine: GameEngine):
         "accused_ids": rs.accused_ids,
         "roles_revealed": {pid: player_roles.get(pid, "unknown") for pid in rs.accused_ids},
         "reveal_order": reveal_order,
+        "votes": rs.votes,
     })
 
     result = engine.resolve_accusation()
