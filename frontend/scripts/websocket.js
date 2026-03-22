@@ -128,6 +128,7 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
 
 // ─── Animation lock — defer state-changing messages while animations play ────
 let _animationLock = false;
+let _animationLockStartedAt = 0;
 let _deferredQueue = [];
 let _animationLockTimer = null;
 const _ANIMATION_LOCK_TIMEOUT_MS = 5000;
@@ -138,17 +139,35 @@ const _DEFERRED_TYPES = new Set([
   'endgame_round_end', 'round_start', 'endgame_round_start', 'game_over',
 ]);
 
-function _startAnimationLock() {
+function _startAnimationLock(timeoutMs) {
   _animationLock = true;
+  _animationLockStartedAt = Date.now();
   clearTimeout(_animationLockTimer);
-  _animationLockTimer = setTimeout(_endAnimationLock, _ANIMATION_LOCK_TIMEOUT_MS);
+  _animationLockTimer = setTimeout(_endAnimationLock, timeoutMs || _ANIMATION_LOCK_TIMEOUT_MS);
 }
 
 function _endAnimationLock() {
   _animationLock = false;
+  const lockDurationSec = (Date.now() - _animationLockStartedAt) / 1000;
   clearTimeout(_animationLockTimer);
   const queued = _deferredQueue.splice(0);
-  for (const m of queued) _processMessage(m);
+  for (const m of queued) {
+    // Shift time-based deadlines forward by how long they were deferred
+    if (m.deadline && lockDurationSec > 0) {
+      m.deadline += lockDurationSec;
+    }
+    _processMessage(m);
+  }
+}
+
+function _calcRevealDuration(revealOrder) {
+  if (!revealOrder || revealOrder.length === 0) return 0;
+  let delay = 600;
+  for (const entry of revealOrder) {
+    if (entry.role === 'morp') delay += 1000;
+    delay += 1500;
+  }
+  return delay + 1500; // final hold
 }
 
 // ─── Message handler ──────────────────────────────────────────────────────────
@@ -280,14 +299,18 @@ function _processMessage(msg) {
       log('Voting open!', 'ok');
       break;
 
-    case 'accusation_result':
+    case 'accusation_result': {
       disableAvatarVoting();
       setPhaseLabel('ROLE REVEAL');
-      _startAnimationLock();
-      playRoleRevealSequence(msg.reveal_order || [], () => {
+      // Calculate reveal duration first, then start lock with matching timeout
+      const revealOrder = msg.reveal_order || [];
+      const revealDuration = _calcRevealDuration(revealOrder);
+      _startAnimationLock(revealDuration + 2000);
+      playRoleRevealSequence(revealOrder, () => {
         _endAnimationLock();
       });
       break;
+    }
 
     case 'morp_guess_phase': {
       state._accusedMorpIds = msg.accused_morp_ids;

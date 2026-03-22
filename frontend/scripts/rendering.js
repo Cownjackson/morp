@@ -411,12 +411,13 @@ const _REVEAL_ASSETS = {
  * Play the dramatic one-by-one role reveal on player avatars.
  * revealOrder: [{player_id, role}, ...] — server-dictated order (morp last)
  * onDone: callback after entire reveal sequence finishes
+ * Returns total animation duration in ms (for animation lock timeout).
  */
 export function playRoleRevealSequence(revealOrder, onDone) {
   const playerRow = document.getElementById('game-player-row');
   if (!playerRow || revealOrder.length === 0) {
     if (onDone) onDone();
-    return;
+    return 0;
   }
 
   // Place closed envelopes on all players in the reveal order
@@ -493,13 +494,15 @@ export function playRoleRevealSequence(revealOrder, onDone) {
   }
 
   // After all reveals + hold time, clean up and callback
+  const totalDuration = delay + 1500; // extra hold after final reveal
   setTimeout(() => {
     // Remove all envelope overlays
     for (const els of Object.values(envelopeEls)) {
       els.wrap.remove();
     }
     if (onDone) onDone();
-  }, delay + 1500); // extra hold after final reveal
+  }, totalDuration);
+  return totalDuration;
 }
 
 // ─── Damage (avatar-based) ────────────────────────────────────────────────────
