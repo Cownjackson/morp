@@ -6,7 +6,7 @@ export const AVATAR_COLORS = [
 ];
 
 export const ACTIONS = [
-  'hint','vote','accusation','morp-guess',
+  'hint','vote','morp-guess',
   'damage','endgame','round-end','game-over',
 ];
 

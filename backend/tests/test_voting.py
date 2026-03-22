@@ -1,5 +1,5 @@
 import pytest
-from backend.game.voting import tally_votes, resolve_accusation
+from backend.game.voting import tally_votes, resolve_accusation, build_reveal_order
 from backend.game.engine import GameEngine
 from backend.models.game import GamePhase
 from backend.models.player import Role
@@ -247,3 +247,53 @@ def test_two_active_players_triggers_endgame():
     engine.morp_deal_damage(morp_id, safe_ids[0])
 
     assert engine.state.phase == GamePhase.ENDGAME_2P
+
+
+# --- build_reveal_order ---
+
+def test_reveal_order_morp_always_last():
+    players = [
+        {"id": "s1", "role": "safe", "is_ghost": False},
+        {"id": "s2", "role": "safe", "is_ghost": False},
+        {"id": "m1", "role": "morp", "is_ghost": False},
+    ]
+    order = build_reveal_order(players, accused_ids=["m1"])
+    assert order[-1] == {"player_id": "m1", "role": "morp"}
+    assert len(order) == 3
+
+
+def test_reveal_order_accused_safe_before_morp():
+    """Wrong accusation: accused safe player should be second-to-last."""
+    players = [
+        {"id": "s1", "role": "safe", "is_ghost": False},
+        {"id": "s2", "role": "safe", "is_ghost": False},
+        {"id": "s3", "role": "safe", "is_ghost": False},
+        {"id": "m1", "role": "morp", "is_ghost": False},
+    ]
+    order = build_reveal_order(players, accused_ids=["s2"])
+    assert order[-1] == {"player_id": "m1", "role": "morp"}
+    assert order[-2] == {"player_id": "s2", "role": "safe"}
+
+
+def test_reveal_order_excludes_ghosts():
+    players = [
+        {"id": "s1", "role": "safe", "is_ghost": False},
+        {"id": "g1", "role": "safe", "is_ghost": True},
+        {"id": "m1", "role": "morp", "is_ghost": False},
+    ]
+    order = build_reveal_order(players, accused_ids=["m1"])
+    ids = [r["player_id"] for r in order]
+    assert "g1" not in ids
+    assert len(order) == 2
+
+
+def test_reveal_order_all_non_ghost_players_included():
+    players = [
+        {"id": "s1", "role": "safe", "is_ghost": False},
+        {"id": "s2", "role": "safe", "is_ghost": False},
+        {"id": "m1", "role": "morp", "is_ghost": False},
+        {"id": "g1", "role": "safe", "is_ghost": True},
+    ]
+    order = build_reveal_order(players, accused_ids=["s1"])
+    ids = {r["player_id"] for r in order}
+    assert ids == {"s1", "s2", "m1"}

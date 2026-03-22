@@ -17,8 +17,8 @@ Items move here when planned, to `changelog.md` when shipped.
   - [x] Phase 6A — Word board click (`word-board-click`, merged)
   - [x] Phase 9 — Sudden Death pause screen (partial, `word-board-click`, merged)
   - [x] Phase 10 — Endgame board click + simultaneous reveal (partial, `word-board-click`, merged)
-  - [ ] Phase 2 — Role assignment & board reveal
-  - [ ] Phase 5 — Dramatic role reveal
+  - [x] Phase 2 — Role assignment & board reveal (`role-reveal`, merged)
+  - [x] Phase 5 — Dramatic role reveal (`role-reveal`, merged)
   - [ ] Phase 3 — Hint display overhaul
   - [ ] Phase 7 — Auto round transition
   - [ ] Phase 8 — Death animation
@@ -34,6 +34,7 @@ Items move here when planned, to `changelog.md` when shipped.
 - [ ] **[bug]** Endgame double-guess on frontend — if a finalist submits a guess during ghost hint phase, the hint-phase-over transition re-shows the guess UI and allows a second submit attempt; backend correctly rejects the duplicate but frontend should disable the guess button/board after first submission — @cownj
 - [ ] **[bug]** Post-game join softlock — if a 4th player joins after a 3-player game ends but before host returns to lobby, the new player becomes host but cannot start the next game; lobby is softlocked — unowned
 - [ ] **[bug]** `test_websocket.py` setup error — `test_create_lobby_returns_lobby_id` fails at setup (pre-existing, unrelated to game logic); all 121 engine/game tests pass — unowned
+- [ ] **[bug]** Reconnection doesn't restore phase UI — if a player disconnects and reconnects mid-phase (e.g. during role reveal or morp guess), they see partial UI (board selection works but action panel/timer missing); backend continues normally on timeout but player can't interact; needs a "current phase snapshot" message on reconnect — unowned
 - [ ] **[bug]** Blank drawing renders brighter than base canvas — submitted empty drawing has unexpected brightness — unowned
 - [ ] **[feature]** Ghost heckling interactions — implemented but untested; needs a proper test pass — unowned
 - [ ] **[feature]** num_morps picker in lobby UI — expose existing engine config in the lobby; needs UX thought (max morps relative to player count) — unowned
