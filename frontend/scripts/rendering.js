@@ -398,24 +398,6 @@ export function disableAvatarVoting() {
   renderInGamePlayerRow();
 }
 
-// ─── Accusation ───────────────────────────────────────────────────────────────
-export function renderAccusation(msg) {
-  const lines = msg.accused_ids.map(id => {
-    const role = msg.roles_revealed[id];
-    return `<div style="display:flex;gap:8px;align-items:center;margin:4px 0">
-      <div class="moop-avatar" id="acc-moop-${id}" style="width:40px;height:40px;flex-shrink:0"></div>
-      <strong>${playerName(id)}</strong>
-      <span class="tag ${role}">${role.toUpperCase()}</span>
-    </div>`;
-  });
-  document.getElementById('accusation-content').innerHTML =
-    `<p style="color:#705060;font-size:0.85em;margin-bottom:6px">Accused:</p>${lines.join('')}`;
-  msg.accused_ids.forEach(id => {
-    const el = document.getElementById(`acc-moop-${id}`);
-    if (el && state.players[id]?.cosmetics) renderMoopInto(el, state.players[id].cosmetics);
-  });
-}
-
 // ─── Dramatic role reveal (Phase 5) ───────────────────────────────────────────
 const _REVEAL_ASSETS = {
   closed: 'assets/letter/envelope_closed.png',

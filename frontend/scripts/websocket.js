@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
@@ -283,20 +283,10 @@ function _processMessage(msg) {
     case 'accusation_result':
       disableAvatarVoting();
       setPhaseLabel('ROLE REVEAL');
-      if (msg.reveal_order && msg.reveal_order.length > 0) {
-        _startAnimationLock();
-        playRoleRevealSequence(msg.reveal_order, () => {
-          renderAccusation(msg);
-          showAction('accusation');
-          setPhaseLabel('ACCUSATION');
-          _endAnimationLock();
-        });
-      } else {
-        // Fallback for older servers without reveal_order
-        renderAccusation(msg);
-        showAction('accusation');
-        setPhaseLabel('ACCUSATION');
-      }
+      _startAnimationLock();
+      playRoleRevealSequence(msg.reveal_order || [], () => {
+        _endAnimationLock();
+      });
       break;
 
     case 'morp_guess_phase': {
