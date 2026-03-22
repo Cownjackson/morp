@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
@@ -134,6 +134,7 @@ const _ANIMATION_LOCK_TIMEOUT_MS = 5000;
 
 const _DEFERRED_TYPES = new Set([
   'lobby_update', 'round_end', 'damage_dealt', 'damage_phase',
+  'morp_guess_phase',
   'endgame_round_end', 'round_start', 'endgame_round_start', 'game_over',
 ]);
 
@@ -281,9 +282,21 @@ function _processMessage(msg) {
 
     case 'accusation_result':
       disableAvatarVoting();
-      renderAccusation(msg);
-      showAction('accusation');
-      setPhaseLabel('ACCUSATION');
+      setPhaseLabel('ROLE REVEAL');
+      if (msg.reveal_order && msg.reveal_order.length > 0) {
+        _startAnimationLock();
+        playRoleRevealSequence(msg.reveal_order, () => {
+          renderAccusation(msg);
+          showAction('accusation');
+          setPhaseLabel('ACCUSATION');
+          _endAnimationLock();
+        });
+      } else {
+        // Fallback for older servers without reveal_order
+        renderAccusation(msg);
+        showAction('accusation');
+        setPhaseLabel('ACCUSATION');
+      }
       break;
 
     case 'morp_guess_phase': {

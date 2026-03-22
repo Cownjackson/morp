@@ -416,6 +416,110 @@ export function renderAccusation(msg) {
   });
 }
 
+// ─── Dramatic role reveal (Phase 5) ───────────────────────────────────────────
+const _REVEAL_ASSETS = {
+  closed: 'assets/letter/envelope_closed.png',
+  back:   'assets/letter/envelope_opened_back.png',
+  front:  'assets/letter/envelope_opened_front.png',
+  safe:   'assets/letter/safe_letter.png',
+  morp:   'assets/letter/morp_letter.png',
+};
+
+/**
+ * Play the dramatic one-by-one role reveal on player avatars.
+ * revealOrder: [{player_id, role}, ...] — server-dictated order (morp last)
+ * onDone: callback after entire reveal sequence finishes
+ */
+export function playRoleRevealSequence(revealOrder, onDone) {
+  const playerRow = document.getElementById('game-player-row');
+  if (!playerRow || revealOrder.length === 0) {
+    if (onDone) onDone();
+    return;
+  }
+
+  // Place closed envelopes on all players in the reveal order
+  const envelopeEls = {};
+  for (const entry of revealOrder) {
+    const wrap = playerRow.querySelector(`[data-player-id="${entry.player_id}"]`);
+    if (!wrap) continue;
+
+    const envWrap = document.createElement('div');
+    envWrap.className = 'avatar-envelope';
+
+    const closedImg = document.createElement('img');
+    closedImg.src = _REVEAL_ASSETS.closed;
+    closedImg.className = 'avatar-envelope-closed';
+    envWrap.appendChild(closedImg);
+
+    // Prepare opened state (hidden)
+    const openedWrap = document.createElement('div');
+    openedWrap.className = 'avatar-envelope-opened';
+
+    const backImg = document.createElement('img');
+    backImg.src = _REVEAL_ASSETS.back;
+    backImg.className = 'avatar-envelope-back';
+    openedWrap.appendChild(backImg);
+
+    const letterImg = document.createElement('img');
+    letterImg.src = entry.role === 'morp' ? _REVEAL_ASSETS.morp : _REVEAL_ASSETS.safe;
+    letterImg.className = 'avatar-envelope-letter';
+    openedWrap.appendChild(letterImg);
+
+    const frontImg = document.createElement('img');
+    frontImg.src = _REVEAL_ASSETS.front;
+    frontImg.className = 'avatar-envelope-front';
+    openedWrap.appendChild(frontImg);
+
+    envWrap.appendChild(openedWrap);
+    wrap.appendChild(envWrap);
+    envelopeEls[entry.player_id] = { wrap: envWrap, openedWrap, closedImg, letterImg };
+  }
+
+  // Reveal one at a time
+  const baseInterval = 1500;
+  const morpPause = 1000;
+  let delay = 600; // initial pause before first reveal
+
+  for (let i = 0; i < revealOrder.length; i++) {
+    const entry = revealOrder[i];
+    const isMorp = entry.role === 'morp';
+    const isLast = i === revealOrder.length - 1;
+
+    // Extra pause before morp reveal
+    if (isMorp) delay += morpPause;
+
+    setTimeout(() => {
+      const els = envelopeEls[entry.player_id];
+      if (!els) return;
+
+      // Play SFX
+      try {
+        const sfx = new Audio(_LETTER_OPEN_SFX);
+        sfx.volume = 0.4;
+        sfx.play().catch(() => {});
+      } catch (_) { /* no-op */ }
+
+      // Open the envelope
+      els.closedImg.classList.add('hiding');
+      els.openedWrap.classList.add('active');
+      setTimeout(() => {
+        els.letterImg.classList.add('revealed');
+      }, 200);
+    }, delay);
+
+    delay += baseInterval;
+  }
+
+  // After all reveals + hold time, clean up and callback
+  setTimeout(() => {
+    // Remove all envelope overlays
+    for (const els of Object.values(envelopeEls)) {
+      els.wrap.remove();
+    }
+    if (onDone) onDone();
+  }, delay + 1500); // extra hold after final reveal
+}
+
 // ─── Damage (avatar-based) ────────────────────────────────────────────────────
 export function enableAvatarDamage(morpIds) {
   state.avatarInteraction = 'damage';
