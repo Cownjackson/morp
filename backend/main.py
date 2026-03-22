@@ -45,11 +45,32 @@ manager = ConnectionManager()
 _engines: dict[str, GameEngine] = {}
 _timer_tasks: dict[str, asyncio.Task] = {}  # lobby_id -> active timer task
 _interaction_times: dict[str, float] = {}   # "lobby_id:player_id" -> last interaction timestamp
+_phase_gates: dict[str, asyncio.Event] = {}  # lobby_id -> event for animation-gated transitions
 
 _INTERACTION_COOLDOWN = 1.5
 
 _TIMER_SECONDS = 30  # duration for morp-guess and endgame-guess timers
 _TIMER_GRACE_SECONDS = 2  # extra buffer before server auto-submits, gives client time to submit first
+_PHASE_GATE_TIMEOUT = 30  # generous fallback if no client signals phase_ready
+
+
+async def _wait_for_phase_ready(lobby_id: str):
+    """Block until any client sends phase_ready, or timeout."""
+    event = asyncio.Event()
+    _phase_gates[lobby_id] = event
+    try:
+        await asyncio.wait_for(event.wait(), timeout=_PHASE_GATE_TIMEOUT)
+    except asyncio.TimeoutError:
+        pass
+    finally:
+        _phase_gates.pop(lobby_id, None)
+
+
+def _signal_phase_ready(lobby_id: str):
+    """Called when a client sends phase_ready."""
+    event = _phase_gates.get(lobby_id)
+    if event:
+        event.set()
 
 
 @app.on_event("startup")
@@ -524,6 +545,9 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
                     "text": text,
                 })
 
+        elif msg_type == "phase_ready":
+            _signal_phase_ready(lobby_id)
+
         elif msg_type == "reset_game":
             if player_id != engine.lobby.host_id:
                 raise ValueError("Only the host can reset the game.")
@@ -639,6 +663,10 @@ async def _handle_accusation(lobby_id: str, engine: GameEngine):
     })
 
     result = engine.resolve_accusation()
+
+    # Wait for a client to signal that the reveal animation has finished
+    if reveal_order:
+        await _wait_for_phase_ready(lobby_id)
 
     if result["morp_must_guess"]:
         deadline = time.time() + _TIMER_SECONDS

@@ -160,16 +160,6 @@ function _endAnimationLock() {
   }
 }
 
-function _calcRevealDuration(revealOrder) {
-  if (!revealOrder || revealOrder.length === 0) return 0;
-  let delay = 600;
-  for (const entry of revealOrder) {
-    if (entry.role === 'morp') delay += 1000;
-    delay += 1500;
-  }
-  return delay + 1500; // final hold
-}
-
 // ─── Message handler ──────────────────────────────────────────────────────────
 function handleMessage(msg) {
   log(`← ${msg.type}`, 'info');
@@ -302,11 +292,10 @@ function _processMessage(msg) {
     case 'accusation_result': {
       disableAvatarVoting();
       setPhaseLabel('ROLE REVEAL');
-      // Calculate reveal duration first, then start lock with matching timeout
-      const revealOrder = msg.reveal_order || [];
-      const revealDuration = _calcRevealDuration(revealOrder);
-      _startAnimationLock(revealDuration + 2000);
-      playRoleRevealSequence(revealOrder, () => {
+      // Generous lock timeout — backend won't send next phase until we signal phase_ready
+      _startAnimationLock(30000);
+      playRoleRevealSequence(msg.reveal_order || [], () => {
+        send({ type: 'phase_ready' });
         _endAnimationLock();
       });
       break;
