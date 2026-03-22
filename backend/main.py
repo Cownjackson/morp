@@ -24,6 +24,7 @@ from backend.game.board import validate_custom_board
 from backend.game.engine import GameEngine
 from backend.models.game import GamePhase
 from backend.models.player import Role
+from backend.game.voting import build_reveal_order
 
 app = FastAPI()
 
@@ -624,10 +625,17 @@ async def _handle_accusation(lobby_id: str, engine: GameEngine):
     rs = engine.state.round_state
     player_roles = {p.id: p.role.value for p in engine.lobby.players.values() if p.role is not None}
 
+    reveal_order = build_reveal_order(
+        [{"id": p.id, "role": p.role.value if p.role else None, "is_ghost": p.is_ghost}
+         for p in engine.lobby.players.values()],
+        rs.accused_ids,
+    )
+
     await manager.broadcast(lobby_id, {
         "type": "accusation_result",
         "accused_ids": rs.accused_ids,
         "roles_revealed": {pid: player_roles.get(pid, "unknown") for pid in rs.accused_ids},
+        "reveal_order": reveal_order,
     })
 
     result = engine.resolve_accusation()
