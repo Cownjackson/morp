@@ -633,6 +633,119 @@ export function animateEndgameReveal(results, safePlayerId, isDraw, onDone) {
   }, 1400);
 }
 
+// ─── Envelope role reveal ─────────────────────────────────────────────────────
+const _ENVELOPE_ASSETS = {
+  closed: 'assets/letter/envelope_closed.png',
+  back:   'assets/letter/envelope_opened_back.png',
+  front:  'assets/letter/envelope_opened_front.png',
+  safe:   'assets/letter/safe_letter.png',
+  morp:   'assets/letter/morp_letter.png',
+};
+const _LETTER_OPEN_SFX = 'music/letter_open.mp3';
+
+export function showEnvelopeReveal(role, onDismiss) {
+  const overlay = document.createElement('div');
+  overlay.className = 'envelope-overlay';
+
+  const container = document.createElement('div');
+  container.className = 'envelope-container';
+
+  // Closed state
+  const closed = document.createElement('div');
+  closed.className = 'envelope-closed';
+  const closedImg = document.createElement('img');
+  closedImg.src = _ENVELOPE_ASSETS.closed;
+  closedImg.alt = 'Sealed envelope';
+  closed.appendChild(closedImg);
+
+  // Opened state (hidden initially)
+  const opened = document.createElement('div');
+  opened.className = 'envelope-opened';
+
+  const backLayer = document.createElement('div');
+  backLayer.className = 'envelope-layer-back';
+  const backImg = document.createElement('img');
+  backImg.src = _ENVELOPE_ASSETS.back;
+  backLayer.appendChild(backImg);
+
+  const letter = document.createElement('div');
+  letter.className = 'envelope-letter';
+  const letterImg = document.createElement('img');
+  letterImg.src = role === 'morp' ? _ENVELOPE_ASSETS.morp : _ENVELOPE_ASSETS.safe;
+  letterImg.alt = role === 'morp' ? 'Morp letter' : 'Safe letter';
+  letter.appendChild(letterImg);
+
+  const frontLayer = document.createElement('div');
+  frontLayer.className = 'envelope-layer-front';
+  const frontImg = document.createElement('img');
+  frontImg.src = _ENVELOPE_ASSETS.front;
+  frontLayer.appendChild(frontImg);
+
+  opened.appendChild(backLayer);
+  opened.appendChild(letter);
+  opened.appendChild(frontLayer);
+
+  const prompt = document.createElement('div');
+  prompt.className = 'envelope-prompt';
+  prompt.textContent = 'Click to open';
+
+  container.appendChild(closed);
+  container.appendChild(opened);
+  container.appendChild(prompt);
+  overlay.appendChild(container);
+  document.body.appendChild(overlay);
+
+  // Fade in
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+  });
+
+  let phase = 'closed'; // 'closed' → 'opening' → 'revealed'
+  let autoDismissTimer = null;
+
+  function dismiss() {
+    if (phase === 'dismissed') return;
+    phase = 'dismissed';
+    clearTimeout(autoDismissTimer);
+    overlay.classList.add('dismissing');
+    setTimeout(() => {
+      overlay.remove();
+      if (onDismiss) onDismiss();
+    }, 400);
+  }
+
+  function openEnvelope() {
+    if (phase !== 'closed') return;
+    phase = 'opening';
+    prompt.remove();
+
+    // Play SFX
+    try {
+      const sfx = new Audio(_LETTER_OPEN_SFX);
+      sfx.volume = 0.5;
+      sfx.play().catch(() => {});
+    } catch (_) { /* no-op */ }
+
+    // Swap to opened envelope
+    closed.style.opacity = '0';
+    opened.classList.add('active');
+
+    // Slide letter out after a brief moment
+    setTimeout(() => {
+      letter.classList.add('revealed');
+      phase = 'revealed';
+
+      // Auto-dismiss after 3s
+      autoDismissTimer = setTimeout(dismiss, 3000);
+    }, 300);
+  }
+
+  overlay.addEventListener('click', () => {
+    if (phase === 'closed') openEnvelope();
+    else if (phase === 'revealed') dismiss();
+  });
+}
+
 // ─── Damage animation placeholder ────────────────────────────────────────────
 export function playDamageAnimation(_targetId, _amount) {
   // Placeholder — mechanic TBD by team

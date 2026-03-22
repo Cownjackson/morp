@@ -966,6 +966,122 @@ body.is-landing #landing-meta-panel {
   transition: opacity 0.5s ease;
 }
 
+/* ── Envelope role reveal ── */
+.envelope-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 4, 12, 0.75);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  cursor: pointer;
+}
+.envelope-overlay.visible {
+  opacity: 1;
+}
+.envelope-overlay.dismissing {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.envelope-container {
+  position: relative;
+  width: 320px;
+  height: 280px;
+}
+
+.envelope-closed {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease;
+}
+.envelope-closed img {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 4px 24px rgba(0, 0, 0, 0.5));
+  animation: envelope-idle 2.5s ease-in-out infinite;
+}
+@keyframes envelope-idle {
+  0%, 100% { transform: translateY(0) rotate(-0.5deg); }
+  50%      { transform: translateY(-6px) rotate(0.5deg); }
+}
+
+.envelope-opened {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.envelope-opened.active {
+  opacity: 1;
+}
+
+.envelope-layer-back {
+  position: absolute;
+  width: 100%;
+  bottom: 0;
+  z-index: 1;
+  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.4));
+}
+.envelope-layer-back img {
+  width: 100%;
+  height: auto;
+}
+
+.envelope-letter {
+  position: absolute;
+  width: 72%;
+  left: 14%;
+  bottom: 20%;
+  z-index: 2;
+  transform: translateY(0);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), width 0.5s ease 0.4s, left 0.5s ease 0.4s;
+}
+.envelope-letter.revealed {
+  transform: translateY(-140%);
+  width: 90%;
+  left: 5%;
+}
+.envelope-letter img {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.5));
+}
+
+.envelope-layer-front {
+  position: absolute;
+  width: 100%;
+  bottom: 0;
+  z-index: 3;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+}
+.envelope-layer-front img {
+  width: 100%;
+  height: auto;
+}
+
+.envelope-prompt {
+  position: absolute;
+  bottom: -40px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.9em;
+  color: var(--lavender);
+  opacity: 0.8;
+  animation: envelope-prompt-pulse 1.8s ease-in-out infinite;
+}
+@keyframes envelope-prompt-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+
 /* ── Action area ── */
 #action-area,
 .action-area-card {

@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
@@ -205,12 +205,12 @@ function _processMessage(msg) {
     case 'role_assigned':
       state.role = msg.role;
       state.halfBoard = msg.half_board || null;
-      renderRoleBanner();
+      // Don't render banner yet — envelope reveal will show role first
       log(`Your role: ${msg.role}${state.halfBoard ? ' (going first — partial board visible)' : ''}`,
         msg.role === 'morp' ? 'warn' : 'ok');
       break;
 
-    case 'round_start':
+    case 'round_start': {
       showScreen('ingame');
       state.lobbyStarted = true;
       state.board      = { board_hint: msg.board_hint, words: msg.words };
@@ -227,12 +227,26 @@ function _processMessage(msg) {
       renderBoard();
       renderInGamePlayerRow();
       renderChat();
-      document.getElementById('board-area').classList.remove('hidden');
-      checkYourTurn();
-      showAction('hint');
-      setPhaseLabel(`ROUND ${msg.round_number} — HINTS`);
+
+      // Board starts hidden — will fade in after envelope
+      const boardArea = document.getElementById('board-area');
+      boardArea.classList.remove('hidden');
+      boardArea.style.opacity = '0';
+      boardArea.style.transition = 'opacity 0.8s ease';
+
+      setPhaseLabel(`ROUND ${msg.round_number}`);
       log(`Round ${msg.round_number} — "${msg.board_hint}"`, 'ok');
+
+      // Show envelope role reveal, then fade in board and start hint phase
+      showEnvelopeReveal(state.role, () => {
+        renderRoleBanner();
+        boardArea.style.opacity = '1';
+        checkYourTurn();
+        showAction('hint');
+        setPhaseLabel(`ROUND ${msg.round_number} — HINTS`);
+      });
       break;
+    }
 
     case 'hint_received':
       state.hints.push({ player_id: msg.player_id, text: msg.text, is_drawing: msg.is_drawing, drawing_data: msg.drawing_data });
