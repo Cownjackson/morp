@@ -6,6 +6,9 @@ Completed work, newest first. Add an entry when a PR merges or a standalone chan
 
 ## 2026-03-22
 
+- **[feature]** Vote arrow visualization — after voting, directional arrows point from each voter to their accused target before the dramatic role reveal; uses pointer.png asset tip; renders via interaction-anim-layer with scroll tracking
+- **[feature]** `votes` map in `accusation_result` — server includes full `{ voter_id: [accused_ids] }` map for arrow rendering
+- **[fix]** Interaction animations scroll-locked — sticky hand, projectile, spitball, and hand mark now track scroll offset per frame so they stay locked to avatars if the user scrolls mid-animation
 - **[feature]** Envelope role reveal — on round start, players see a sealed envelope with wax seal; click to open reveals their role letter (safe/morp) with layered envelope art and SFX; board fades in after dismissal (Phase 2)
 - **[feature]** Dramatic role reveal after voting — all non-ghost players get closed envelopes on their avatars; envelopes open one by one in server-dictated order (safe first, accused safe second-to-last, morp last) with letter_open SFX; ~1.5s per reveal with extra morp pause (Phase 5)
 - **[feature]** Client-ready signaling (`phase_ready`) — frontend signals backend when animation-gated transitions complete; replaces hardcoded animation duration sleeps; backend waits with 30s timeout fallback

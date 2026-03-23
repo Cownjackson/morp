@@ -500,6 +500,7 @@ Each branch groups related phases by dependency and scope. Small PRs, easy to re
 | `vote-and-damage-avatars` | 4, 6B | Same UI pattern (click avatars), no backend changes | ✅ Merged |
 | `word-board-click` | 6A, 9 (partial), 10 (partial) | Board click guess + endgame simultaneous reveal + animation lock + sudden death pause | ✅ Merged |
 | `role-reveal` | 2, 5 | Both role-related; Phase 2 pure frontend, Phase 5 needs backend + phase_ready signaling | ✅ Merged |
+| `vote-arrows` | Post-vote visualization + interaction scroll fix | Vote arrows from voters to accused; scroll-lock fix for all interaction animations | ✅ Merged |
 | `hint-display-overhaul` | 3 | Large, self-contained, needs backend work |
 | `round-transitions` | 7, 8 | Round lifecycle (auto-transition + death animation) |
 | `endgame-overhaul` | 9, 10, 11 | Endgame is one connected flow |
