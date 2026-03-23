@@ -25,6 +25,63 @@
   const restitution = 0.98;
   const minSpeed = 42;
   const maxSpeed = 135;
+  // Corner overdrive tuning is grouped by behavior so future visual passes are easy to edit.
+  const cornerOverdriveConfig = Object.freeze({
+    timing: Object.freeze({
+      durationMs: 10000
+    }),
+    speed: Object.freeze({
+      maxSpeedMultiplier: 2.625,
+      sustainSpeedMultiplier: 1.2
+    }),
+    bounce: Object.freeze({
+      restitutionMultiplier: 1.16,
+      jiggleStretchMultiplier: 1.8,
+      jiggleTiltMultiplier: 1.55,
+      jiggleResponseMultiplier: 1.18,
+      activationJiggleImpactMultiplier: 0.95
+    }),
+    speedLines: Object.freeze({
+      spawnIntervalMs: 54,
+      lifetimeMs: 520,
+      lineCount: 3,
+      thickness: Object.freeze({
+        minPx: 4,
+        maxPx: 18,
+        blockRatio: 0.085
+      }),
+      length: Object.freeze({
+        minPx: 32,
+        maxPx: 350,
+        blockRatio: 0.62,
+        speedFactor: 0.04,
+        multiplier: 1.56
+      }),
+      spread: Object.freeze({
+        minPx: 12,
+        maxPx: 44,
+        blockRatio: 0.16
+      }),
+      stagger: Object.freeze({
+        minPx: 8,
+        maxPx: 30,
+        blockRatio: 0.09
+      }),
+      sourceInset: Object.freeze({
+        minPx: 12,
+        blockRatio: 0.18
+      }),
+      segments: Object.freeze({
+        densityMultiplier: 1.3,
+        diameterRatio: 1.08,
+        tailFadeStrength: 0.72
+      }),
+      color: Object.freeze({
+        coreOpacity: 0.82,
+        glowOpacity: 0.4
+      })
+    })
+  });
   const hitboxScale = 0.95;
   const playerHitboxScale = 0.8;
   const sizeRanges = {
@@ -175,7 +232,7 @@
       shortSideRatio: 0.035,
       scale: 0.85
     },
-    effects: ['cornerRipple', 'dvdFanfare']
+    effects: ['cornerRipple', 'cornerOverdrive', 'dvdFanfare']
   });
   const collisionJiggleConfig = {
     maxTilt: 0.72,
@@ -221,6 +278,101 @@
       hash |= 0;
     }
     return Math.abs(hash);
+  }
+
+  function isCornerOverdriveActive(block, now = performance.now()) {
+    return Number.isFinite(block?.cornerOverdriveUntil) && block.cornerOverdriveUntil > now;
+  }
+
+  function getCornerOverdriveTopSpeed() {
+    return maxSpeed * cornerOverdriveConfig.speed.maxSpeedMultiplier;
+  }
+
+  function getBlockMaxSpeed(block, now = performance.now()) {
+    return isCornerOverdriveActive(block, now) ? getCornerOverdriveTopSpeed() : maxSpeed;
+  }
+
+  function getBlockRestitution(block, now = performance.now()) {
+    return restitution * (isCornerOverdriveActive(block, now) ? cornerOverdriveConfig.bounce.restitutionMultiplier : 1);
+  }
+
+  function getCollisionJiggleSettings(block, now = performance.now()) {
+    if (!isCornerOverdriveActive(block, now)) {
+      return collisionJiggleConfig;
+    }
+
+    return {
+      maxTilt: collisionJiggleConfig.maxTilt * cornerOverdriveConfig.bounce.jiggleTiltMultiplier,
+      maxStretch: collisionJiggleConfig.maxStretch * cornerOverdriveConfig.bounce.jiggleStretchMultiplier,
+      settleDuration: collisionJiggleConfig.settleDuration,
+      speedToStretch: collisionJiggleConfig.speedToStretch * cornerOverdriveConfig.bounce.jiggleResponseMultiplier
+    };
+  }
+
+  function scaleCornerSpeedLineDimension(blockSize, dimensionConfig) {
+    return clamp(
+      blockSize * dimensionConfig.blockRatio,
+      dimensionConfig.minPx,
+      dimensionConfig.maxPx
+    );
+  }
+
+  function getCornerSpeedLineMetrics(block) {
+    const speedLineConfig = cornerOverdriveConfig.speedLines;
+    const lengthConfig = speedLineConfig.length;
+    const blockSize = Math.min(block.width, block.height);
+    const speed = Math.hypot(block.vx, block.vy);
+    const lineThickness = scaleCornerSpeedLineDimension(blockSize, speedLineConfig.thickness);
+    const lineLength = clamp(
+      (
+        blockSize * lengthConfig.blockRatio
+        + speed * lengthConfig.speedFactor
+      ) * lengthConfig.multiplier,
+      lengthConfig.minPx,
+      lengthConfig.maxPx
+    );
+
+    return {
+      speed,
+      lineThickness,
+      lineLength,
+      lineSpread: scaleCornerSpeedLineDimension(blockSize, speedLineConfig.spread),
+      lineStagger: scaleCornerSpeedLineDimension(blockSize, speedLineConfig.stagger),
+      sourceInset: Math.max(
+        blockSize * speedLineConfig.sourceInset.blockRatio,
+        speedLineConfig.sourceInset.minPx
+      )
+    };
+  }
+
+  function getCornerSpeedLineSegmentCount(lineLength, lineThickness) {
+    const segmentConfig = cornerOverdriveConfig.speedLines.segments;
+    const segmentDiameter = lineThickness * segmentConfig.diameterRatio;
+
+    return {
+      segmentDiameter,
+      segmentCount: Math.max(
+        4,
+        Math.round(
+          (lineLength / Math.max(segmentDiameter, 1)) * segmentConfig.densityMultiplier
+        )
+      )
+    };
+  }
+
+  function getCornerTriggerNormal(triggerId) {
+    switch (triggerId) {
+      case 'top-left':
+        return { normalX: 1, normalY: 1 };
+      case 'top-right':
+        return { normalX: -1, normalY: 1 };
+      case 'bottom-left':
+        return { normalX: 1, normalY: -1 };
+      case 'bottom-right':
+        return { normalX: -1, normalY: -1 };
+      default:
+        return { normalX: 0, normalY: 0 };
+    }
   }
 
   function isPlayerEntity(entity) {
@@ -674,27 +826,28 @@
     const maxX = hitbox.centerX + extents.x;
     const minY = hitbox.centerY - extents.y;
     const maxY = hitbox.centerY + extents.y;
+    const blockRestitution = getBlockRestitution(block);
 
     let normalX = 0;
     let normalY = 0;
 
     if (minX <= bounds.left) {
       block.x += bounds.left - minX;
-      block.vx = Math.abs(block.vx) * restitution;
+      block.vx = Math.abs(block.vx) * blockRestitution;
       normalX = 1;
     } else if (maxX >= bounds.right) {
       block.x -= maxX - bounds.right;
-      block.vx = -Math.abs(block.vx) * restitution;
+      block.vx = -Math.abs(block.vx) * blockRestitution;
       normalX = -1;
     }
 
     if (minY <= bounds.top) {
       block.y += bounds.top - minY;
-      block.vy = Math.abs(block.vy) * restitution;
+      block.vy = Math.abs(block.vy) * blockRestitution;
       normalY = 1;
     } else if (maxY >= bounds.bottom) {
       block.y -= maxY - bounds.bottom;
-      block.vy = -Math.abs(block.vy) * restitution;
+      block.vy = -Math.abs(block.vy) * blockRestitution;
       normalY = -1;
     }
 
@@ -745,7 +898,8 @@
 
     if (approachSpeed >= 0) return null;
 
-    const impulse = -(1 + restitution) * approachSpeed * 0.5;
+    const collisionRestitution = Math.max(getBlockRestitution(a), getBlockRestitution(b));
+    const impulse = -(1 + collisionRestitution) * approachSpeed * 0.5;
 
     a.vx -= impulse * normalX;
     a.vy -= impulse * normalY;
@@ -765,13 +919,14 @@
 
   function keepMomentum(block) {
     const speed = Math.hypot(block.vx, block.vy);
+    const blockMaxSpeed = getBlockMaxSpeed(block);
 
     if (speed < minSpeed) {
       const scale = minSpeed / (speed || 1);
       block.vx *= scale;
       block.vy *= scale;
-    } else if (speed > maxSpeed) {
-      const scale = maxSpeed / speed;
+    } else if (speed > blockMaxSpeed) {
+      const scale = blockMaxSpeed / speed;
       block.vx *= scale;
       block.vy *= scale;
     }
@@ -1145,6 +1300,13 @@
       }
     });
 
+    let speedLineLayer = container.querySelector('.background-speed-line-layer');
+    if (!speedLineLayer) {
+      speedLineLayer = document.createElement('div');
+      speedLineLayer.className = 'background-speed-line-layer';
+      container.insertBefore(speedLineLayer, container.firstChild);
+    }
+
     let rippleLayer = container.querySelector('.background-ripple-layer');
     if (!rippleLayer) {
       rippleLayer = document.createElement('div');
@@ -1241,6 +1403,9 @@
         xRatio: config.xRatio,
         yRatio: config.yRatio,
         activeCornerTriggerIds: new Set(),
+        cornerOverdriveUntil: 0,
+        cornerOverdriveTargetSpeed: 0,
+        cornerSpeedLinesLastAt: 0,
         dvdImg,
         dvdTimeout: null
       };
@@ -1270,6 +1435,152 @@
     });
     const playerEntities = [];
     const playerEntitiesById = new Map();
+
+    function spawnCornerSpeedLines(block, now = performance.now()) {
+      if (!isCornerOverdriveActive(block, now)) {
+        return;
+      }
+
+      const speedLineConfig = cornerOverdriveConfig.speedLines;
+      const lifetime = Math.min(
+        speedLineConfig.lifetimeMs,
+        block.cornerOverdriveUntil - now
+      );
+      if (lifetime < 110) {
+        return;
+      }
+
+      const {
+        speed,
+        lineThickness,
+        lineLength,
+        lineSpread,
+        lineStagger,
+        sourceInset
+      } = getCornerSpeedLineMetrics(block);
+      const dirX = speed > 0 ? block.vx / speed : 0;
+      const dirY = speed > 0 ? block.vy / speed : 0;
+      const centerX = block.x + block.width / 2;
+      const centerY = block.y + block.height / 2;
+      const anchorX = centerX - dirX * sourceInset;
+      const anchorY = centerY - dirY * sourceInset;
+      const group = document.createElement('div');
+      const angle = Math.atan2(dirY, dirX) * (180 / Math.PI);
+
+      group.className = 'background-speed-line-group';
+      group.style.setProperty(
+        '--background-speed-line-transform',
+        `translate(${anchorX}px, ${anchorY}px) rotate(${angle}deg)`
+      );
+      group.style.setProperty('--background-speed-line-lifetime', `${lifetime}ms`);
+      group.style.setProperty(
+        '--background-speed-line-core',
+        rgbaString(block.colorRgb, speedLineConfig.color.coreOpacity)
+      );
+      group.style.setProperty(
+        '--background-speed-line-glow',
+        rgbaString(block.colorRgb, speedLineConfig.color.glowOpacity)
+      );
+
+      for (let index = 0; index < speedLineConfig.lineCount; index += 1) {
+        const line = document.createElement('div');
+        const yOffset =
+          (index - ((speedLineConfig.lineCount - 1) / 2)) * lineSpread;
+        const xOffset = -index * lineStagger;
+        const individualLength = Math.max(
+          speedLineConfig.length.minPx * 0.72,
+          lineLength - index * lineStagger
+        );
+
+        line.className = 'background-speed-line';
+        line.style.width = `${individualLength}px`;
+        line.style.height = `${lineThickness}px`;
+        line.style.left = `${xOffset - individualLength}px`;
+        line.style.top = `${yOffset - (lineThickness * 0.5)}px`;
+
+        const { segmentDiameter, segmentCount } = getCornerSpeedLineSegmentCount(
+          individualLength,
+          lineThickness
+        );
+        const segmentTravel = Math.max(individualLength - segmentDiameter, 0);
+
+        for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
+          const segment = document.createElement('div');
+          const progress = segmentCount === 1 ? 0 : segmentIndex / (segmentCount - 1);
+          const fadeAmount = 1 - progress * speedLineConfig.segments.tailFadeStrength;
+
+          segment.className = 'background-speed-line-segment';
+          segment.style.width = `${segmentDiameter}px`;
+          segment.style.height = `${segmentDiameter}px`;
+          segment.style.left = `${progress * segmentTravel}px`;
+          segment.style.top = `${(lineThickness - segmentDiameter) * 0.5}px`;
+          segment.style.opacity = fadeAmount.toFixed(3);
+          line.appendChild(segment);
+        }
+
+        group.appendChild(line);
+      }
+
+      speedLineLayer.appendChild(group);
+      group.addEventListener('animationend', () => group.remove(), { once: true });
+    }
+
+    function applyCornerOverdriveVelocity(block, now = performance.now()) {
+      const directionX = block.vx || block.baseVx;
+      const directionY = block.vy || block.baseVy;
+      const directionLength = Math.hypot(directionX, directionY) || 1;
+      const targetSpeed = block.cornerOverdriveTargetSpeed
+        || getBlockMaxSpeed(block, now);
+
+      block.vx = (directionX / directionLength) * targetSpeed;
+      block.vy = (directionY / directionLength) * targetSpeed;
+    }
+
+    function updateCornerOverdriveEffects(now) {
+      const speedLineConfig = cornerOverdriveConfig.speedLines;
+      blocks.forEach((block) => {
+        if (!isCornerOverdriveActive(block, now)) {
+          block.cornerOverdriveTargetSpeed = 0;
+          return;
+        }
+
+        applyCornerOverdriveVelocity(block, now);
+
+        if (now - block.cornerSpeedLinesLastAt >= speedLineConfig.spawnIntervalMs) {
+          spawnCornerSpeedLines(block, now);
+          block.cornerSpeedLinesLastAt = now;
+        }
+      });
+    }
+
+    function triggerCornerOverdrive(block, triggerBox, now = performance.now()) {
+      const overdriveTopSpeed = getCornerOverdriveTopSpeed();
+      const speed = Math.hypot(block.vx, block.vy);
+      const targetSpeed = Math.max(
+        minSpeed,
+        overdriveTopSpeed * cornerOverdriveConfig.speed.sustainSpeedMultiplier
+      );
+      const direction = speed > 0
+        ? { x: block.vx / speed, y: block.vy / speed }
+        : getCornerTriggerNormal(triggerBox.id);
+      const directionLength = Math.hypot(direction.x, direction.y) || 1;
+
+      block.cornerOverdriveUntil = now + cornerOverdriveConfig.timing.durationMs;
+      block.cornerOverdriveTargetSpeed = targetSpeed;
+      block.cornerSpeedLinesLastAt = now - cornerOverdriveConfig.speedLines.spawnIntervalMs;
+      block.vx = (direction.x / directionLength) * targetSpeed;
+      block.vy = (direction.y / directionLength) * targetSpeed;
+
+      const { normalX, normalY } = getCornerTriggerNormal(triggerBox.id);
+      applyCollisionJiggle(
+        block,
+        normalX,
+        normalY,
+        targetSpeed * cornerOverdriveConfig.bounce.activationJiggleImpactMultiplier
+      );
+      spawnCornerSpeedLines(block, now);
+    }
+
     const prototypePlayerEntity = createPlayerEntity(container, getPrototypePlayerPayload());
     playerEntities.push(prototypePlayerEntity);
     prototypePlayerEntity.hiddenFromScene = true;
@@ -1524,6 +1835,9 @@
       cornerRipple(block, triggerBox) {
         spawnRipple(triggerBox.cornerX, triggerBox.cornerY);
       },
+      cornerOverdrive(block, triggerBox) {
+        triggerCornerOverdrive(block, triggerBox);
+      },
       dvdFanfare(block) {
         triggerCornerFanfare(block);
       }
@@ -1768,24 +2082,25 @@
     }
 
     function applyCollisionJiggle(block, normalX, normalY, impact) {
-      const jiggleStrength = Math.min(impact * collisionJiggleConfig.speedToStretch, 1);
-      const compressionX = Math.abs(normalX) * collisionJiggleConfig.maxStretch * jiggleStrength;
-      const compressionY = Math.abs(normalY) * collisionJiggleConfig.maxStretch * jiggleStrength;
+      const jiggleConfig = getCollisionJiggleSettings(block);
+      const jiggleStrength = Math.min(impact * jiggleConfig.speedToStretch, 1);
+      const compressionX = Math.abs(normalX) * jiggleConfig.maxStretch * jiggleStrength;
+      const compressionY = Math.abs(normalY) * jiggleConfig.maxStretch * jiggleStrength;
 
       block.jiggleCompressionX = clamp(
         block.jiggleCompressionX + compressionX,
         0,
-        collisionJiggleConfig.maxStretch
+        jiggleConfig.maxStretch
       );
       block.jiggleCompressionY = clamp(
         block.jiggleCompressionY + compressionY,
         0,
-        collisionJiggleConfig.maxStretch
+        jiggleConfig.maxStretch
       );
       block.jiggleTiltAmplitude = clamp(
-        block.jiggleTiltAmplitude + (normalX * normalY) * collisionJiggleConfig.maxTilt * jiggleStrength,
-        -collisionJiggleConfig.maxTilt,
-        collisionJiggleConfig.maxTilt
+        block.jiggleTiltAmplitude + (normalX * normalY) * jiggleConfig.maxTilt * jiggleStrength,
+        -jiggleConfig.maxTilt,
+        jiggleConfig.maxTilt
       );
       block.jiggleTime = 0;
     }
@@ -1971,6 +2286,7 @@
 
       // Update jiggle animation, clamp speeds, render
       updateCollisionJiggle(delta);
+      updateCornerOverdriveEffects(now);
       physicsEntities.forEach((block) => {
         keepMomentum(block);
         renderBlock(block);
