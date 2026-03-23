@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
@@ -290,12 +290,15 @@ function _processMessage(msg) {
 
     case 'accusation_result': {
       disableAvatarVoting();
-      setPhaseLabel('ROLE REVEAL');
-      // Generous lock timeout — backend won't send next phase until we signal phase_ready
       _startAnimationLock(30000);
-      playRoleRevealSequence(msg.reveal_order || [], () => {
-        send({ type: 'phase_ready' });
-        _endAnimationLock();
+      // Show vote arrows first, then dramatic role reveal
+      setPhaseLabel('VOTES');
+      showVoteArrows(msg.votes || {}, () => {
+        setPhaseLabel('ROLE REVEAL');
+        playRoleRevealSequence(msg.reveal_order || [], () => {
+          send({ type: 'phase_ready' });
+          _endAnimationLock();
+        });
       });
       break;
     }

@@ -1082,6 +1082,40 @@ body.is-landing #landing-meta-panel {
   50%      { opacity: 1; }
 }
 
+/* ── Vote arrows ── */
+.vote-arrow-line {
+  position: absolute;
+  height: 12px;
+  background: #1a1a1a;
+  transform-origin: left center;
+  pointer-events: none;
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.vote-arrow-line.visible {
+  opacity: 1;
+}
+.vote-arrow-line.fading {
+  opacity: 0;
+}
+
+.vote-arrow-pointer {
+  position: absolute;
+  width: 28px;
+  height: auto;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+}
+.vote-arrow-pointer.visible {
+  opacity: 1;
+}
+.vote-arrow-pointer.fading {
+  opacity: 0;
+}
+
 /* ── Avatar envelope reveal (Phase 5) ── */
 .avatar-envelope {
   position: absolute;
