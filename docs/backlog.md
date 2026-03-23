@@ -35,6 +35,7 @@ Items move here when planned, to `changelog.md` when shipped.
 - [ ] **[bug]** Post-game join softlock — if a 4th player joins after a 3-player game ends but before host returns to lobby, the new player becomes host but cannot start the next game; lobby is softlocked — unowned
 - [ ] **[bug]** `test_websocket.py` setup error — `test_create_lobby_returns_lobby_id` fails at setup (pre-existing, unrelated to game logic); all 121 engine/game tests pass — unowned
 - [ ] **[bug]** Reconnection doesn't restore phase UI — if a player disconnects and reconnects mid-phase (e.g. during role reveal or morp guess), they see partial UI (board selection works but action panel/timer missing); backend continues normally on timeout but player can't interact; needs a "current phase snapshot" message on reconnect — unowned
+- [ ] **[design]** Vote arrow z-layering — arrows should render under the sender avatar and over the target avatar; currently renders over both because `#interaction-anim-layer` is a single fixed layer above all avatars; revisit when pointer art is finalized — unowned
 - [ ] **[bug]** Blank drawing renders brighter than base canvas — submitted empty drawing has unexpected brightness — unowned
 - [ ] **[feature]** Ghost heckling interactions — implemented but untested; needs a proper test pass — unowned
 - [ ] **[feature]** num_morps picker in lobby UI — expose existing engine config in the lobby; needs UX thought (max morps relative to player count) — unowned
