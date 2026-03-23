@@ -36,6 +36,25 @@ def drain_until(ws, target_type: str) -> dict:
     raise AssertionError(f"Never received a '{target_type}' message within 20 reads")
 
 
+def submit_hints(wss_by_id: dict, turn_order: list, all_wss: list, text: str = "hint"):
+    """Submit hints for all players following the phase_ready gate pattern.
+
+    After each hint_received, a non-submitter signals phase_ready (the submitter's
+    WebSocket handler is blocked awaiting the gate and cannot process its own messages).
+    Drains next_turn between hints; skips drain on last hint since voting_open follows.
+    """
+    for i, pid in enumerate(turn_order):
+        wss_by_id[pid].send_json({"type": "submit_hint", "text": text})
+        for ws in all_wss:
+            drain_until(ws, "hint_received")
+        # Must come from a player whose handler is NOT blocked (i.e. not the submitter)
+        other_ws = next(ws for p, ws in wss_by_id.items() if p != pid)
+        other_ws.send_json({"type": "phase_ready"})
+        if i < len(turn_order) - 1:
+            for ws in all_wss:
+                drain_until(ws, "next_turn")
+
+
 def collect_until(ws, target_type: str, limit: int = 20) -> list[dict]:
     """Return all messages up to and including the first occurrence of target_type."""
     msgs = []
@@ -213,6 +232,9 @@ def test_hint_phase_enforces_turn_order(client):
         for ws in (ws0, ws1, ws2):
             hint_msg = drain_until(ws, "hint_received")
             assert hint_msg["type"] == "hint_received"
+        wss[second_pid].send_json({"type": "phase_ready"})
+        for ws in (ws0, ws1, ws2):
+            drain_until(ws, "next_turn")
 
 
 def test_voting_opens_after_all_hints(client):
@@ -235,10 +257,7 @@ def test_voting_opens_after_all_hints(client):
         drain_until(ws1, "round_start"); drain_until(ws2, "round_start")
         turn_order = round_msg["turn_order"]
 
-        for pid in turn_order:
-            wss[pid].send_json({"type": "submit_hint", "text": "hint"})
-            for ws in (ws0, ws1, ws2):
-                drain_until(ws, "hint_received")
+        submit_hints(wss, turn_order, [ws0, ws1, ws2])
 
         for ws in (ws0, ws1, ws2):
             voting_msg = drain_until(ws, "voting_open")
@@ -345,10 +364,7 @@ def test_finalists_receive_morp_role_on_endgame_start(client):
         turn_order = round_msgs[player_ids[0]]["turn_order"]
 
         # Submit all hints
-        for pid in turn_order:
-            wss_by_id[pid].send_json({"type": "submit_hint", "text": "hint"})
-            for ws in wss:
-                drain_until(ws, "hint_received")
+        submit_hints(wss_by_id, turn_order, wss)
         for ws in wss:
             drain_until(ws, "voting_open")
 
@@ -359,6 +375,10 @@ def test_finalists_receive_morp_role_on_endgame_start(client):
 
         for ws in wss:
             drain_until(ws, "accusation_result")
+        # Unblock the role-reveal phase gate. We don't know which player's handler is blocked
+        # (whichever vote tipped the accusation), so broadcast from all — at least 2 get through.
+        for ws in wss:
+            ws.send_json({"type": "phase_ready"})
 
         # Set the surviving safe player to 1 HP so damage eliminates them
         engine = _engines[lobby_id]
@@ -369,6 +389,12 @@ def test_finalists_receive_morp_role_on_endgame_start(client):
         for ws in wss:
             drain_until(ws, "damage_dealt")
             drain_until(ws, "lobby_update")
+
+        # round_end (endgame_transition) is sent; current host must start the endgame round
+        # (host may have changed if player_ids[0] was the eliminated player)
+        for ws in wss:
+            drain_until(ws, "round_end")
+        wss_by_id[engine.lobby.host_id].send_json({"type": "next_round"})
 
         # Both finalists (morp_id + safe_ids[0]) should receive role_assigned: morp
         finalist_ids = [morp_id, safe_ids[0]]
@@ -598,12 +624,17 @@ def test_hint_truncated_to_max_length(client):
             drain_until(ws, "role_assigned")
         round_msg = drain_until(ws0, "round_start")
         drain_until(ws1, "round_start"); drain_until(ws2, "round_start")
-        first_pid = round_msg["turn_order"][0]
+        turn_order = round_msg["turn_order"]
+        first_pid = turn_order[0]
+        second_pid = turn_order[1]
         long_hint = "X" * (MAX_HINT_LENGTH + 20)
         wss[first_pid].send_json({"type": "submit_hint", "text": long_hint})
         for ws in (ws0, ws1, ws2):
             hint_msg = drain_until(ws, "hint_received")
             assert len(hint_msg["text"]) <= MAX_HINT_LENGTH
+        wss[second_pid].send_json({"type": "phase_ready"})
+        for ws in (ws0, ws1, ws2):
+            drain_until(ws, "next_turn")
 
 
 def test_max_players_enforced(client):
@@ -879,10 +910,7 @@ def test_ghost_does_not_receive_role_assigned_on_endgame_start(client):
         safe_ids = [pid for pid, rm in role_msgs.items() if rm["role"] == "safe"]
 
         engine = _engines[lobby_id]
-        for pid in engine.state.round_state.turn_order:
-            wss_by_id[pid].send_json({"type": "submit_hint", "text": "hint"})
-            for ws in wss:
-                drain_until(ws, "hint_received")
+        submit_hints(wss_by_id, engine.state.round_state.turn_order, wss)
         for ws in wss:
             drain_until(ws, "voting_open")
 
@@ -892,6 +920,10 @@ def test_ghost_does_not_receive_role_assigned_on_endgame_start(client):
             wss_by_id[pid].send_json({"type": "submit_votes", "accused_ids": [target]})
         for ws in wss:
             drain_until(ws, "accusation_result")
+        # Unblock the role-reveal phase gate. We don't know which player's handler is blocked
+        # (whichever vote tipped the accusation), so broadcast from all — at least 2 get through.
+        for ws in wss:
+            ws.send_json({"type": "phase_ready"})
 
         # Set surviving safe player to 1 HP so damage eliminates them → endgame
         engine.lobby.players[safe_ids[1]].hp = 1
@@ -899,6 +931,12 @@ def test_ghost_does_not_receive_role_assigned_on_endgame_start(client):
         for ws in wss:
             drain_until(ws, "damage_dealt")
             drain_until(ws, "lobby_update")
+
+        # round_end (endgame_transition) is sent; current host starts the endgame round
+        # (host may have changed if player_ids[0] was the eliminated player)
+        for ws in wss:
+            drain_until(ws, "round_end")
+        wss_by_id[engine.lobby.host_id].send_json({"type": "next_round"})
 
         # The eliminated player (safe_ids[1]) is now a ghost.
         # Collect every message from their websocket up to and including endgame_round_start.
@@ -962,10 +1000,7 @@ def test_accusation_result_roles_revealed_contains_string_values(client):
         for pid in player_ids[1:]:
             drain_until(wss_by_id[pid], "round_start")
 
-        for pid in turn_order:
-            wss_by_id[pid].send_json({"type": "submit_hint", "text": "hint"})
-            for ws in wss:
-                drain_until(ws, "hint_received")
+        submit_hints(wss_by_id, turn_order, wss)
         for ws in wss:
             drain_until(ws, "voting_open")
 
