@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
@@ -51,6 +51,7 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
       players: {},
       chatMessages: [],
       speechBubbles: {},
+      hintThumbnails: {},
       selectedVotes: [],
       numVotes: 1,
       _accusedMorpIds: [],
@@ -225,8 +226,9 @@ function _processMessage(msg) {
       state.board      = { board_hint: msg.board_hint, words: msg.words };
       state.turnOrder  = msg.turn_order;
       state.targetWord = msg.target_word || null;
-      state.hints      = [];
+      state.hints         = [];
       state.speechBubbles = {};
+      state.hintThumbnails = {};
       state.endgameTargetWord = null;
       state.avatarInteraction = null;
       state.damageTarget = null;
@@ -257,15 +259,25 @@ function _processMessage(msg) {
       break;
     }
 
-    case 'hint_received':
-      state.hints.push({ player_id: msg.player_id, text: msg.text, is_drawing: msg.is_drawing, drawing_data: msg.drawing_data });
-      state.speechBubbles[msg.player_id] = {
-        text: msg.text, skipped: !msg.text && !msg.is_drawing,
-        is_drawing: msg.is_drawing || false, drawing_data: msg.drawing_data || null,
-      };
-      renderInGamePlayerRow();
-      checkYourTurn();
+    case 'hint_received': {
+      const hintData = { player_id: msg.player_id, text: msg.text || '', is_drawing: msg.is_drawing || false, drawing_data: msg.drawing_data || null };
+      state.hints.push(hintData);
       log(msg.is_drawing ? `Drawing hint from ${playerName(msg.player_id)}` : `Hint from ${playerName(msg.player_id)}: "${msg.text || '(skipped)'}"`, '');
+      if (msg.display_duration) {
+        // Live hint — animate to centerpiece, hold, then signal backend
+        state.hintThumbnails[msg.player_id] = hintData;
+        showHintAtCenterpiece(msg, () => send({ type: 'phase_ready' }));
+      } else {
+        // Rejoin replay — show thumbnail immediately, no animation
+        state.hintThumbnails[msg.player_id] = hintData;
+        renderInGamePlayerRow();
+        checkYourTurn();
+      }
+      break;
+    }
+
+    case 'next_turn':
+      flyHintToThumbnail(msg.player_id, () => checkYourTurn());
       break;
 
     case 'voting_open':
@@ -273,10 +285,12 @@ function _processMessage(msg) {
       state.numVotes   = msg.num_votes;
       state.selectedVotes = [];
       for (const h of msg.hints) {
-        state.speechBubbles[h.player_id] = {
-          text: h.text, skipped: !h.text && !h.is_drawing,
-          is_drawing: h.is_drawing || false, drawing_data: h.drawing_data || null,
-        };
+        // Populate thumbnails for any hints not yet shown (e.g. rejoin during voting)
+        if (!state.hintThumbnails[h.player_id]) {
+          state.hintThumbnails[h.player_id] = {
+            player_id: h.player_id, text: h.text || '', is_drawing: h.is_drawing || false, drawing_data: h.drawing_data || null,
+          };
+        }
       }
       if (!state.isGhost) {
         enableAvatarVoting();

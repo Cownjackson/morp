@@ -10,7 +10,8 @@ export const state = {
   turnOrder: [], hints: [],
   players: {},          // pid -> player object
   chatMessages: [],
-  speechBubbles: {},    // pid -> { text, skipped }
+  speechBubbles: {},    // pid -> { text, skipped } (endgame ghost hints)
+  hintThumbnails: {},   // pid -> hint data; persists for rest of hint/voting phase
   selectedVotes: [], numVotes: 1,
   _accusedMorpIds: [],
   isGhost: false, endgameTargetWord: null,

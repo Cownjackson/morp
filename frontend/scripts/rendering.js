@@ -106,9 +106,13 @@ function renderPlayers(containerId, { avatarSize = 80 } = {}) {
     wrap.style.left = x + 'px';
     wrap.style.top  = y + 'px';
 
-    // Speech bubble
-    const bubble = state.speechBubbles[p.id];
-    if (bubble !== undefined) {
+    // Hint thumbnail (hint phase) or speech bubble (endgame ghost hints)
+    const thumbnail = state.hintThumbnails[p.id];
+    const bubble    = state.speechBubbles[p.id];
+    if (thumbnail !== undefined) {
+      const tEl = _buildHintThumbnailEl(thumbnail);
+      wrap.appendChild(tEl);
+    } else if (bubble !== undefined) {
       const bel = document.createElement('div');
       const dirClass = bubbleDir !== 'above' ? ` bubble-${bubbleDir}` : '';
       if (bubble.skipped) {
@@ -400,6 +404,119 @@ export function disableAvatarVoting() {
 
 // ─── Vote arrows ──────────────────────────────────────────────────────────────
 const _POINTER_ASSET = 'assets/pointer.png';
+
+// ─── Hint display system ──────────────────────────────────────────────────────
+
+const _HINT_FLY_MS    = 450;   // ms for fly-to-centerpiece transition
+const _HINT_RETURN_MS = 380;   // ms for fly-back-to-thumbnail transition
+
+let _inflightHint = null;  // { el, player_id } while hint is at centerpiece
+
+function _hintCenterpiecePos() {
+  return { x: window.innerWidth / 2, y: Math.min(window.innerHeight * 0.33, 260) };
+}
+
+function _buildHintCardEl(hint) {
+  const el = document.createElement('div');
+  el.className = 'hint-card';
+  if (!hint.text && !hint.is_drawing) {
+    el.classList.add('hint-skipped');
+    el.textContent = '(skipped)';
+  } else if (hint.is_drawing && hint.drawing_data) {
+    el.classList.add('hint-drawing');
+    const cv = document.createElement('canvas');
+    cv.width = 360; cv.height = 232;
+    renderStrokesToCanvas(cv, hint.drawing_data);
+    el.appendChild(cv);
+  } else {
+    el.classList.add('hint-text');
+    el.textContent = hint.text;
+  }
+  return el;
+}
+
+function _buildHintThumbnailEl(hint) {
+  const el = document.createElement('div');
+  el.className = 'hint-thumbnail';
+  if (!hint.text && !hint.is_drawing) {
+    el.classList.add('hint-skipped');
+    el.textContent = '(skip)';
+  } else if (hint.is_drawing && hint.drawing_data) {
+    el.classList.add('hint-thumbnail-drawing');
+    const cv = document.createElement('canvas');
+    cv.width = 360; cv.height = 232;
+    renderStrokesToCanvas(cv, hint.drawing_data);
+    el.appendChild(cv);
+  } else {
+    el.textContent = hint.text;
+  }
+  return el;
+}
+
+export function showHintAtCenterpiece(msg, onPhaseReady) {
+  const layer = document.getElementById('interaction-anim-layer');
+  if (!layer) { if (onPhaseReady) onPhaseReady(); return; }
+  const from = _avatarCenterViewport(msg.player_id);
+  if (!from) { if (onPhaseReady) onPhaseReady(); return; }
+
+  const el = _buildHintCardEl(msg);
+  el.style.cssText = `position:absolute; left:${from.x}px; top:${from.y}px;
+    transform:translate(-50%,-50%) scale(0.1); opacity:0; pointer-events:none;`;
+  layer.appendChild(el);
+
+  const cp = _hintCenterpiecePos();
+  const displayDuration = msg.display_duration || 5000;
+
+  // Fly to centerpiece
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      el.style.transition = `all ${_HINT_FLY_MS}ms cubic-bezier(0.34, 1.56, 0.64, 1)`;
+      el.style.left      = cp.x + 'px';
+      el.style.top       = cp.y + 'px';
+      el.style.transform = 'translate(-50%,-50%) scale(1)';
+      el.style.opacity   = '1';
+    });
+  });
+
+  // After fly-in + hold: arm next_turn callback and signal phase_ready
+  setTimeout(() => {
+    _inflightHint = { el, player_id: msg.player_id };
+    if (onPhaseReady) onPhaseReady();
+
+    // Fallback: if next_turn never arrives, clean up after 3s
+    setTimeout(() => {
+      if (_inflightHint && _inflightHint.el === el) {
+        el.remove();
+        _inflightHint = null;
+        renderInGamePlayerRow();
+      }
+    }, 3000);
+  }, _HINT_FLY_MS + displayDuration);
+}
+
+export function flyHintToThumbnail(playerId, onDone) {
+  if (!_inflightHint || _inflightHint.player_id !== playerId) {
+    if (onDone) onDone();
+    return;
+  }
+  const { el } = _inflightHint;
+  _inflightHint = null;
+
+  const to = _avatarCenterViewport(playerId);
+  if (!to) { el.remove(); renderInGamePlayerRow(); if (onDone) onDone(); return; }
+
+  el.style.transition = `all ${_HINT_RETURN_MS}ms ease-in`;
+  el.style.left       = to.x + 'px';
+  el.style.top        = to.y + 'px';
+  el.style.transform  = 'translate(-50%,-50%) scale(0.18)';
+  el.style.opacity    = '0.6';
+
+  setTimeout(() => {
+    el.remove();
+    renderInGamePlayerRow();
+    if (onDone) onDone();
+  }, _HINT_RETURN_MS);
+}
 
 /**
  * Get avatar center in viewport coordinates.
