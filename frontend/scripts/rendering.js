@@ -398,6 +398,121 @@ export function disableAvatarVoting() {
   renderInGamePlayerRow();
 }
 
+// ─── Vote arrows ──────────────────────────────────────────────────────────────
+const _POINTER_ASSET = 'assets/pointer.png';
+
+/**
+ * Get avatar center in viewport coordinates.
+ */
+function _avatarCenterViewport(playerId) {
+  const orbit = document.getElementById('game-player-row');
+  if (!orbit) return null;
+  const wrap = orbit.querySelector(`[data-player-id="${playerId}"]`);
+  if (!wrap) return null;
+  const r = wrap.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+
+/**
+ * Position a line + pointer pair between two viewport-coordinate points.
+ */
+function _positionArrowPair(line, pointer, from, to) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < 1) return;
+
+  const angle = Math.atan2(dy, dx);
+  line.style.left = from.x + 'px';
+  line.style.top = from.y + 'px';
+  line.style.width = dist + 'px';
+  line.style.transform = `translateY(-50%) rotate(${angle}rad)`;
+
+  const pointerAngle = angle + Math.PI / 2;
+  const tipX = to.x - (dx / dist) * 30;
+  const tipY = to.y - (dy / dist) * 30;
+  pointer.style.left = tipX + 'px';
+  pointer.style.top = tipY + 'px';
+  pointer.style.transform = `translate(-50%, -50%) rotate(${pointerAngle}rad)`;
+}
+
+/**
+ * Show vote arrows from each voter to their accused target(s).
+ * Uses #interaction-anim-layer (position:fixed, z-index:25) so arrows
+ * render above avatars. Repositions on scroll to stay locked to avatars.
+ * votes: { voter_id: [accused_id, ...] }
+ */
+export function showVoteArrows(votes, onDone) {
+  if (!votes || Object.keys(votes).length === 0) {
+    if (onDone) onDone();
+    return;
+  }
+
+  const layer = document.getElementById('interaction-anim-layer');
+  if (!layer) { if (onDone) onDone(); return; }
+
+  const arrowPairs = []; // { line, pointer, voterId, accusedId }
+
+  for (const [voterId, accusedIds] of Object.entries(votes)) {
+    for (const accusedId of accusedIds) {
+      const from = _avatarCenterViewport(voterId);
+      const to = _avatarCenterViewport(accusedId);
+      if (!from || !to) continue;
+
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 1) continue;
+
+      const line = document.createElement('div');
+      line.className = 'vote-arrow-line';
+      layer.appendChild(line);
+
+      const pointer = document.createElement('img');
+      pointer.className = 'vote-arrow-pointer';
+      pointer.src = _POINTER_ASSET;
+      pointer.draggable = false;
+      layer.appendChild(pointer);
+
+      _positionArrowPair(line, pointer, from, to);
+      arrowPairs.push({ line, pointer, voterId, accusedId });
+    }
+  }
+
+  if (arrowPairs.length === 0) {
+    if (onDone) onDone();
+    return;
+  }
+
+  // Reposition arrows when the user scrolls so they stay locked to avatars
+  const reposition = () => {
+    for (const { line, pointer, voterId, accusedId } of arrowPairs) {
+      const from = _avatarCenterViewport(voterId);
+      const to = _avatarCenterViewport(accusedId);
+      if (from && to) _positionArrowPair(line, pointer, from, to);
+    }
+  };
+  window.addEventListener('scroll', reposition, { passive: true });
+
+  const allEls = arrowPairs.flatMap(p => [p.line, p.pointer]);
+
+  // Fade in
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      allEls.forEach(el => el.classList.add('visible'));
+    });
+  });
+
+  // Hold for 2.5s, then fade out and clean up
+  setTimeout(() => {
+    allEls.forEach(el => el.classList.add('fading'));
+    setTimeout(() => {
+      allEls.forEach(el => el.remove());
+      window.removeEventListener('scroll', reposition);
+      if (onDone) onDone();
+    }, 500);
+  }, 2500);
+}
+
 // ─── Dramatic role reveal (Phase 5) ───────────────────────────────────────────
 const _REVEAL_ASSETS = {
   closed: 'assets/letter/envelope_closed.png',
