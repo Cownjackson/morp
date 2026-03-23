@@ -340,14 +340,33 @@ export function renderChat() {
 }
 
 // ─── Hint phase ───────────────────────────────────────────────────────────────
+export function resetHintThumbnailAnimations() { _animatedThumbnails.clear(); }
+
+export function openDrawPopup() {
+  document.getElementById('draw-popup').classList.remove('hidden');
+  document.getElementById('draw-popup-pill').classList.add('hidden');
+}
+export function minimizeDrawPopup() {
+  document.getElementById('draw-popup').classList.add('hidden');
+  document.getElementById('draw-popup-pill').classList.remove('hidden');
+}
+export function hideDrawPopup() {
+  document.getElementById('draw-popup').classList.add('hidden');
+  document.getElementById('draw-popup-pill').classList.add('hidden');
+}
+
 export function checkYourTurn() {
   const currentPid = state.turnOrder[state.hints.length];
   const isMyTurn   = currentPid === state.playerId;
   document.getElementById('your-turn-block').classList.toggle('hidden', !isMyTurn);
   if (isMyTurn) {
     document.getElementById('hint-text-block').classList.toggle('hidden', state.drawingHints);
-    document.getElementById('hint-drawing-block').classList.toggle('hidden', !state.drawingHints);
-    if (state.drawingHints) clearCanvas('hint-canvas');
+    if (state.drawingHints) {
+      clearCanvas('hint-canvas');
+      openDrawPopup();
+    }
+  } else {
+    hideDrawPopup();
   }
   const indicator = document.getElementById('turn-indicator');
   if (!currentPid) {
@@ -410,10 +429,11 @@ const _POINTER_ASSET = 'assets/pointer.png';
 const _HINT_FLY_MS    = 450;   // ms for fly-to-centerpiece transition
 const _HINT_RETURN_MS = 380;   // ms for fly-back-to-thumbnail transition
 
-let _inflightHint = null;  // { el, player_id } while hint is at centerpiece
+let _inflightHint = null;       // { el, player_id, hintData } while hint is at centerpiece
+const _animatedThumbnails = new Set();  // player IDs whose thumbnail has already popped in
 
 function _hintCenterpiecePos() {
-  return { x: window.innerWidth / 2, y: Math.min(window.innerHeight * 0.33, 260) };
+  return { x: window.innerWidth / 2, y: window.innerHeight * 0.5 };
 }
 
 function _buildHintCardEl(hint) {
@@ -438,6 +458,11 @@ function _buildHintCardEl(hint) {
 function _buildHintThumbnailEl(hint) {
   const el = document.createElement('div');
   el.className = 'hint-thumbnail';
+  if (!_animatedThumbnails.has(hint.player_id)) {
+    _animatedThumbnails.add(hint.player_id);
+    el.style.animation = 'hint-thumb-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both';
+    el.addEventListener('animationend', () => { el.style.animation = ''; }, { once: true });
+  }
   if (!hint.text && !hint.is_drawing) {
     el.classList.add('hint-skipped');
     el.textContent = '(skip)';
@@ -480,39 +505,58 @@ export function showHintAtCenterpiece(msg, onPhaseReady) {
 
   // After fly-in + hold: arm next_turn callback and signal phase_ready
   setTimeout(() => {
-    _inflightHint = { el, player_id: msg.player_id };
+    _inflightHint = {
+      el,
+      player_id: msg.player_id,
+      hintData: { player_id: msg.player_id, text: msg.text || '', is_drawing: msg.is_drawing || false, drawing_data: msg.drawing_data || null },
+    };
     if (onPhaseReady) onPhaseReady();
 
     // Fallback: if next_turn never arrives, clean up after 3s
     setTimeout(() => {
       if (_inflightHint && _inflightHint.el === el) {
+        const { player_id: pid, hintData: hd } = _inflightHint;
         el.remove();
         _inflightHint = null;
+        state.hintThumbnails[pid] = hd;
         renderInGamePlayerRow();
       }
     }, 3000);
   }, _HINT_FLY_MS + displayDuration);
 }
 
-export function flyHintToThumbnail(playerId, onDone) {
-  if (!_inflightHint || _inflightHint.player_id !== playerId) {
+export function flyHintToThumbnail(onDone) {
+  if (!_inflightHint) {
     if (onDone) onDone();
     return;
   }
-  const { el } = _inflightHint;
+  const { el, player_id, hintData } = _inflightHint;
   _inflightHint = null;
 
-  const to = _avatarCenterViewport(playerId);
-  if (!to) { el.remove(); renderInGamePlayerRow(); if (onDone) onDone(); return; }
+  // Target the top edge of the avatar-wrap so the card lands where the thumbnail will appear
+  const orbit = document.getElementById('game-player-row');
+  const wrap  = orbit?.querySelector(`[data-player-id="${player_id}"]`);
+  if (!wrap) {
+    el.remove();
+    state.hintThumbnails[player_id] = hintData;
+    renderInGamePlayerRow();
+    if (onDone) onDone();
+    return;
+  }
 
-  el.style.transition = `all ${_HINT_RETURN_MS}ms ease-in`;
-  el.style.left       = to.x + 'px';
-  el.style.top        = to.y + 'px';
-  el.style.transform  = 'translate(-50%,-50%) scale(0.18)';
-  el.style.opacity    = '0.6';
+  const r   = wrap.getBoundingClientRect();
+  const tx  = r.left + r.width / 2;
+  const ty  = r.top;
+
+  el.style.transition = `all ${_HINT_RETURN_MS}ms cubic-bezier(0.4, 0, 0.6, 1)`;
+  el.style.left       = tx + 'px';
+  el.style.top        = ty + 'px';
+  el.style.transform  = 'translate(-50%,-100%) scale(0.08)';
+  el.style.opacity    = '0';
 
   setTimeout(() => {
     el.remove();
+    state.hintThumbnails[player_id] = hintData;
     renderInGamePlayerRow();
     if (onDone) onDone();
   }, _HINT_RETURN_MS);

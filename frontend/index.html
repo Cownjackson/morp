@@ -346,73 +346,7 @@
           <input type="text" id="hint-input" placeholder="Your hint…" style="width:260px" maxlength="30">
           <button onclick="submitHint()">Submit</button>
         </div>
-        <!-- Drawing mode -->
-        <div id="hint-drawing-block" class="hidden">
-          <div class="draw-panel">
-            <div class="draw-toolbar" id="hint-toolbar">
-              <div class="draw-current-color" id="hint-current-color" style="background:#FFFDFD"></div>
-              <div class="draw-color-grid">
-                <button class="color-swatch" data-color="#AE2963" style="background:#AE2963" title="Raspberry"  onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#B21232" style="background:#B21232" title="Punch"       onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#F15241" style="background:#F15241" title="Coral"       onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#FF9287" style="background:#FF9287" title="Salmon"      onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#FFCEE5" style="background:#FFCEE5" title="Blush"       onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#EAFFF3" style="background:#EAFFF3" title="Frost"       onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#EE60AB" style="background:#EE60AB" title="Orchid"      onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#D1922C" style="background:#D1922C" title="Mustard"     onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#ED9302" style="background:#ED9302" title="Amber"       onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#FFE1B1" style="background:#FFE1B1" title="Peach"       onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#FEAFD2" style="background:#FEAFD2" title="Pinky"       onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#D4FFE5" style="background:#D4FFE5" title="Mint Foam"   onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#521223" style="background:#521223" title="Wine"        onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#CC6813" style="background:#CC6813" title="Trumskin"    onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#FF7602" style="background:#FF7602" title="Tangerine"   onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#FFB271" style="background:#FFB271" title="Apricot"     onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#F4D8FF" style="background:#F4D8FF" title="Lavender"    onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#88DCAB" style="background:#88DCAB" title="Mint"        onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#530F52" style="background:#530F52" title="Eggplant"    onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#2574B4" style="background:#2574B4" title="Azure"       onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#71B2E6" style="background:#71B2E6" title="Sky"         onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#C8E7FF" style="background:#C8E7FF" title="Ice"         onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#FFE5EA" style="background:#FFE5EA" title="Rose Mist"   onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#A3AF0C" style="background:#A3AF0C" title="Shreks Toe"  onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#5D2F7C" style="background:#5D2F7C" title="Amethyst"    onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#682ECD" style="background:#682ECD" title="Grape"       onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#D99EFF" style="background:#D99EFF" title="Wisteria"    onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#D0BBF6" style="background:#D0BBF6" title="Lilac"       onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#FFE891" style="background:#FFE891" title="Citrus"      onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#FFCE18" style="background:#FFCE18" title="Gold"        onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#312009" style="background:#312009" title="Espresso"    onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#553910" style="background:#553910" title="Coffee"      onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#855D3B" style="background:#855D3B" title="Caramel"     onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#CE9767" style="background:#CE9767" title="Sand"        onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#FBC99A" style="background:#FBC99A" title="Cream"       onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#F3E49D" style="background:#F3E49D" title="Vanilla"     onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch active" data-color="#FFFDFD" style="background:#FFFDFD" title="White" onclick="setDrawColor('hint',this)"></button>
-                <button class="color-swatch" data-color="#020202" style="background:#020202" title="Black"       onclick="setDrawColor('hint',this)"></button>
-              </div>
-              <div class="draw-sidebar-sep"></div>
-              <div class="draw-sizes">
-                <button class="size-btn active" data-size="3"  onclick="setDrawSize('hint',this)">S</button>
-                <button class="size-btn"        data-size="7"  onclick="setDrawSize('hint',this)">M</button>
-                <button class="size-btn"        data-size="14" onclick="setDrawSize('hint',this)">L</button>
-              </div>
-              <div class="draw-sidebar-sep"></div>
-              <div class="draw-tools">
-                <button class="tool-btn eraser-btn" id="hint-eraser-btn" onclick="toggleEraser('hint',this)">Eraser</button>
-                <button class="tool-btn fill-btn" id="hint-fill-btn" onclick="toggleFill('hint',this)">Fill</button>
-                <button class="tool-btn" onclick="undoStroke('hint-canvas')">Undo</button>
-                <button class="tool-btn" onclick="clearCanvas('hint-canvas')">Clear</button>
-              </div>
-            </div>
-            <div class="draw-canvas-wrap">
-              <canvas id="hint-canvas" width="560" height="360"
-                style="background:#111;border:1px solid #3A2848;border-radius:4px;cursor:crosshair;touch-action:none;display:block;width:100%">
-              </canvas>
-            </div>
-          </div>
-          <button onclick="submitHint()" style="margin-top:8px">Submit Drawing</button>
-        </div>
+        <!-- Drawing mode (popup opens automatically) -->
       </div>
     </div>
 
@@ -578,6 +512,84 @@
     <button id="btn-chat-send" class="chat-send-btn" onclick="sendChat()">Send</button>
   </div>
 </div>
+
+<!-- ── Drawing popup (floating window, auto-opens on drawing turn) ── -->
+<div id="draw-popup" class="draw-popup hidden">
+  <div class="draw-popup-header">
+    <span class="draw-popup-title">✏️ Drawing Hint</span>
+    <button class="draw-popup-min-btn" onclick="minimizeDrawPopup()" title="Minimize">−</button>
+  </div>
+  <div id="hint-drawing-block" class="draw-popup-body">
+    <div class="draw-panel">
+      <div class="draw-toolbar" id="hint-toolbar">
+        <div class="draw-current-color" id="hint-current-color" style="background:#FFFDFD"></div>
+        <div class="draw-color-grid">
+          <button class="color-swatch" data-color="#AE2963" style="background:#AE2963" title="Raspberry"  onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#B21232" style="background:#B21232" title="Punch"       onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#F15241" style="background:#F15241" title="Coral"       onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#FF9287" style="background:#FF9287" title="Salmon"      onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#FFCEE5" style="background:#FFCEE5" title="Blush"       onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#EAFFF3" style="background:#EAFFF3" title="Frost"       onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#EE60AB" style="background:#EE60AB" title="Orchid"      onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#D1922C" style="background:#D1922C" title="Mustard"     onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#ED9302" style="background:#ED9302" title="Amber"       onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#FFE1B1" style="background:#FFE1B1" title="Peach"       onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#FEAFD2" style="background:#FEAFD2" title="Pinky"       onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#D4FFE5" style="background:#D4FFE5" title="Mint Foam"   onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#521223" style="background:#521223" title="Wine"        onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#CC6813" style="background:#CC6813" title="Trumskin"    onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#FF7602" style="background:#FF7602" title="Tangerine"   onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#FFB271" style="background:#FFB271" title="Apricot"     onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#F4D8FF" style="background:#F4D8FF" title="Lavender"    onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#88DCAB" style="background:#88DCAB" title="Mint"        onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#530F52" style="background:#530F52" title="Eggplant"    onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#2574B4" style="background:#2574B4" title="Azure"       onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#71B2E6" style="background:#71B2E6" title="Sky"         onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#C8E7FF" style="background:#C8E7FF" title="Ice"         onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#FFE5EA" style="background:#FFE5EA" title="Rose Mist"   onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#A3AF0C" style="background:#A3AF0C" title="Shreks Toe"  onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#5D2F7C" style="background:#5D2F7C" title="Amethyst"    onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#682ECD" style="background:#682ECD" title="Grape"       onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#D99EFF" style="background:#D99EFF" title="Wisteria"    onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#D0BBF6" style="background:#D0BBF6" title="Lilac"       onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#FFE891" style="background:#FFE891" title="Citrus"      onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#FFCE18" style="background:#FFCE18" title="Gold"        onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#312009" style="background:#312009" title="Espresso"    onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#553910" style="background:#553910" title="Coffee"      onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#855D3B" style="background:#855D3B" title="Caramel"     onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#CE9767" style="background:#CE9767" title="Sand"        onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#FBC99A" style="background:#FBC99A" title="Cream"       onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#F3E49D" style="background:#F3E49D" title="Vanilla"     onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch active" data-color="#FFFDFD" style="background:#FFFDFD" title="White" onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch" data-color="#020202" style="background:#020202" title="Black"       onclick="setDrawColor('hint',this)"></button>
+        </div>
+        <div class="draw-sidebar-sep"></div>
+        <div class="draw-sizes">
+          <button class="size-btn active" data-size="3"  onclick="setDrawSize('hint',this)">S</button>
+          <button class="size-btn"        data-size="7"  onclick="setDrawSize('hint',this)">M</button>
+          <button class="size-btn"        data-size="14" onclick="setDrawSize('hint',this)">L</button>
+        </div>
+        <div class="draw-sidebar-sep"></div>
+        <div class="draw-tools">
+          <button class="tool-btn eraser-btn" id="hint-eraser-btn" onclick="toggleEraser('hint',this)">Eraser</button>
+          <button class="tool-btn fill-btn" id="hint-fill-btn" onclick="toggleFill('hint',this)">Fill</button>
+          <button class="tool-btn" onclick="undoStroke('hint-canvas')">Undo</button>
+          <button class="tool-btn" onclick="clearCanvas('hint-canvas')">Clear</button>
+        </div>
+      </div>
+      <div class="draw-canvas-wrap">
+        <canvas id="hint-canvas" width="560" height="360"
+          style="background:#111;border:1px solid #3A2848;border-radius:4px;cursor:crosshair;touch-action:none;display:block;width:100%">
+        </canvas>
+      </div>
+    </div>
+    <div class="draw-popup-footer">
+      <button onclick="submitHint()">Submit Drawing</button>
+    </div>
+  </div>
+</div>
+<!-- Reopen pill (shown when popup is minimized) -->
+<button id="draw-popup-pill" class="draw-popup-pill hidden" onclick="openDrawPopup()">✏️ Draw</button>
 
 <script type="module" src="scripts/app.js?v=customizer-fallback-1"></script>
 </body>

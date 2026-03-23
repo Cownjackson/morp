@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, resetHintThumbnailAnimations } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
@@ -229,6 +229,7 @@ function _processMessage(msg) {
       state.hints         = [];
       state.speechBubbles = {};
       state.hintThumbnails = {};
+      resetHintThumbnailAnimations();
       state.endgameTargetWord = null;
       state.avatarInteraction = null;
       state.damageTarget = null;
@@ -265,7 +266,7 @@ function _processMessage(msg) {
       log(msg.is_drawing ? `Drawing hint from ${playerName(msg.player_id)}` : `Hint from ${playerName(msg.player_id)}: "${msg.text || '(skipped)'}"`, '');
       if (msg.display_duration) {
         // Live hint — animate to centerpiece, hold, then signal backend
-        state.hintThumbnails[msg.player_id] = hintData;
+        // hintThumbnails set later by flyHintToThumbnail so thumbnail only appears after animation
         showHintAtCenterpiece(msg, () => send({ type: 'phase_ready' }));
       } else {
         // Rejoin replay — show thumbnail immediately, no animation
@@ -277,12 +278,12 @@ function _processMessage(msg) {
     }
 
     case 'next_turn':
-      flyHintToThumbnail(msg.player_id, () => checkYourTurn());
+      flyHintToThumbnail(() => checkYourTurn());
       break;
 
-    case 'voting_open':
-      state.hints      = msg.hints;
-      state.numVotes   = msg.num_votes;
+    case 'voting_open': {
+      state.hints         = msg.hints;
+      state.numVotes      = msg.num_votes;
       state.selectedVotes = [];
       for (const h of msg.hints) {
         // Populate thumbnails for any hints not yet shown (e.g. rejoin during voting)
@@ -292,15 +293,20 @@ function _processMessage(msg) {
           };
         }
       }
-      if (!state.isGhost) {
-        enableAvatarVoting();
-        showAction('vote');
-      } else {
-        renderInGamePlayerRow();
-      }
-      setPhaseLabel('VOTING');
-      log('Voting open!', 'ok');
+      const openVotingUI = () => {
+        if (!state.isGhost) {
+          enableAvatarVoting();
+          showAction('vote');
+        } else {
+          renderInGamePlayerRow();
+        }
+        setPhaseLabel('VOTING');
+        log('Voting open!', 'ok');
+      };
+      // If the last hinter's card is still at centerpiece, fly it home first
+      flyHintToThumbnail(openVotingUI);
       break;
+    }
 
     case 'accusation_result': {
       disableAvatarVoting();
