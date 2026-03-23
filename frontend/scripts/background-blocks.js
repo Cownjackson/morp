@@ -262,9 +262,53 @@
     alphaThreshold: 108,
     maskSampleDivisions: 8
   };
+  const backgroundPerfSampleWindow = 180;
+  const maxPooledSpeedLineGroups = 24;
+  const maxPooledRipples = 32;
+  const collisionScratch = {
+    normalX: 0,
+    normalY: 0,
+    impulse: 0
+  };
 
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
+  }
+
+  // Reused by both physics and visual hitboxes so we can invalidate cheaply
+  // when a block moves or jiggles instead of rebuilding geometry every call.
+  function createGeometryCache() {
+    return {
+      version: -1,
+      centerX: 0,
+      centerY: 0,
+      halfWidth: 0,
+      halfHeight: 0,
+      angle: 0,
+      cos: 1,
+      sin: 0,
+      axes: [
+        { x: 1, y: 0 },
+        { x: 0, y: 1 }
+      ],
+      extents: {
+        x: 0,
+        y: 0
+      },
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0
+    };
+  }
+
+  function invalidateBlockGeometry(block) {
+    block.geometryVersion = (block.geometryVersion || 0) + 1;
+    block.visualGeometryVersion = (block.visualGeometryVersion || 0) + 1;
+  }
+
+  function invalidateBlockVisualGeometry(block) {
+    block.visualGeometryVersion = (block.visualGeometryVersion || 0) + 1;
   }
 
   function randomInRange(min, max) {
@@ -725,6 +769,15 @@
   }
 
   function getHitbox(block, visual = false) {
+    const cacheKey = visual ? 'visualGeometryCache' : 'physicsGeometryCache';
+    const versionKey = visual ? 'visualGeometryVersion' : 'geometryVersion';
+    const version = block[versionKey] || 0;
+    const cache = block[cacheKey] || (block[cacheKey] = createGeometryCache());
+
+    if (cache.version === version) {
+      return cache;
+    }
+
     const angle = visual ? block.angle + block.jiggleAngle : block.angle;
     const scaleX = visual ? block.jiggleScaleX : 1;
     const scaleY = visual ? block.jiggleScaleY : 1;
@@ -737,77 +790,104 @@
     const offsetX = localCenterX * block.width * scaleX;
     const offsetY = localCenterY * block.height * scaleY;
 
-    return {
-      centerX: block.x + block.width / 2 + (offsetX * cos) - (offsetY * sin),
-      centerY: block.y + block.height / 2 + (offsetX * sin) + (offsetY * cos),
-      halfWidth: (block.width * scaleX * collisionBounds.width * collisionBounds.scale) / 2,
-      halfHeight: (block.height * scaleY * collisionBounds.height * collisionBounds.scale) / 2,
-      angle: angleRadians
-    };
+    cache.centerX = block.x + block.width / 2 + (offsetX * cos) - (offsetY * sin);
+    cache.centerY = block.y + block.height / 2 + (offsetX * sin) + (offsetY * cos);
+    cache.halfWidth = (block.width * scaleX * collisionBounds.width * collisionBounds.scale) / 2;
+    cache.halfHeight = (block.height * scaleY * collisionBounds.height * collisionBounds.scale) / 2;
+    cache.angle = angleRadians;
+    cache.cos = cos;
+    cache.sin = sin;
+    cache.axes[0].x = cos;
+    cache.axes[0].y = sin;
+    cache.axes[1].x = -sin;
+    cache.axes[1].y = cos;
+    cache.extents.x = Math.abs(cos) * cache.halfWidth + Math.abs(sin) * cache.halfHeight;
+    cache.extents.y = Math.abs(sin) * cache.halfWidth + Math.abs(cos) * cache.halfHeight;
+    cache.left = cache.centerX - cache.extents.x;
+    cache.right = cache.centerX + cache.extents.x;
+    cache.top = cache.centerY - cache.extents.y;
+    cache.bottom = cache.centerY + cache.extents.y;
+    cache.version = version;
+
+    return cache;
   }
 
   function getAxes(hitbox) {
-    const cos = Math.cos(hitbox.angle);
-    const sin = Math.sin(hitbox.angle);
-
-    return [
-      { x: cos, y: sin },
-      { x: -sin, y: cos }
-    ];
+    return hitbox.axes;
   }
 
-  function projectHitbox(hitbox, axis) {
-    const axes = getAxes(hitbox);
-    const centerProjection = hitbox.centerX * axis.x + hitbox.centerY * axis.y;
-    const radius =
-      hitbox.halfWidth * Math.abs(axis.x * axes[0].x + axis.y * axes[0].y) +
-      hitbox.halfHeight * Math.abs(axis.x * axes[1].x + axis.y * axes[1].y);
+  function getProjectionRadius(hitbox, axisX, axisY) {
+    return (
+      hitbox.halfWidth * Math.abs(axisX * hitbox.axes[0].x + axisY * hitbox.axes[0].y) +
+      hitbox.halfHeight * Math.abs(axisX * hitbox.axes[1].x + axisY * hitbox.axes[1].y)
+    );
+  }
 
-    return {
-      min: centerProjection - radius,
-      max: centerProjection + radius
-    };
+  function getAxisOverlap(hitboxA, hitboxB, axisX, axisY) {
+    const centerProjectionA = hitboxA.centerX * axisX + hitboxA.centerY * axisY;
+    const centerProjectionB = hitboxB.centerX * axisX + hitboxB.centerY * axisY;
+    const radiusA = getProjectionRadius(hitboxA, axisX, axisY);
+    const radiusB = getProjectionRadius(hitboxB, axisX, axisY);
+
+    return Math.min(centerProjectionA + radiusA, centerProjectionB + radiusB) -
+      Math.max(centerProjectionA - radiusA, centerProjectionB - radiusB);
+  }
+
+  function axisAlignedHitboxesOverlap(hitboxA, hitboxB) {
+    return !(
+      hitboxA.right <= hitboxB.left ||
+      hitboxA.left >= hitboxB.right ||
+      hitboxA.bottom <= hitboxB.top ||
+      hitboxA.top >= hitboxB.bottom
+    );
   }
 
   function getRotatedExtents(hitbox) {
-    const cos = Math.cos(hitbox.angle);
-    const sin = Math.sin(hitbox.angle);
-
-    return {
-      x: Math.abs(cos) * hitbox.halfWidth + Math.abs(sin) * hitbox.halfHeight,
-      y: Math.abs(sin) * hitbox.halfWidth + Math.abs(cos) * hitbox.halfHeight
-    };
+    return hitbox.extents;
   }
 
   function createAxisAlignedHitbox(left, top, width, height) {
-    return {
-      centerX: left + width / 2,
-      centerY: top + height / 2,
-      halfWidth: width / 2,
-      halfHeight: height / 2,
-      angle: 0
-    };
+    const hitbox = createGeometryCache();
+    hitbox.centerX = left + width / 2;
+    hitbox.centerY = top + height / 2;
+    hitbox.halfWidth = width / 2;
+    hitbox.halfHeight = height / 2;
+    hitbox.angle = 0;
+    hitbox.cos = 1;
+    hitbox.sin = 0;
+    hitbox.axes[0].x = 1;
+    hitbox.axes[0].y = 0;
+    hitbox.axes[1].x = 0;
+    hitbox.axes[1].y = 1;
+    hitbox.extents.x = hitbox.halfWidth;
+    hitbox.extents.y = hitbox.halfHeight;
+    hitbox.left = left;
+    hitbox.right = left + width;
+    hitbox.top = top;
+    hitbox.bottom = top + height;
+    hitbox.version = 0;
+    return hitbox;
   }
 
   function hitboxesOverlap(hitboxA, hitboxB) {
-    const axes = [...getAxes(hitboxA), ...getAxes(hitboxB)];
-
-    for (const axis of axes) {
-      const projectionA = projectHitbox(hitboxA, axis);
-      const projectionB = projectHitbox(hitboxB, axis);
-      const overlap = Math.min(projectionA.max, projectionB.max) - Math.max(projectionA.min, projectionB.min);
-
-      if (overlap <= 0) {
-        return false;
-      }
+    if (!axisAlignedHitboxesOverlap(hitboxA, hitboxB)) {
+      return false;
     }
 
-    return true;
+    const axesA = hitboxA.axes;
+    const axesB = hitboxB.axes;
+
+    return (
+      getAxisOverlap(hitboxA, hitboxB, axesA[0].x, axesA[0].y) > 0 &&
+      getAxisOverlap(hitboxA, hitboxB, axesA[1].x, axesA[1].y) > 0 &&
+      getAxisOverlap(hitboxA, hitboxB, axesB[0].x, axesB[0].y) > 0 &&
+      getAxisOverlap(hitboxA, hitboxB, axesB[1].x, axesB[1].y) > 0
+    );
   }
 
   function pointInRotatedHitbox(hitbox, x, y) {
-    const cos = Math.cos(hitbox.angle);
-    const sin = Math.sin(hitbox.angle);
+    const cos = hitbox.cos ?? Math.cos(hitbox.angle);
+    const sin = hitbox.sin ?? Math.sin(hitbox.angle);
     const dx = x - hitbox.centerX;
     const dy = y - hitbox.centerY;
     const localX = (dx * cos) + (dy * sin);
@@ -851,33 +931,57 @@
       normalY = -1;
     }
 
-    return (normalX !== 0 || normalY !== 0) ? { normalX, normalY } : null;
+    if (normalX === 0 && normalY === 0) {
+      return null;
+    }
+
+    invalidateBlockGeometry(block);
+    collisionScratch.normalX = normalX;
+    collisionScratch.normalY = normalY;
+    collisionScratch.impulse = 0;
+    return collisionScratch;
   }
 
-  function resolveCollision(a, b) {
-    const hitboxA = getHitbox(a);
-    const hitboxB = getHitbox(b);
-    const axes = [...getAxes(hitboxA), ...getAxes(hitboxB)];
+  function resolveCollision(a, b, hitboxA = getHitbox(a), hitboxB = getHitbox(b)) {
+    if (!axisAlignedHitboxesOverlap(hitboxA, hitboxB)) {
+      return null;
+    }
+
+    const axesA = hitboxA.axes;
+    const axesB = hitboxB.axes;
     let smallestOverlap = Infinity;
-    let collisionAxis = null;
+    let collisionAxisX = 0;
+    let collisionAxisY = 0;
 
-    for (const axis of axes) {
-      const projectionA = projectHitbox(hitboxA, axis);
-      const projectionB = projectHitbox(hitboxB, axis);
-      const overlap = Math.min(projectionA.max, projectionB.max) - Math.max(projectionA.min, projectionB.min);
+    const considerAxis = (axisX, axisY) => {
+      const overlap = getAxisOverlap(hitboxA, hitboxB, axisX, axisY);
 
-      if (overlap <= 0) return null;
+      if (overlap <= 0) {
+        return false;
+      }
 
       if (overlap < smallestOverlap) {
         smallestOverlap = overlap;
-        collisionAxis = axis;
+        collisionAxisX = axisX;
+        collisionAxisY = axisY;
       }
+
+      return true;
+    };
+
+    if (
+      !considerAxis(axesA[0].x, axesA[0].y) ||
+      !considerAxis(axesA[1].x, axesA[1].y) ||
+      !considerAxis(axesB[0].x, axesB[0].y) ||
+      !considerAxis(axesB[1].x, axesB[1].y)
+    ) {
+      return null;
     }
 
     const dx = hitboxB.centerX - hitboxA.centerX;
     const dy = hitboxB.centerY - hitboxA.centerY;
-    let normalX = collisionAxis.x;
-    let normalY = collisionAxis.y;
+    let normalX = collisionAxisX;
+    let normalY = collisionAxisY;
 
     if (dx * normalX + dy * normalY < 0) {
       normalX *= -1;
@@ -890,6 +994,8 @@
     a.y -= normalY * half;
     b.x += normalX * half;
     b.y += normalY * half;
+    invalidateBlockGeometry(a);
+    invalidateBlockGeometry(b);
 
     // Velocity impulse (equal mass elastic collision along normal)
     const relVx = b.vx - a.vx;
@@ -914,7 +1020,10 @@
     a.spin = clamp(a.spin + spinDelta, -spinConfig.maxSpeed, spinConfig.maxSpeed);
     b.spin = clamp(b.spin - spinDelta, -spinConfig.maxSpeed, spinConfig.maxSpeed);
 
-    return { normalX, normalY, impulse };
+    collisionScratch.normalX = normalX;
+    collisionScratch.normalY = normalY;
+    collisionScratch.impulse = impulse;
+    return collisionScratch;
   }
 
   function keepMomentum(block) {
@@ -1007,6 +1116,8 @@
       entity.crownElement.style.fontSize =
         `${Math.max(labelConfig.crownMinFontRem, labelFontSize + labelConfig.crownFontOffsetRem)}rem`;
     }
+
+    invalidateBlockGeometry(entity);
   }
 
   function createPlayerEntity(container, playerData = {}) {
@@ -1067,7 +1178,11 @@
       jiggleScaleX: 1,
       jiggleScaleY: 1,
       xRatio: prototypePlayerConfig.xRatio,
-      yRatio: prototypePlayerConfig.yRatio
+      yRatio: prototypePlayerConfig.yRatio,
+      geometryVersion: 0,
+      visualGeometryVersion: 0,
+      physicsGeometryCache: createGeometryCache(),
+      visualGeometryCache: createGeometryCache()
     };
 
     updatePlayerEntityText(entity);
@@ -1323,16 +1438,99 @@
 
     let paletteColors = [];
     const ripples = [];
+    const ripplePool = [];
+    const speedLineGroupPool = [];
     let rippleIndex = 0;
     const logoTargetIds = ['landing-logo-text', 'pregame-logo-text'];
     let logoTextElements = [];
     let logoLetters = [];
+    const logoPaintScores = [];
     let defaultLogoFill = getThemeColorRgb('--punch');
     let defaultLogoShadow = darkenColor(defaultLogoFill, logoPaintConfig.shadowDarkness);
     const refreshHandles = {
       logoBounds: 0,
       layout: 0,
       logo: 0
+    };
+    const perfStats = {
+      frames: 0,
+      frameTimeTotal: 0,
+      maxFrameMs: 0,
+      sections: {
+        integrate: 0,
+        collisions: 0,
+        walls: 0,
+        jiggleAndRender: 0,
+        logo: 0,
+        ripples: 0
+      },
+      collisionPairs: 0,
+      broadPhaseRejected: 0,
+      narrowPhaseTests: 0,
+      collisionHits: 0,
+      speedLineSpawns: 0,
+      rippleSpawns: 0,
+      lastFrameMs: 0,
+      lastEntityCount: 0
+    };
+
+    function resetPerfStats() {
+      perfStats.frames = 0;
+      perfStats.frameTimeTotal = 0;
+      perfStats.maxFrameMs = 0;
+      perfStats.sections.integrate = 0;
+      perfStats.sections.collisions = 0;
+      perfStats.sections.walls = 0;
+      perfStats.sections.jiggleAndRender = 0;
+      perfStats.sections.logo = 0;
+      perfStats.sections.ripples = 0;
+      perfStats.collisionPairs = 0;
+      perfStats.broadPhaseRejected = 0;
+      perfStats.narrowPhaseTests = 0;
+      perfStats.collisionHits = 0;
+      perfStats.speedLineSpawns = 0;
+      perfStats.rippleSpawns = 0;
+      perfStats.lastFrameMs = 0;
+      perfStats.lastEntityCount = 0;
+    }
+
+    function getPerfSnapshot() {
+      const frames = Math.max(perfStats.frames, 1);
+      const collisionPairs = perfStats.collisionPairs;
+      const narrowPhaseTests = perfStats.narrowPhaseTests;
+
+      return {
+        frames: perfStats.frames,
+        avgFrameMs: perfStats.frameTimeTotal / frames,
+        maxFrameMs: perfStats.maxFrameMs,
+        lastFrameMs: perfStats.lastFrameMs,
+        avgCollisionPairs: collisionPairs / frames,
+        avgNarrowPhaseTests: narrowPhaseTests / frames,
+        broadPhaseRejectRate: collisionPairs > 0
+          ? perfStats.broadPhaseRejected / collisionPairs
+          : 0,
+        collisionHits: perfStats.collisionHits,
+        speedLineSpawns: perfStats.speedLineSpawns,
+        rippleSpawns: perfStats.rippleSpawns,
+        lastEntityCount: perfStats.lastEntityCount,
+        pooledSpeedLineGroups: speedLineGroupPool.length,
+        pooledRipples: ripplePool.length,
+        liveRipples: ripples.length,
+        sectionAverages: {
+          integrate: perfStats.sections.integrate / frames,
+          collisions: perfStats.sections.collisions / frames,
+          walls: perfStats.sections.walls / frames,
+          jiggleAndRender: perfStats.sections.jiggleAndRender / frames,
+          logo: perfStats.sections.logo / frames,
+          ripples: perfStats.sections.ripples / frames
+        }
+      };
+    }
+
+    window.backgroundBlocksPerf = {
+      sampleWindow: backgroundPerfSampleWindow,
+      reset: resetPerfStats,
+      snapshot: getPerfSnapshot
     };
 
     function syncLogoTargets() {
@@ -1354,27 +1552,7 @@
       });
     }
 
-    const shapeModes = shuffle([
-      'square', 'square', 'square', 'square',
-      'rectangle', 'rectangle', 'rectangle', 'rectangle'
-    ]);
-
-    const blocks = swatchConfigs.map((config) => {
-      const element = container.querySelector(config.selector);
-      const { width, height } = generateBlockSize(shapeModes.pop());
-      const baseRadius = config.baseRadius;
-
-      element.style.width = `${width}px`;
-      element.style.height = `${height}px`;
-
-      const dvdImg = document.createElement('img');
-      dvdImg.src = 'assets/dvd_logo.png';
-      dvdImg.className = 'swatch-dvd-logo';
-      dvdImg.setAttribute('aria-hidden', 'true');
-      dvdImg.setAttribute('draggable', 'false');
-      dvdImg.style.opacity = '0';
-      element.appendChild(dvdImg);
-
+    function createBlockState(config, element, width, height) {
       return {
         element,
         width,
@@ -1383,8 +1561,8 @@
         baseHeight: height,
         colorVariable: config.colorVariable,
         colorRgb: getThemeColorRgb(config.colorVariable),
-        radius: baseRadius,
-        baseRadius,
+        radius: config.baseRadius,
+        baseRadius: config.baseRadius,
         x: 0,
         y: 0,
         vx: config.vx,
@@ -1402,20 +1580,20 @@
         jiggleScaleY: 1,
         xRatio: config.xRatio,
         yRatio: config.yRatio,
-        activeCornerTriggerIds: new Set(),
+        activeCornerTriggerMask: 0,
         cornerOverdriveUntil: 0,
         cornerOverdriveTargetSpeed: 0,
         cornerSpeedLinesLastAt: 0,
-        dvdImg,
-        dvdTimeout: null
+        dvdImg: null,
+        dvdTimeout: null,
+        geometryVersion: 0,
+        visualGeometryVersion: 0,
+        physicsGeometryCache: createGeometryCache(),
+        visualGeometryCache: createGeometryCache()
       };
-    });
-    const cornerTriggerBoxes = [
-      { id: 'top-left' },
-      { id: 'top-right' },
-      { id: 'bottom-left' },
-      { id: 'bottom-right' }
-    ].map((triggerBox) => {
+    }
+
+    function createCornerTriggerBox(triggerBox, index) {
       let element = container.querySelector(`[data-corner-trigger-box="${triggerBox.id}"]`);
       if (!element) {
         element = document.createElement('div');
@@ -1427,14 +1605,137 @@
 
       return {
         ...triggerBox,
+        maskBit: 1 << index,
         element,
         hitbox: null,
         cornerX: 0,
         cornerY: 0
       };
+    }
+
+    const shapeModes = shuffle([
+      'square', 'square', 'square', 'square',
+      'rectangle', 'rectangle', 'rectangle', 'rectangle'
+    ]);
+
+    const blocks = swatchConfigs.map((config) => {
+      const element = container.querySelector(config.selector);
+      const { width, height } = generateBlockSize(shapeModes.pop());
+
+      element.style.width = `${width}px`;
+      element.style.height = `${height}px`;
+
+      const dvdImg = document.createElement('img');
+      dvdImg.src = 'assets/dvd_logo.png';
+      dvdImg.className = 'swatch-dvd-logo';
+      dvdImg.setAttribute('aria-hidden', 'true');
+      dvdImg.setAttribute('draggable', 'false');
+      dvdImg.style.opacity = '0';
+      element.appendChild(dvdImg);
+
+      return {
+        ...createBlockState(config, element, width, height),
+        dvdImg
+      };
     });
+    const cornerTriggerBoxes = [
+      { id: 'top-left' },
+      { id: 'top-right' },
+      { id: 'bottom-left' },
+      { id: 'bottom-right' }
+    ].map(createCornerTriggerBox);
     const playerEntities = [];
     const playerEntitiesById = new Map();
+    const activePhysicsEntities = [];
+
+    // Keep a stable array for the animation loop to avoid rebuilding
+    // blocks + visible players every frame.
+    function syncActivePhysicsEntities() {
+      activePhysicsEntities.length = 0;
+      for (let index = 0; index < blocks.length; index += 1) {
+        activePhysicsEntities.push(blocks[index]);
+      }
+      for (let index = 0; index < playerEntities.length; index += 1) {
+        const entity = playerEntities[index];
+        if (!entity.hiddenFromScene) {
+          activePhysicsEntities.push(entity);
+        }
+      }
+    }
+
+    // Corner speed lines are short-lived, so pooling avoids repeated DOM
+    // creation/removal during fast corner bounce bursts.
+    function createSpeedLineGroupShell() {
+      const group = document.createElement('div');
+      group.className = 'background-speed-line-group';
+      group._lines = [];
+      group.addEventListener('animationend', () => {
+        if (group.parentNode) {
+          group.remove();
+        }
+        if (speedLineGroupPool.length < maxPooledSpeedLineGroups) {
+          speedLineGroupPool.push(group);
+        }
+      });
+      return group;
+    }
+
+    function hideSpeedLineGroupLines(group) {
+      for (let lineIndex = 0; lineIndex < group._lines.length; lineIndex += 1) {
+        group._lines[lineIndex].style.display = 'none';
+      }
+    }
+
+    function acquireSpeedLineGroup() {
+      const group = speedLineGroupPool.pop() || createSpeedLineGroupShell();
+      group.style.animation = 'none';
+      hideSpeedLineGroupLines(group);
+      return group;
+    }
+
+    function getOrCreateSpeedLine(group, lineIndex) {
+      let line = group._lines[lineIndex];
+      if (!line) {
+        line = document.createElement('div');
+        line.className = 'background-speed-line';
+        line._segments = [];
+        group._lines.push(line);
+        group.appendChild(line);
+      }
+      return line;
+    }
+
+    function ensureSpeedLineSegments(line, count) {
+      const segments = line._segments || (line._segments = []);
+      while (segments.length < count) {
+        const segment = document.createElement('div');
+        segment.className = 'background-speed-line-segment';
+        line.appendChild(segment);
+        segments.push(segment);
+      }
+      return segments;
+    }
+
+    function acquireRippleElement() {
+      return ripplePool.pop() || document.createElement('div');
+    }
+
+    // Ripples are also pooled because interaction bursts can create many of
+    // them in a short window.
+    function releaseRippleElement(element) {
+      if (element.parentNode) {
+        element.remove();
+      }
+      if (ripplePool.length < maxPooledRipples) {
+        ripplePool.push(element);
+      }
+    }
+
+    function restartSpeedLineAnimation(group) {
+      requestAnimationFrame(() => {
+        group.style.animation = '';
+      });
+    }
 
     function spawnCornerSpeedLines(block, now = performance.now()) {
       if (!isCornerOverdriveActive(block, now)) {
@@ -1464,7 +1765,7 @@
       const centerY = block.y + block.height / 2;
       const anchorX = centerX - dirX * sourceInset;
       const anchorY = centerY - dirY * sourceInset;
-      const group = document.createElement('div');
+      const group = acquireSpeedLineGroup();
       const angle = Math.atan2(dirY, dirX) * (180 / Math.PI);
 
       group.className = 'background-speed-line-group';
@@ -1481,9 +1782,10 @@
         '--background-speed-line-glow',
         rgbaString(block.colorRgb, speedLineConfig.color.glowOpacity)
       );
+      perfStats.speedLineSpawns += 1;
 
       for (let index = 0; index < speedLineConfig.lineCount; index += 1) {
-        const line = document.createElement('div');
+        const line = getOrCreateSpeedLine(group, index);
         const yOffset =
           (index - ((speedLineConfig.lineCount - 1) / 2)) * lineSpread;
         const xOffset = -index * lineStagger;
@@ -1492,7 +1794,7 @@
           lineLength - index * lineStagger
         );
 
-        line.className = 'background-speed-line';
+        line.style.display = '';
         line.style.width = `${individualLength}px`;
         line.style.height = `${lineThickness}px`;
         line.style.left = `${xOffset - individualLength}px`;
@@ -1503,26 +1805,32 @@
           lineThickness
         );
         const segmentTravel = Math.max(individualLength - segmentDiameter, 0);
+        const segments = ensureSpeedLineSegments(line, segmentCount);
 
         for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
-          const segment = document.createElement('div');
+          const segment = segments[segmentIndex];
           const progress = segmentCount === 1 ? 0 : segmentIndex / (segmentCount - 1);
           const fadeAmount = 1 - progress * speedLineConfig.segments.tailFadeStrength;
 
-          segment.className = 'background-speed-line-segment';
+          segment.style.display = '';
           segment.style.width = `${segmentDiameter}px`;
           segment.style.height = `${segmentDiameter}px`;
           segment.style.left = `${progress * segmentTravel}px`;
           segment.style.top = `${(lineThickness - segmentDiameter) * 0.5}px`;
           segment.style.opacity = fadeAmount.toFixed(3);
-          line.appendChild(segment);
         }
 
-        group.appendChild(line);
+        for (let segmentIndex = segmentCount; segmentIndex < segments.length; segmentIndex += 1) {
+          segments[segmentIndex].style.display = 'none';
+        }
+      }
+
+      for (let lineIndex = speedLineConfig.lineCount; lineIndex < group._lines.length; lineIndex += 1) {
+        group._lines[lineIndex].style.display = 'none';
       }
 
       speedLineLayer.appendChild(group);
-      group.addEventListener('animationend', () => group.remove(), { once: true });
+      restartSpeedLineAnimation(group);
     }
 
     function applyCornerOverdriveVelocity(block, now = performance.now()) {
@@ -1585,6 +1893,7 @@
     playerEntities.push(prototypePlayerEntity);
     prototypePlayerEntity.hiddenFromScene = true;
     prototypePlayerEntity.element.classList.add('hidden');
+    syncActivePhysicsEntities();
     const backgroundMoopModes = Object.freeze({
       OFF: 'off',
       PREGAME: 'pregame',
@@ -1592,7 +1901,7 @@
     let backgroundMoopMode = backgroundMoopModes.OFF;
 
     function getPhysicsEntities() {
-      return blocks.concat(playerEntities.filter((entity) => !entity.hiddenFromScene));
+      return activePhysicsEntities;
     }
 
     function syncPrototypePlayer(overrides = {}) {
@@ -1604,6 +1913,7 @@
     function showPrototypePlayer(show) {
       prototypePlayerEntity.element.classList.toggle('hidden', !show);
       prototypePlayerEntity.hiddenFromScene = !show;
+      syncActivePhysicsEntities();
     }
 
     function attachPlayerEntity(entity) {
@@ -1612,6 +1922,7 @@
       }
       entity.hiddenFromScene = false;
       entity.element.classList.remove('hidden');
+      syncActivePhysicsEntities();
     }
 
     function syncPlayerEntityToViewport(entity, viewport = getSceneViewport()) {
@@ -1632,6 +1943,7 @@
       entity.y =
         sceneBounds.top +
         clamp(maxY * spreadSceneRatio(entity.yRatio, viewport.spreadScale), 0, maxY);
+      invalidateBlockGeometry(entity);
       bounceOffWalls(entity, sceneBounds);
       renderBlock(entity);
     }
@@ -1642,6 +1954,7 @@
         playerEntities.splice(index, 1);
       }
       entity.element.remove();
+      syncActivePhysicsEntities();
     }
 
     function clearBackgroundPlayers() {
@@ -1812,22 +2125,22 @@
       });
     }
 
-    function getActiveCornerTriggerIds(block) {
-      const activeTriggerIds = new Set();
+    function getActiveCornerTriggerMask(block) {
+      let activeTriggerMask = 0;
       const blockHitbox = getHitbox(block);
 
       cornerTriggerBoxes.forEach((triggerBox) => {
         if (triggerBox.hitbox && hitboxesOverlap(blockHitbox, triggerBox.hitbox)) {
-          activeTriggerIds.add(triggerBox.id);
+          activeTriggerMask |= triggerBox.maskBit;
         }
       });
 
-      return activeTriggerIds;
+      return activeTriggerMask;
     }
 
     function syncCornerTriggerOccupancy() {
       blocks.forEach((block) => {
-        block.activeCornerTriggerIds = getActiveCornerTriggerIds(block);
+        block.activeCornerTriggerMask = getActiveCornerTriggerMask(block);
       });
     }
 
@@ -1851,12 +2164,12 @@
 
     function processCornerTriggerEntries() {
       blocks.forEach((block) => {
-        const nextActiveTriggerIds = getActiveCornerTriggerIds(block);
+        const nextActiveTriggerMask = getActiveCornerTriggerMask(block);
 
         cornerTriggerBoxes.some((triggerBox) => {
           if (
-            !nextActiveTriggerIds.has(triggerBox.id) ||
-            block.activeCornerTriggerIds.has(triggerBox.id)
+            !(nextActiveTriggerMask & triggerBox.maskBit) ||
+            (block.activeCornerTriggerMask & triggerBox.maskBit)
           ) {
             return false;
           }
@@ -1865,7 +2178,7 @@
           return true;
         });
 
-        block.activeCornerTriggerIds = nextActiveTriggerIds;
+        block.activeCornerTriggerMask = nextActiveTriggerMask;
       });
     }
 
@@ -2007,7 +2320,13 @@
         return;
       }
 
-      const bestByLetter = logoLetters.map(() => ({ score: 0, color: null }));
+      while (logoPaintScores.length < logoLetters.length) {
+        logoPaintScores.push({ score: 0, color: null });
+      }
+      for (let index = 0; index < logoLetters.length; index += 1) {
+        logoPaintScores[index].score = 0;
+        logoPaintScores[index].color = null;
+      }
 
       blocks.forEach((block) => {
         const hitbox = getHitbox(block, true);
@@ -2047,15 +2366,16 @@
           }
 
           const score = overlapWidth * overlapHeight;
-          if (score > bestByLetter[index].score) {
-            bestByLetter[index] = { score, color: block.colorRgb };
+          if (score > logoPaintScores[index].score) {
+            logoPaintScores[index].score = score;
+            logoPaintScores[index].color = block.colorRgb;
           }
         });
       });
 
       logoLetters.forEach((letter, index) => {
-        if (bestByLetter[index].color) {
-          letter.lastPaintColor = bestByLetter[index].color;
+        if (logoPaintScores[index].color) {
+          letter.lastPaintColor = logoPaintScores[index].color;
           letter.lastPaintedAt = now;
         }
 
@@ -2103,6 +2423,7 @@
         jiggleConfig.maxTilt
       );
       block.jiggleTime = 0;
+      invalidateBlockVisualGeometry(block);
     }
 
     function updateResponsiveLayout(viewport = getSceneViewport()) {
@@ -2122,6 +2443,7 @@
         block.element.style.borderRadius = `${block.radius}px`;
         block.vx = Math.sign(block.vx || block.baseVx) * Math.abs(block.baseVx * viewport.speedScale);
         block.vy = Math.sign(block.vy || block.baseVy) * Math.abs(block.baseVy * viewport.speedScale);
+        invalidateBlockGeometry(block);
       });
 
       playerEntities.forEach((entity) => {
@@ -2140,23 +2462,30 @@
     }
 
     function spawnRipple(x, y) {
-      const element = document.createElement('div');
+      const element = acquireRippleElement();
       const color = paletteColors[rippleIndex % paletteColors.length];
+      const endRadius = getSceneViewport().rippleEndRadius;
+      const diameter = endRadius * 2;
       rippleIndex += 1;
 
       element.className = 'background-ripple';
       element.style.border = `2px solid ${rgbaString(color, 0.88)}`;
       element.style.boxShadow = `0 0 14px ${rgbaString(color, 0.3)}`;
+      element.style.width = `${diameter}px`;
+      element.style.height = `${diameter}px`;
+      element.style.left = `${x}px`;
+      element.style.top = `${y}px`;
+      element.style.transform = `translate(-50%, -50%) scale(${interactionConfig.rippleStartRadius / endRadius})`;
+      element.style.opacity = '1';
 
       rippleLayer.appendChild(element);
       ripples.push({
         element,
-        x,
-        y,
         bornAt: performance.now(),
         startRadius: interactionConfig.rippleStartRadius,
-        endRadius: getSceneViewport().rippleEndRadius
+        endRadius
       });
+      perfStats.rippleSpawns += 1;
     }
 
     function updateRipples(now) {
@@ -2166,14 +2495,13 @@
         const easedProgress = easeOutCubic(progress);
         const radius = lerp(ripple.startRadius, ripple.endRadius, easedProgress);
         const opacity = (1 - progress) ** 1.8;
+        const scale = radius / ripple.endRadius;
 
-        ripple.element.style.width = `${radius * 2}px`;
-        ripple.element.style.height = `${radius * 2}px`;
-        ripple.element.style.transform = `translate(${ripple.x - radius}px, ${ripple.y - radius}px)`;
+        ripple.element.style.transform = `translate(-50%, -50%) scale(${scale})`;
         ripple.element.style.opacity = opacity.toFixed(3);
 
         if (progress >= 1) {
-          ripple.element.remove();
+          releaseRippleElement(ripple.element);
           ripples.splice(index, 1);
         }
       }
@@ -2190,6 +2518,7 @@
           block.jiggleAngle = 0;
           block.jiggleScaleX = 1;
           block.jiggleScaleY = 1;
+          invalidateBlockVisualGeometry(block);
           return;
         }
 
@@ -2199,6 +2528,7 @@
         block.jiggleScaleX = 1 - block.jiggleCompressionX * amount + block.jiggleCompressionY * amount;
         block.jiggleScaleY = 1 - block.jiggleCompressionY * amount + block.jiggleCompressionX * amount;
         block.jiggleAngle = block.jiggleTiltAmplitude * Math.sin(progress * Math.PI * 2);
+        invalidateBlockVisualGeometry(block);
       });
     }
 
@@ -2242,60 +2572,170 @@
       spawnRipple(event.clientX, event.clientY);
     }
 
-    let lastTime = performance.now();
+    // Perf sampling is kept alongside the frame phases so the hot loop stays
+    // easy to profile without scattering timers throughout the file.
+    function recordFrameSection(sectionName, sectionStart) {
+      const sectionEnd = performance.now();
+      perfStats.sections[sectionName] += sectionEnd - sectionStart;
+      return sectionEnd;
+    }
 
-    function animate(now) {
-      const delta = Math.min((now - lastTime) / 1000, 0.033);
-      lastTime = now;
-
-      const viewport = getSceneViewport();
-      const sceneBounds = viewport.bounds;
-      const physicsEntities = getPhysicsEntities();
-
-      // Integrate positions
+    function integratePhysicsEntities(physicsEntities, delta) {
       physicsEntities.forEach((block) => {
         block.x += block.vx * delta;
         block.y += block.vy * delta;
         block.angle += block.spin * delta;
         block.spin *= spinConfig.decayPerSecond ** delta;
+        invalidateBlockGeometry(block);
       });
+    }
 
-      // Block-block collision — two passes: first applies impulse + jiggle,
-      // second cleans up any residual overlap without re-triggering jiggle
+    function resolvePhysicsEntityCollisions(physicsEntities) {
       for (let pass = 0; pass < 2; pass += 1) {
         for (let i = 0; i < physicsEntities.length; i += 1) {
           for (let j = i + 1; j < physicsEntities.length; j += 1) {
-            const hit = resolveCollision(physicsEntities[i], physicsEntities[j]);
-            if (hit && hit.impulse > 0.5 && pass === 0) {
-              applyCollisionJiggle(physicsEntities[i], -hit.normalX, -hit.normalY, hit.impulse);
-              applyCollisionJiggle(physicsEntities[j], hit.normalX, hit.normalY, hit.impulse);
+            const entityA = physicsEntities[i];
+            const entityB = physicsEntities[j];
+            const hitboxA = getHitbox(entityA);
+            const hitboxB = getHitbox(entityB);
+
+            perfStats.collisionPairs += 1;
+            if (!axisAlignedHitboxesOverlap(hitboxA, hitboxB)) {
+              perfStats.broadPhaseRejected += 1;
+              continue;
+            }
+
+            perfStats.narrowPhaseTests += 1;
+            const hit = resolveCollision(entityA, entityB, hitboxA, hitboxB);
+            if (!hit || pass !== 0) {
+              continue;
+            }
+
+            perfStats.collisionHits += 1;
+            if (hit.impulse > 0.5) {
+              applyCollisionJiggle(entityA, -hit.normalX, -hit.normalY, hit.impulse);
+              applyCollisionJiggle(entityB, hit.normalX, hit.normalY, hit.impulse);
             }
           }
         }
       }
+    }
 
-      // Wall bounce — single pass after collision resolution, with jiggle + corner ripple
+    function handlePhysicsEntityWallBounces(physicsEntities, sceneBounds) {
       physicsEntities.forEach((block) => {
         const wallHit = bounceOffWalls(block, sceneBounds);
-        if (wallHit) {
-          const speed = Math.hypot(block.vx, block.vy);
-          applyCollisionJiggle(block, wallHit.normalX, wallHit.normalY, speed * 0.4);
+        if (!wallHit) {
+          return;
         }
+
+        const speed = Math.hypot(block.vx, block.vy);
+        applyCollisionJiggle(block, wallHit.normalX, wallHit.normalY, speed * 0.4);
       });
       processCornerTriggerEntries();
+    }
 
-      // Update jiggle animation, clamp speeds, render
+    function updateAndRenderPhysicsEntities(physicsEntities, delta, now) {
       updateCollisionJiggle(delta);
       updateCornerOverdriveEffects(now);
       physicsEntities.forEach((block) => {
         keepMomentum(block);
         renderBlock(block);
       });
+    }
 
-      updateLogoPaint(now);
-      updateRipples(now);
+    function recordCompletedFrame(frameStart, physicsEntityCount) {
+      perfStats.frames += 1;
+      perfStats.lastEntityCount = physicsEntityCount;
+      perfStats.lastFrameMs = performance.now() - frameStart;
+      perfStats.frameTimeTotal += perfStats.lastFrameMs;
+      perfStats.maxFrameMs = Math.max(perfStats.maxFrameMs, perfStats.lastFrameMs);
+      animationDebug.frames += 1;
+    }
 
-      requestAnimationFrame(animate);
+    let lastTime = performance.now();
+    let animationFrameId = 0;
+    let animationActive = false;
+    const animationDebug = {
+      starts: 0,
+      stops: 0,
+      frames: 0,
+      lastError: null
+    };
+    window.backgroundBlocksDebug = animationDebug;
+
+    // Animation startup stays explicit so initial motion is reliable and any
+    // runtime failure can stop the loop cleanly.
+    function requestNextAnimationFrame() {
+      if (!animationActive) {
+        return;
+      }
+      animationFrameId = requestAnimationFrame(animate);
+    }
+
+    function stopAnimationLoop() {
+      animationActive = false;
+      animationDebug.stops += 1;
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = 0;
+      }
+    }
+
+    function startAnimationLoop() {
+      if (animationActive) {
+        return;
+      }
+
+      animationDebug.starts += 1;
+      animationActive = true;
+      animationFrameId = requestAnimationFrame((now) => {
+        lastTime = now;
+        animate(now);
+      });
+    }
+
+    function animate(now) {
+      if (!animationActive) {
+        return;
+      }
+
+      try {
+        const frameStart = performance.now();
+        const delta = Math.min((now - lastTime) / 1000, 0.033);
+        lastTime = now;
+
+        const viewport = getSceneViewport();
+        const sceneBounds = viewport.bounds;
+        const physicsEntities = getPhysicsEntities();
+        let sectionStart = performance.now();
+
+        integratePhysicsEntities(physicsEntities, delta);
+        sectionStart = recordFrameSection('integrate', sectionStart);
+
+        resolvePhysicsEntityCollisions(physicsEntities);
+        sectionStart = recordFrameSection('collisions', sectionStart);
+
+        handlePhysicsEntityWallBounces(physicsEntities, sceneBounds);
+        sectionStart = recordFrameSection('walls', sectionStart);
+
+        updateAndRenderPhysicsEntities(physicsEntities, delta, now);
+        sectionStart = recordFrameSection('jiggleAndRender', sectionStart);
+
+        updateLogoPaint(now);
+        sectionStart = recordFrameSection('logo', sectionStart);
+
+        updateRipples(now);
+        recordFrameSection('ripples', sectionStart);
+
+        recordCompletedFrame(frameStart, physicsEntities.length);
+
+        requestNextAnimationFrame();
+      } catch (error) {
+        animationDebug.lastError = error?.stack || error?.message || String(error);
+        console.error('[background-blocks] animate failed', error);
+        stopAnimationLoop();
+        throw error;
+      }
     }
 
     document.addEventListener('focusin', (event) => {
@@ -2356,10 +2796,7 @@
     stableViewportSnapshot = getViewportSnapshot();
     viewportState = measureSceneViewport(stableViewportSnapshot);
     runLayoutRefresh();
-    requestAnimationFrame((now) => {
-      lastTime = now;
-      animate(now);
-    });
+    startAnimationLoop();
 
     window.addEventListener('background-prototype-player-change', (event) => {
       syncPrototypePlayer(event.detail || {});

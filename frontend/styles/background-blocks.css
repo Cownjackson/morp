@@ -35,7 +35,10 @@
   opacity: 0;
   mix-blend-mode: screen;
   filter: blur(8px);
-  will-change: transform, width, height, opacity;
+  /* JS updates scale/opacity only so ripple growth stays on the compositor path. */
+  transform: translate(-50%, -50%) scale(1);
+  transform-origin: center center;
+  will-change: transform, opacity;
 }
 
 .background-interaction-layer {
