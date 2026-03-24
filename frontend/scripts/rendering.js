@@ -106,9 +106,13 @@ function renderPlayers(containerId, { avatarSize = 80 } = {}) {
     wrap.style.left = x + 'px';
     wrap.style.top  = y + 'px';
 
-    // Speech bubble
-    const bubble = state.speechBubbles[p.id];
-    if (bubble !== undefined) {
+    // Hint thumbnail (hint phase) or speech bubble (endgame ghost hints)
+    const thumbnail = state.hintThumbnails[p.id];
+    const bubble    = state.speechBubbles[p.id];
+    if (thumbnail !== undefined) {
+      const tEl = _buildHintThumbnailEl(thumbnail);
+      wrap.appendChild(tEl);
+    } else if (bubble !== undefined) {
       const bel = document.createElement('div');
       const dirClass = bubbleDir !== 'above' ? ` bubble-${bubbleDir}` : '';
       if (bubble.skipped) {
@@ -336,14 +340,33 @@ export function renderChat() {
 }
 
 // ─── Hint phase ───────────────────────────────────────────────────────────────
+export function resetHintThumbnailAnimations() { _animatedThumbnails.clear(); }
+
+export function openDrawPopup() {
+  document.getElementById('draw-popup').classList.remove('hidden');
+  document.getElementById('draw-popup-pill').classList.add('hidden');
+}
+export function minimizeDrawPopup() {
+  document.getElementById('draw-popup').classList.add('hidden');
+  document.getElementById('draw-popup-pill').classList.remove('hidden');
+}
+export function hideDrawPopup() {
+  document.getElementById('draw-popup').classList.add('hidden');
+  document.getElementById('draw-popup-pill').classList.add('hidden');
+}
+
 export function checkYourTurn() {
   const currentPid = state.turnOrder[state.hints.length];
   const isMyTurn   = currentPid === state.playerId;
   document.getElementById('your-turn-block').classList.toggle('hidden', !isMyTurn);
   if (isMyTurn) {
     document.getElementById('hint-text-block').classList.toggle('hidden', state.drawingHints);
-    document.getElementById('hint-drawing-block').classList.toggle('hidden', !state.drawingHints);
-    if (state.drawingHints) clearCanvas('hint-canvas');
+    if (state.drawingHints) {
+      clearCanvas('hint-canvas');
+      openDrawPopup();
+    }
+  } else {
+    hideDrawPopup();
   }
   const indicator = document.getElementById('turn-indicator');
   if (!currentPid) {
@@ -400,6 +423,175 @@ export function disableAvatarVoting() {
 
 // ─── Vote arrows ──────────────────────────────────────────────────────────────
 const _POINTER_ASSET = 'assets/pointer.png';
+
+// ─── Hint display system ──────────────────────────────────────────────────────
+
+const _HINT_FLY_MS    = 450;   // ms for fly-to-centerpiece transition
+const _HINT_RETURN_MS = 380;   // ms for fly-back-to-thumbnail transition
+
+let _inflightHint = null;       // { el, player_id, hintData } while hint is at centerpiece
+let _pendingFlyCallback = null; // queued when next_turn arrives before showHintAtCenterpiece arms _inflightHint
+const _animatedThumbnails = new Set();  // player IDs whose thumbnail has already popped in
+
+// Collapse any expanded hint thumbnail when clicking outside
+document.addEventListener('click', () => {
+  document.querySelectorAll('.hint-thumbnail.expanded').forEach(t => t.classList.remove('expanded'));
+});
+
+function _hintCenterpiecePos() {
+  return { x: window.innerWidth / 2, y: window.innerHeight * 0.5 };
+}
+
+function _buildHintCardEl(hint) {
+  const el = document.createElement('div');
+  el.className = 'hint-card';
+  if (!hint.text && !hint.is_drawing) {
+    el.classList.add('hint-skipped');
+    el.textContent = '(skipped)';
+  } else if (hint.is_drawing && hint.drawing_data) {
+    el.classList.add('hint-drawing');
+    const cv = document.createElement('canvas');
+    cv.width = 360; cv.height = 232;
+    renderStrokesToCanvas(cv, hint.drawing_data);
+    el.appendChild(cv);
+  } else {
+    el.classList.add('hint-text');
+    el.textContent = hint.text;
+  }
+  return el;
+}
+
+function _buildHintThumbnailEl(hint) {
+  const el = document.createElement('div');
+  el.className = 'hint-thumbnail';
+  if (!_animatedThumbnails.has(hint.player_id)) {
+    _animatedThumbnails.add(hint.player_id);
+    el.style.animation = 'hint-thumb-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both';
+    el.addEventListener('animationend', () => { el.style.animation = ''; }, { once: true });
+  }
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const wasExpanded = el.classList.contains('expanded');
+    document.querySelectorAll('.hint-thumbnail.expanded').forEach(t => t.classList.remove('expanded'));
+    if (!wasExpanded) el.classList.add('expanded');
+  });
+  if (!hint.text && !hint.is_drawing) {
+    el.classList.add('hint-skipped');
+    el.textContent = '(skip)';
+  } else if (hint.is_drawing && hint.drawing_data) {
+    el.classList.add('hint-thumbnail-drawing');
+    const cv = document.createElement('canvas');
+    cv.width = 360; cv.height = 232;
+    renderStrokesToCanvas(cv, hint.drawing_data);
+    el.appendChild(cv);
+  } else {
+    el.textContent = hint.text;
+  }
+  return el;
+}
+
+export function showHintAtCenterpiece(msg, onPhaseReady) {
+  const layer = document.getElementById('interaction-anim-layer');
+  if (!layer) { if (onPhaseReady) onPhaseReady(); return; }
+  const from = _avatarCenterViewport(msg.player_id);
+  if (!from) { if (onPhaseReady) onPhaseReady(); return; }
+
+  const el = _buildHintCardEl(msg);
+  el.style.cssText = `position:absolute; left:${from.x}px; top:${from.y}px;
+    transform:translate(-50%,-50%) scale(0.1); opacity:0; pointer-events:none;`;
+  layer.appendChild(el);
+
+  const cp = _hintCenterpiecePos();
+  const displayDuration = msg.display_duration || 5000;
+
+  // Fly to centerpiece
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      el.style.transition = `all ${_HINT_FLY_MS}ms cubic-bezier(0.34, 1.56, 0.64, 1)`;
+      el.style.left      = cp.x + 'px';
+      el.style.top       = cp.y + 'px';
+      el.style.transform = 'translate(-50%,-50%) scale(1)';
+      el.style.opacity   = '1';
+    });
+  });
+
+  // After fly-in + hold: arm next_turn callback and signal phase_ready
+  setTimeout(() => {
+    _inflightHint = {
+      el,
+      player_id: msg.player_id,
+      hintData: { player_id: msg.player_id, text: msg.text || '', is_drawing: msg.is_drawing || false, drawing_data: msg.drawing_data || null },
+    };
+    if (onPhaseReady) onPhaseReady();
+
+    // If next_turn arrived before we finished arming, drain the queued fly-back now
+    if (_pendingFlyCallback) {
+      const cb = _pendingFlyCallback;
+      _pendingFlyCallback = null;
+      flyHintToThumbnail(cb);
+    }
+
+    // Fallback: if next_turn never arrives, clean up after 3s
+    setTimeout(() => {
+      if (_inflightHint && _inflightHint.el === el) {
+        const { player_id: pid, hintData: hd } = _inflightHint;
+        el.remove();
+        _inflightHint = null;
+        state.hintThumbnails[pid] = hd;
+        renderInGamePlayerRow();
+      }
+    }, 3000);
+  }, _HINT_FLY_MS + displayDuration);
+}
+
+export function flyHintToThumbnail(onDone) {
+  if (!_inflightHint) {
+    if (onDone) onDone();
+    return;
+  }
+  const { el, player_id, hintData } = _inflightHint;
+  _inflightHint = null;
+
+  // Target the top edge of the avatar-wrap so the card lands where the thumbnail will appear
+  const orbit = document.getElementById('game-player-row');
+  const wrap  = orbit?.querySelector(`[data-player-id="${player_id}"]`);
+  if (!wrap) {
+    el.remove();
+    state.hintThumbnails[player_id] = hintData;
+    renderInGamePlayerRow();
+    if (onDone) onDone();
+    return;
+  }
+
+  const r   = wrap.getBoundingClientRect();
+  const tx  = r.left + r.width / 2;
+  const ty  = r.top;
+
+  el.style.transition = `all ${_HINT_RETURN_MS}ms cubic-bezier(0.4, 0, 0.6, 1)`;
+  el.style.left       = tx + 'px';
+  el.style.top        = ty + 'px';
+  el.style.transform  = 'translate(-50%,-100%) scale(0.08)';
+  el.style.opacity    = '0';
+
+  setTimeout(() => {
+    el.remove();
+    state.hintThumbnails[player_id] = hintData;
+    renderInGamePlayerRow();
+    if (onDone) onDone();
+  }, _HINT_RETURN_MS);
+}
+
+/**
+ * Like flyHintToThumbnail but safe to call before showHintAtCenterpiece has armed _inflightHint.
+ * If _inflightHint isn't set yet, queues the callback; showHintAtCenterpiece will drain it.
+ */
+export function flyHintToThumbnailWhenReady(onDone) {
+  if (_inflightHint) {
+    flyHintToThumbnail(onDone);
+  } else {
+    _pendingFlyCallback = onDone;
+  }
+}
 
 /**
  * Get avatar center in viewport coordinates.
