@@ -24,6 +24,7 @@ from backend.game.board import validate_custom_board
 from backend.game.engine import GameEngine
 from backend.models.game import GamePhase
 from backend.models.player import Role
+from backend.game.voting import build_reveal_order
 
 app = FastAPI()
 
@@ -44,11 +45,37 @@ manager = ConnectionManager()
 _engines: dict[str, GameEngine] = {}
 _timer_tasks: dict[str, asyncio.Task] = {}  # lobby_id -> active timer task
 _interaction_times: dict[str, float] = {}   # "lobby_id:player_id" -> last interaction timestamp
+_phase_gates: dict[str, asyncio.Event] = {}  # lobby_id -> event for animation-gated transitions
 
 _INTERACTION_COOLDOWN = 1.5
 
 _TIMER_SECONDS = 30  # duration for morp-guess and endgame-guess timers
 _TIMER_GRACE_SECONDS = 2  # extra buffer before server auto-submits, gives client time to submit first
+_PHASE_GATE_TIMEOUT = 30  # generous fallback if no client signals phase_ready
+_HINT_DISPLAY_MS = 5000  # how long the frontend holds a hint at the centerpiece before signaling phase_ready
+
+
+async def _wait_for_phase_ready(lobby_id: str):
+    """Block until any client sends phase_ready, or timeout.
+
+    Currently proceeds on the first signal. Consider waiting for all
+    connected clients if animation pacing feels uneven across players.
+    """
+    event = asyncio.Event()
+    _phase_gates[lobby_id] = event
+    try:
+        await asyncio.wait_for(event.wait(), timeout=_PHASE_GATE_TIMEOUT)
+    except asyncio.TimeoutError:
+        pass
+    finally:
+        _phase_gates.pop(lobby_id, None)
+
+
+def _signal_phase_ready(lobby_id: str):
+    """Called when a client sends phase_ready."""
+    event = _phase_gates.get(lobby_id)
+    if event:
+        event.set()
 
 
 @app.on_event("startup")
@@ -71,8 +98,8 @@ async def _setup_shutdown_handler():
     try:
         loop.add_signal_handler(signal.SIGTERM, _make_handler(signal.SIGTERM))
         loop.add_signal_handler(signal.SIGINT, _make_handler(signal.SIGINT))
-    except NotImplementedError:
-        pass  # Windows does not support add_signal_handler; graceful shutdown is Linux/Docker only
+    except (NotImplementedError, RuntimeError):
+        pass  # Windows / non-main-thread (e.g. pytest) does not support add_signal_handler
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -205,6 +232,15 @@ async def kick_player(lobby_id: str, body: KickRequest):
 
     if phase_before == GamePhase.HINT and phase_after == GamePhase.VOTING:
         await _broadcast_voting_open(lobby_id, engine)
+    elif phase_before == GamePhase.HINT and phase_after == GamePhase.HINT and rs:
+        next_pid = rs.current_player_id()
+        if next_pid:
+            await manager.broadcast(lobby_id, {
+                "type": "next_turn",
+                "player_id": next_pid,
+                "timers_enabled": engine.lobby.config.timers_enabled,
+                "hint_timer_duration": engine.lobby.config.hint_timer_duration,
+            })
     elif phase_before == GamePhase.VOTING and phase_after == GamePhase.ACCUSATION:
         await _handle_accusation(lobby_id, engine)
 
@@ -358,6 +394,15 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
 
         if phase_before == GamePhase.HINT and phase_after == GamePhase.VOTING:
             await _broadcast_voting_open(lobby_id, engine)
+        elif phase_before == GamePhase.HINT and phase_after == GamePhase.HINT and rs:
+            next_pid = rs.current_player_id()
+            if next_pid:
+                await manager.broadcast(lobby_id, {
+                    "type": "next_turn",
+                    "player_id": next_pid,
+                    "timers_enabled": engine.lobby.config.timers_enabled,
+                    "hint_timer_duration": engine.lobby.config.hint_timer_duration,
+                })
         elif phase_before == GamePhase.VOTING and phase_after == GamePhase.ACCUSATION:
             await _handle_accusation(lobby_id, engine)
         elif phase_before == GamePhase.ENDGAME_GHOST_HINTS and phase_after == GamePhase.ENDGAME_GUESSING:
@@ -421,6 +466,7 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
         if msg_type == "start_game":
             engine.lobby.config.timers_enabled = data.get("timers_enabled", True)
             engine.lobby.config.drawing_hints = data.get("drawing_hints", False)
+            engine.lobby.config.hint_timer_duration = int(data.get("hint_timer_duration", 60))
             await _handle_start_game(lobby_id, player_id, engine)
 
         elif msg_type == "next_round":
@@ -444,16 +490,39 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
             else:
                 raise ValueError("Not waiting to start a new round.")
 
+        elif msg_type == "hint_turn_ready":
+            # Player signals their "Your turn" UI is visible — now safe to start the hint timer
+            if (engine.state.phase == GamePhase.HINT
+                    and engine.lobby.config.timers_enabled):
+                rs = engine.state.round_state
+                if rs and rs.current_player_id() == player_id:
+                    _schedule_hint_timeout(lobby_id, engine)
+
         elif msg_type == "submit_hint":
+            _cancel_timer(lobby_id)
             engine.submit_hint(
                 player_id,
                 text=data.get("text", ""),
                 drawing_data=data.get("drawing_data"),
             )
-            stored = engine.state.round_state.hints[-1]
-            await manager.broadcast(lobby_id, {"type": "hint_received", **_hint_payload(stored)})
+            rs = engine.state.round_state
+            stored = rs.hints[-1]
+            await manager.broadcast(lobby_id, {"type": "hint_received", "display_duration": _HINT_DISPLAY_MS, **_hint_payload(stored)})
+
+            # Wait for frontend hint animation to finish before advancing
+            await _wait_for_phase_ready(lobby_id)
+
             if engine.state.phase == GamePhase.VOTING:
                 await _broadcast_voting_open(lobby_id, engine)
+            else:
+                next_pid = rs.current_player_id()
+                if next_pid:
+                    await manager.broadcast(lobby_id, {
+                        "type": "next_turn",
+                        "player_id": next_pid,
+                        "timers_enabled": engine.lobby.config.timers_enabled,
+                        "hint_timer_duration": engine.lobby.config.hint_timer_duration,
+                    })
 
         elif msg_type == "submit_votes":
             engine.submit_votes(player_id, data.get("accused_ids", []))
@@ -523,6 +592,9 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
                     "text": text,
                 })
 
+        elif msg_type == "phase_ready":
+            _signal_phase_ready(lobby_id)
+
         elif msg_type == "reset_game":
             if player_id != engine.lobby.host_id:
                 raise ValueError("Only the host can reset the game.")
@@ -579,6 +651,9 @@ async def _handle_start_game(lobby_id: str, player_id: str, engine: GameEngine):
 async def _broadcast_round_start(lobby_id: str, engine: GameEngine, seed: int):
     rs = engine.state.round_state
     participants = [p for p in engine.lobby.active_players() if p.role is not None]
+    timers_enabled = engine.lobby.config.timers_enabled
+    hint_timer_duration = engine.lobby.config.hint_timer_duration
+
     for player in participants:
         role_msg: dict = {"type": "role_assigned", "role": player.role.value}
         if player.role == Role.MORP:
@@ -592,6 +667,8 @@ async def _broadcast_round_start(lobby_id: str, engine: GameEngine, seed: int):
             "board_hint": rs.board.board_hint,
             "words": rs.board.words,
             "turn_order": rs.turn_order,
+            "hint_timer_duration": hint_timer_duration,
+            "timers_enabled": timers_enabled,
         }
         if player.role == Role.SAFE:
             round_msg["target_word"] = rs.target_word
@@ -605,6 +682,8 @@ async def _broadcast_round_start(lobby_id: str, engine: GameEngine, seed: int):
         "words": rs.board.words,
         "turn_order": rs.turn_order,
         "target_word": rs.target_word,
+        "hint_timer_duration": hint_timer_duration,
+        "timers_enabled": timers_enabled,
     }
     for player in engine.lobby.ghost_players():
         if player.is_connected:
@@ -624,13 +703,25 @@ async def _handle_accusation(lobby_id: str, engine: GameEngine):
     rs = engine.state.round_state
     player_roles = {p.id: p.role.value for p in engine.lobby.players.values() if p.role is not None}
 
+    reveal_order = build_reveal_order(
+        [{"id": p.id, "role": p.role.value if p.role else None, "is_ghost": p.is_ghost}
+         for p in engine.lobby.players.values()],
+        rs.accused_ids,
+    )
+
     await manager.broadcast(lobby_id, {
         "type": "accusation_result",
         "accused_ids": rs.accused_ids,
         "roles_revealed": {pid: player_roles.get(pid, "unknown") for pid in rs.accused_ids},
+        "reveal_order": reveal_order,
+        "votes": rs.votes,
     })
 
     result = engine.resolve_accusation()
+
+    # Wait for a client to signal that the reveal animation has finished
+    if reveal_order:
+        await _wait_for_phase_ready(lobby_id)
 
     if result["morp_must_guess"]:
         deadline = time.time() + _TIMER_SECONDS
@@ -782,6 +873,49 @@ def _schedule_morp_guess_timeout(
                 pass
         await manager.broadcast(lobby_id, _lobby_update(engine))
         await _check_round_end(lobby_id, engine)
+
+    _cancel_timer(lobby_id)
+    _timer_tasks[lobby_id] = asyncio.create_task(_run())
+
+
+def _schedule_hint_timeout(lobby_id: str, engine: GameEngine) -> None:
+    """Start a countdown for the current hint-phase player; auto-skips on expiry."""
+    hint_duration = engine.lobby.config.hint_timer_duration
+
+    async def _run():
+        await asyncio.sleep(hint_duration + _TIMER_GRACE_SECONDS)
+        if engine.state.phase != GamePhase.HINT:
+            return
+        rs = engine.state.round_state
+        if rs is None:
+            return
+        current_pid = rs.current_player_id()
+        if current_pid is None:
+            return
+        # Pop self before any awaits to avoid cancel races
+        _timer_tasks.pop(lobby_id, None)
+        try:
+            engine.submit_hint(current_pid, text="")
+        except ValueError:
+            return
+        stored = rs.hints[-1]
+        await manager.broadcast(lobby_id, {
+            "type": "hint_received",
+            "display_duration": _HINT_DISPLAY_MS,
+            **_hint_payload(stored),
+        })
+        await _wait_for_phase_ready(lobby_id)
+        if engine.state.phase == GamePhase.VOTING:
+            await _broadcast_voting_open(lobby_id, engine)
+        else:
+            next_pid = rs.current_player_id()
+            if next_pid:
+                await manager.broadcast(lobby_id, {
+                    "type": "next_turn",
+                    "player_id": next_pid,
+                    "timers_enabled": True,
+                    "hint_timer_duration": hint_duration,
+                })
 
     _cancel_timer(lobby_id)
     _timer_tasks[lobby_id] = asyncio.create_task(_run())

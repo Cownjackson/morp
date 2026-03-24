@@ -106,9 +106,13 @@ function renderPlayers(containerId, { avatarSize = 80 } = {}) {
     wrap.style.left = x + 'px';
     wrap.style.top  = y + 'px';
 
-    // Speech bubble
-    const bubble = state.speechBubbles[p.id];
-    if (bubble !== undefined) {
+    // Hint thumbnail (hint phase) or speech bubble (endgame ghost hints)
+    const thumbnail = state.hintThumbnails[p.id];
+    const bubble    = state.speechBubbles[p.id];
+    if (thumbnail !== undefined) {
+      const tEl = _buildHintThumbnailEl(thumbnail);
+      wrap.appendChild(tEl);
+    } else if (bubble !== undefined) {
       const bel = document.createElement('div');
       const dirClass = bubbleDir !== 'above' ? ` bubble-${bubbleDir}` : '';
       if (bubble.skipped) {
@@ -336,14 +340,33 @@ export function renderChat() {
 }
 
 // ─── Hint phase ───────────────────────────────────────────────────────────────
+export function resetHintThumbnailAnimations() { _animatedThumbnails.clear(); }
+
+export function openDrawPopup() {
+  document.getElementById('draw-popup').classList.remove('hidden');
+  document.getElementById('draw-popup-pill').classList.add('hidden');
+}
+export function minimizeDrawPopup() {
+  document.getElementById('draw-popup').classList.add('hidden');
+  document.getElementById('draw-popup-pill').classList.remove('hidden');
+}
+export function hideDrawPopup() {
+  document.getElementById('draw-popup').classList.add('hidden');
+  document.getElementById('draw-popup-pill').classList.add('hidden');
+}
+
 export function checkYourTurn() {
   const currentPid = state.turnOrder[state.hints.length];
   const isMyTurn   = currentPid === state.playerId;
   document.getElementById('your-turn-block').classList.toggle('hidden', !isMyTurn);
   if (isMyTurn) {
     document.getElementById('hint-text-block').classList.toggle('hidden', state.drawingHints);
-    document.getElementById('hint-drawing-block').classList.toggle('hidden', !state.drawingHints);
-    if (state.drawingHints) clearCanvas('hint-canvas');
+    if (state.drawingHints) {
+      clearCanvas('hint-canvas');
+      openDrawPopup();
+    }
+  } else {
+    hideDrawPopup();
   }
   const indicator = document.getElementById('turn-indicator');
   if (!currentPid) {
@@ -398,22 +421,395 @@ export function disableAvatarVoting() {
   renderInGamePlayerRow();
 }
 
-// ─── Accusation ───────────────────────────────────────────────────────────────
-export function renderAccusation(msg) {
-  const lines = msg.accused_ids.map(id => {
-    const role = msg.roles_revealed[id];
-    return `<div style="display:flex;gap:8px;align-items:center;margin:4px 0">
-      <div class="moop-avatar" id="acc-moop-${id}" style="width:40px;height:40px;flex-shrink:0"></div>
-      <strong>${playerName(id)}</strong>
-      <span class="tag ${role}">${role.toUpperCase()}</span>
-    </div>`;
+// ─── Vote arrows ──────────────────────────────────────────────────────────────
+const _POINTER_ASSET = 'assets/pointer.png';
+
+// ─── Hint display system ──────────────────────────────────────────────────────
+
+const _HINT_FLY_MS    = 450;   // ms for fly-to-centerpiece transition
+const _HINT_RETURN_MS = 380;   // ms for fly-back-to-thumbnail transition
+
+let _inflightHint = null;       // { el, player_id, hintData } while hint is at centerpiece
+let _pendingFlyCallback = null; // queued when next_turn arrives before showHintAtCenterpiece arms _inflightHint
+const _animatedThumbnails = new Set();  // player IDs whose thumbnail has already popped in
+
+// Collapse any expanded hint thumbnail when clicking outside
+document.addEventListener('click', () => {
+  document.querySelectorAll('.hint-thumbnail.expanded').forEach(t => t.classList.remove('expanded'));
+});
+
+function _hintCenterpiecePos() {
+  return { x: window.innerWidth / 2, y: window.innerHeight * 0.5 };
+}
+
+function _buildHintCardEl(hint) {
+  const el = document.createElement('div');
+  el.className = 'hint-card';
+  if (!hint.text && !hint.is_drawing) {
+    el.classList.add('hint-skipped');
+    el.textContent = '(skipped)';
+  } else if (hint.is_drawing && hint.drawing_data) {
+    el.classList.add('hint-drawing');
+    const cv = document.createElement('canvas');
+    cv.width = 360; cv.height = 232;
+    renderStrokesToCanvas(cv, hint.drawing_data);
+    el.appendChild(cv);
+  } else {
+    el.classList.add('hint-text');
+    el.textContent = hint.text;
+  }
+  return el;
+}
+
+function _buildHintThumbnailEl(hint) {
+  const el = document.createElement('div');
+  el.className = 'hint-thumbnail';
+  if (!_animatedThumbnails.has(hint.player_id)) {
+    _animatedThumbnails.add(hint.player_id);
+    el.style.animation = 'hint-thumb-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both';
+    el.addEventListener('animationend', () => { el.style.animation = ''; }, { once: true });
+  }
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const wasExpanded = el.classList.contains('expanded');
+    document.querySelectorAll('.hint-thumbnail.expanded').forEach(t => t.classList.remove('expanded'));
+    if (!wasExpanded) el.classList.add('expanded');
   });
-  document.getElementById('accusation-content').innerHTML =
-    `<p style="color:#705060;font-size:0.85em;margin-bottom:6px">Accused:</p>${lines.join('')}`;
-  msg.accused_ids.forEach(id => {
-    const el = document.getElementById(`acc-moop-${id}`);
-    if (el && state.players[id]?.cosmetics) renderMoopInto(el, state.players[id].cosmetics);
+  if (!hint.text && !hint.is_drawing) {
+    el.classList.add('hint-skipped');
+    el.textContent = '(skip)';
+  } else if (hint.is_drawing && hint.drawing_data) {
+    el.classList.add('hint-thumbnail-drawing');
+    const cv = document.createElement('canvas');
+    cv.width = 360; cv.height = 232;
+    renderStrokesToCanvas(cv, hint.drawing_data);
+    el.appendChild(cv);
+  } else {
+    el.textContent = hint.text;
+  }
+  return el;
+}
+
+export function showHintAtCenterpiece(msg, onPhaseReady) {
+  const layer = document.getElementById('interaction-anim-layer');
+  if (!layer) { if (onPhaseReady) onPhaseReady(); return; }
+  const from = _avatarCenterViewport(msg.player_id);
+  if (!from) { if (onPhaseReady) onPhaseReady(); return; }
+
+  const el = _buildHintCardEl(msg);
+  el.style.cssText = `position:absolute; left:${from.x}px; top:${from.y}px;
+    transform:translate(-50%,-50%) scale(0.1); opacity:0; pointer-events:none;`;
+  layer.appendChild(el);
+
+  const cp = _hintCenterpiecePos();
+  const displayDuration = msg.display_duration || 5000;
+
+  // Fly to centerpiece
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      el.style.transition = `all ${_HINT_FLY_MS}ms cubic-bezier(0.34, 1.56, 0.64, 1)`;
+      el.style.left      = cp.x + 'px';
+      el.style.top       = cp.y + 'px';
+      el.style.transform = 'translate(-50%,-50%) scale(1)';
+      el.style.opacity   = '1';
+    });
   });
+
+  // After fly-in + hold: arm next_turn callback and signal phase_ready
+  setTimeout(() => {
+    _inflightHint = {
+      el,
+      player_id: msg.player_id,
+      hintData: { player_id: msg.player_id, text: msg.text || '', is_drawing: msg.is_drawing || false, drawing_data: msg.drawing_data || null },
+    };
+    if (onPhaseReady) onPhaseReady();
+
+    // If next_turn arrived before we finished arming, drain the queued fly-back now
+    if (_pendingFlyCallback) {
+      const cb = _pendingFlyCallback;
+      _pendingFlyCallback = null;
+      flyHintToThumbnail(cb);
+    }
+
+    // Fallback: if next_turn never arrives, clean up after 3s
+    setTimeout(() => {
+      if (_inflightHint && _inflightHint.el === el) {
+        const { player_id: pid, hintData: hd } = _inflightHint;
+        el.remove();
+        _inflightHint = null;
+        state.hintThumbnails[pid] = hd;
+        renderInGamePlayerRow();
+      }
+    }, 3000);
+  }, _HINT_FLY_MS + displayDuration);
+}
+
+export function flyHintToThumbnail(onDone) {
+  if (!_inflightHint) {
+    if (onDone) onDone();
+    return;
+  }
+  const { el, player_id, hintData } = _inflightHint;
+  _inflightHint = null;
+
+  // Target the top edge of the avatar-wrap so the card lands where the thumbnail will appear
+  const orbit = document.getElementById('game-player-row');
+  const wrap  = orbit?.querySelector(`[data-player-id="${player_id}"]`);
+  if (!wrap) {
+    el.remove();
+    state.hintThumbnails[player_id] = hintData;
+    renderInGamePlayerRow();
+    if (onDone) onDone();
+    return;
+  }
+
+  const r   = wrap.getBoundingClientRect();
+  const tx  = r.left + r.width / 2;
+  const ty  = r.top;
+
+  el.style.transition = `all ${_HINT_RETURN_MS}ms cubic-bezier(0.4, 0, 0.6, 1)`;
+  el.style.left       = tx + 'px';
+  el.style.top        = ty + 'px';
+  el.style.transform  = 'translate(-50%,-100%) scale(0.08)';
+  el.style.opacity    = '0';
+
+  setTimeout(() => {
+    el.remove();
+    state.hintThumbnails[player_id] = hintData;
+    renderInGamePlayerRow();
+    if (onDone) onDone();
+  }, _HINT_RETURN_MS);
+}
+
+/**
+ * Like flyHintToThumbnail but safe to call before showHintAtCenterpiece has armed _inflightHint.
+ * If _inflightHint isn't set yet, queues the callback; showHintAtCenterpiece will drain it.
+ */
+export function flyHintToThumbnailWhenReady(onDone) {
+  if (_inflightHint) {
+    flyHintToThumbnail(onDone);
+  } else {
+    _pendingFlyCallback = onDone;
+  }
+}
+
+/**
+ * Get avatar center in viewport coordinates.
+ */
+function _avatarCenterViewport(playerId) {
+  const orbit = document.getElementById('game-player-row');
+  if (!orbit) return null;
+  const wrap = orbit.querySelector(`[data-player-id="${playerId}"]`);
+  if (!wrap) return null;
+  const r = wrap.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+
+/**
+ * Position a line + pointer pair between two viewport-coordinate points.
+ */
+function _positionArrowPair(line, pointer, from, to) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < 1) return;
+
+  const angle = Math.atan2(dy, dx);
+  line.style.left = from.x + 'px';
+  line.style.top = from.y + 'px';
+  line.style.width = dist + 'px';
+  line.style.transform = `translateY(-50%) rotate(${angle}rad)`;
+
+  const pointerAngle = angle + Math.PI / 2;
+  const tipX = to.x - (dx / dist) * 30;
+  const tipY = to.y - (dy / dist) * 30;
+  pointer.style.left = tipX + 'px';
+  pointer.style.top = tipY + 'px';
+  pointer.style.transform = `translate(-50%, -50%) rotate(${pointerAngle}rad)`;
+}
+
+/**
+ * Show vote arrows from each voter to their accused target(s).
+ * Uses #interaction-anim-layer (position:fixed, z-index:25) so arrows
+ * render above avatars. Repositions on scroll to stay locked to avatars.
+ * votes: { voter_id: [accused_id, ...] }
+ */
+export function showVoteArrows(votes, onDone) {
+  if (!votes || Object.keys(votes).length === 0) {
+    if (onDone) onDone();
+    return;
+  }
+
+  const layer = document.getElementById('interaction-anim-layer');
+  if (!layer) { if (onDone) onDone(); return; }
+
+  const arrowPairs = []; // { line, pointer, voterId, accusedId }
+
+  for (const [voterId, accusedIds] of Object.entries(votes)) {
+    for (const accusedId of accusedIds) {
+      const from = _avatarCenterViewport(voterId);
+      const to = _avatarCenterViewport(accusedId);
+      if (!from || !to) continue;
+
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 1) continue;
+
+      const line = document.createElement('div');
+      line.className = 'vote-arrow-line';
+      layer.appendChild(line);
+
+      const pointer = document.createElement('img');
+      pointer.className = 'vote-arrow-pointer';
+      pointer.src = _POINTER_ASSET;
+      pointer.draggable = false;
+      layer.appendChild(pointer);
+
+      _positionArrowPair(line, pointer, from, to);
+      arrowPairs.push({ line, pointer, voterId, accusedId });
+    }
+  }
+
+  if (arrowPairs.length === 0) {
+    if (onDone) onDone();
+    return;
+  }
+
+  // Reposition arrows when the user scrolls so they stay locked to avatars
+  const reposition = () => {
+    for (const { line, pointer, voterId, accusedId } of arrowPairs) {
+      const from = _avatarCenterViewport(voterId);
+      const to = _avatarCenterViewport(accusedId);
+      if (from && to) _positionArrowPair(line, pointer, from, to);
+    }
+  };
+  window.addEventListener('scroll', reposition, { passive: true });
+
+  const allEls = arrowPairs.flatMap(p => [p.line, p.pointer]);
+
+  // Fade in
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      allEls.forEach(el => el.classList.add('visible'));
+    });
+  });
+
+  // Hold for 2.5s, then fade out and clean up
+  setTimeout(() => {
+    allEls.forEach(el => el.classList.add('fading'));
+    setTimeout(() => {
+      allEls.forEach(el => el.remove());
+      window.removeEventListener('scroll', reposition);
+      if (onDone) onDone();
+    }, 500);
+  }, 2500);
+}
+
+// ─── Dramatic role reveal (Phase 5) ───────────────────────────────────────────
+const _REVEAL_ASSETS = {
+  closed: 'assets/letter/envelope_closed.png',
+  back:   'assets/letter/envelope_opened_back.png',
+  front:  'assets/letter/envelope_opened_front.png',
+  safe:   'assets/letter/safe_letter.png',
+  morp:   'assets/letter/morp_letter.png',
+};
+
+/**
+ * Play the dramatic one-by-one role reveal on player avatars.
+ * revealOrder: [{player_id, role}, ...] — server-dictated order (morp last)
+ * onDone: callback after entire reveal sequence finishes
+ * Returns total animation duration in ms (for animation lock timeout).
+ */
+export function playRoleRevealSequence(revealOrder, onDone) {
+  const playerRow = document.getElementById('game-player-row');
+  if (!playerRow || revealOrder.length === 0) {
+    if (onDone) onDone();
+    return 0;
+  }
+
+  // Place closed envelopes on all players in the reveal order
+  const envelopeEls = {};
+  for (const entry of revealOrder) {
+    const wrap = playerRow.querySelector(`[data-player-id="${entry.player_id}"]`);
+    if (!wrap) continue;
+
+    const envWrap = document.createElement('div');
+    envWrap.className = 'avatar-envelope';
+
+    const closedImg = document.createElement('img');
+    closedImg.src = _REVEAL_ASSETS.closed;
+    closedImg.className = 'avatar-envelope-closed';
+    envWrap.appendChild(closedImg);
+
+    // Prepare opened state (hidden)
+    const openedWrap = document.createElement('div');
+    openedWrap.className = 'avatar-envelope-opened';
+
+    const backImg = document.createElement('img');
+    backImg.src = _REVEAL_ASSETS.back;
+    backImg.className = 'avatar-envelope-back';
+    openedWrap.appendChild(backImg);
+
+    const letterImg = document.createElement('img');
+    letterImg.src = entry.role === 'morp' ? _REVEAL_ASSETS.morp : _REVEAL_ASSETS.safe;
+    letterImg.className = 'avatar-envelope-letter';
+    openedWrap.appendChild(letterImg);
+
+    const frontImg = document.createElement('img');
+    frontImg.src = _REVEAL_ASSETS.front;
+    frontImg.className = 'avatar-envelope-front';
+    openedWrap.appendChild(frontImg);
+
+    envWrap.appendChild(openedWrap);
+    wrap.appendChild(envWrap);
+    envelopeEls[entry.player_id] = { wrap: envWrap, openedWrap, closedImg, letterImg };
+  }
+
+  // Reveal one at a time
+  const baseInterval = 1500;
+  const morpPause = 1000;
+  let delay = 600; // initial pause before first reveal
+
+  for (let i = 0; i < revealOrder.length; i++) {
+    const entry = revealOrder[i];
+    const isMorp = entry.role === 'morp';
+    const isLast = i === revealOrder.length - 1;
+
+    // Extra pause before morp reveal
+    if (isMorp) delay += morpPause;
+
+    setTimeout(() => {
+      const els = envelopeEls[entry.player_id];
+      if (!els) return;
+
+      // Play SFX
+      try {
+        const sfx = new Audio(_LETTER_OPEN_SFX);
+        sfx.volume = 0.4;
+        sfx.play().catch(() => {});
+      } catch (_) { /* no-op */ }
+
+      // Open the envelope
+      els.closedImg.classList.add('hiding');
+      els.openedWrap.classList.add('active');
+      setTimeout(() => {
+        els.letterImg.classList.add('revealed');
+      }, 200);
+    }, delay);
+
+    delay += baseInterval;
+  }
+
+  // After all reveals + hold time, clean up and callback
+  const totalDuration = delay + 1500; // extra hold after final reveal
+  setTimeout(() => {
+    // Remove all envelope overlays
+    for (const els of Object.values(envelopeEls)) {
+      els.wrap.remove();
+    }
+    if (onDone) onDone();
+  }, totalDuration);
+  return totalDuration;
 }
 
 // ─── Damage (avatar-based) ────────────────────────────────────────────────────
@@ -631,6 +1027,120 @@ export function animateEndgameReveal(results, safePlayerId, isDraw, onDone) {
       if (onDone) onDone();
     }, 800);
   }, 1400);
+}
+
+// ─── Envelope role reveal ─────────────────────────────────────────────────────
+const _ENVELOPE_ASSETS = {
+  closed: 'assets/letter/envelope_closed.png',
+  back:   'assets/letter/envelope_opened_back.png',
+  front:  'assets/letter/envelope_opened_front.png',
+  safe:   'assets/letter/safe_letter.png',
+  morp:   'assets/letter/morp_letter.png',
+};
+const _LETTER_OPEN_SFX = 'music/letter_open.mp3';
+
+export function showEnvelopeReveal(role, onDismiss) {
+  const overlay = document.createElement('div');
+  overlay.className = 'envelope-overlay';
+
+  const container = document.createElement('div');
+  container.className = 'envelope-container';
+
+  // Closed state
+  const closed = document.createElement('div');
+  closed.className = 'envelope-closed';
+  const closedImg = document.createElement('img');
+  closedImg.src = _ENVELOPE_ASSETS.closed;
+  closedImg.alt = 'Sealed envelope';
+  closed.appendChild(closedImg);
+
+  // Opened state (hidden initially)
+  const opened = document.createElement('div');
+  opened.className = 'envelope-opened';
+
+  const backLayer = document.createElement('div');
+  backLayer.className = 'envelope-layer-back';
+  const backImg = document.createElement('img');
+  backImg.src = _ENVELOPE_ASSETS.back;
+  backLayer.appendChild(backImg);
+
+  const letter = document.createElement('div');
+  letter.className = 'envelope-letter';
+  const letterImg = document.createElement('img');
+  letterImg.src = role === 'morp' ? _ENVELOPE_ASSETS.morp : _ENVELOPE_ASSETS.safe;
+  letterImg.alt = role === 'morp' ? 'Morp letter' : 'Safe letter';
+  letter.appendChild(letterImg);
+
+  const frontLayer = document.createElement('div');
+  frontLayer.className = 'envelope-layer-front';
+  const frontImg = document.createElement('img');
+  frontImg.src = _ENVELOPE_ASSETS.front;
+  frontLayer.appendChild(frontImg);
+
+  opened.appendChild(backLayer);
+  opened.appendChild(letter);
+  opened.appendChild(frontLayer);
+
+  const prompt = document.createElement('div');
+  prompt.className = 'envelope-prompt';
+  prompt.textContent = 'Click to open';
+
+  container.appendChild(closed);
+  container.appendChild(opened);
+  container.appendChild(prompt);
+  overlay.appendChild(container);
+  document.body.appendChild(overlay);
+
+  // Fade in
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+  });
+
+  let phase = 'closed'; // 'closed' → 'opening' → 'revealed'
+  let autoDismissTimer = null;
+
+  function dismiss() {
+    if (phase === 'dismissed') return;
+    phase = 'dismissed';
+    clearTimeout(autoDismissTimer);
+    overlay.classList.add('dismissing');
+    setTimeout(() => {
+      overlay.remove();
+      if (onDismiss) onDismiss();
+    }, 400);
+  }
+
+  function openEnvelope() {
+    if (phase !== 'closed') return;
+    phase = 'opening';
+    prompt.remove();
+
+    // Play SFX
+    try {
+      const sfx = new Audio(_LETTER_OPEN_SFX);
+      sfx.volume = 0.5;
+      sfx.play().catch(() => {});
+    } catch (_) { /* no-op */ }
+
+    // Swap to opened envelope
+    closed.style.opacity = '0';
+    opened.classList.add('active');
+
+    // Slide letter out after a brief moment
+    setTimeout(() => {
+      letter.classList.add('revealed');
+      phase = 'revealed';
+
+      // Auto-dismiss after 3s
+      autoDismissTimer = setTimeout(dismiss, 3000);
+    }, 300);
+  }
+
+  // TODO: consider auto-opening the envelope after ~3s if the player hasn't clicked
+  overlay.addEventListener('click', () => {
+    if (phase === 'closed') openEnvelope();
+    else if (phase === 'revealed') dismiss();
+  });
 }
 
 // ─── Damage animation placeholder ────────────────────────────────────────────

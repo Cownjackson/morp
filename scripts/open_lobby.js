@@ -122,8 +122,8 @@ async function main() {
   await page1.click('button:has-text("Create Lobby")');
 
   // Wait for the lobby code to appear
-  await page1.waitForSelector('#lobby-code-display:not(.hidden)', { timeout: 10_000 });
-  const rawText = await page1.textContent('#lobby-code-display');
+  await page1.waitForSelector('#pregame-lobby-code-display:not(.hidden)', { timeout: 10_000 });
+  const rawText = await page1.textContent('#pregame-lobby-code-display');
   const lobbyCode = rawText.replace('Lobby Code:', '').trim();
 
   if (!lobbyCode) {
@@ -147,7 +147,7 @@ async function main() {
     await page.fill('#join-code', lobbyCode);
     await page.click('button:has-text("Join")');
 
-    await page.waitForSelector('#lobby-code-display:not(.hidden)', { timeout: 10_000 });
+    await page.waitForSelector('#pregame-lobby-code-display:not(.hidden)', { timeout: 10_000 });
     console.log(`Player ${i} joined.`);
     await positionWindow(page, layout[i - 1], `Player ${i}`);
   }

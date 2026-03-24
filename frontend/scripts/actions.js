@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { showScreen, setPhaseLabel, showLanding, httpBase, log, hideLobbyCodeDisplays, setLobbyCodeCopyButtonState } from './helpers.js';
-import { renderRoleBanner, renderPregameLobby, renderChat, disableBoardWordSelection } from './rendering.js';
+import { renderRoleBanner, renderPregameLobby, renderChat, disableBoardWordSelection, hideDrawPopup } from './rendering.js';
 import { _drawState, clearCanvas } from './drawing.js';
 import { _timers, clearTimer } from './timers.js';
 import { _setConnectBusy, markIntentionalClose, clearIntentionalClose, closeWS } from './websocket.js';
@@ -11,6 +11,7 @@ export function startGame() {
     type: 'start_game',
     timers_enabled: document.getElementById('timers-toggle').checked,
     drawing_hints: document.getElementById('drawing-hints-toggle').checked,
+    hint_timer_duration: document.getElementById('hint-timer-slider').valueAsNumber,
   });
 }
 
@@ -21,6 +22,7 @@ export function submitHint() {
     const strokes = _drawState['hint-canvas']?.strokes ?? [];
     send({ type: 'submit_hint', drawing_data: strokes });
     clearCanvas('hint-canvas');
+    hideDrawPopup();
   } else {
     const input = document.getElementById('hint-input');
     const text = input.value.trim();

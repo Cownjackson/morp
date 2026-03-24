@@ -26,6 +26,33 @@ def tally_votes(votes: dict[str, list[str]], num_morps: int, seed: int) -> list[
     return above_cutoff + at_cutoff[:needed]
 
 
+def build_reveal_order(
+    players: list[dict],
+    accused_ids: list[str],
+) -> list[dict]:
+    """Build the dramatic reveal order for all non-ghost players.
+
+    players: list of {"id": str, "role": str, "is_ghost": bool}
+    Returns ordered list of {"player_id": str, "role": str}.
+    Order: safe non-accused (shuffled) → accused safe → morp last.
+    """
+    accused_set = set(accused_ids)
+    safe_non_accused = []
+    accused_safe = []
+    morps = []
+    for p in players:
+        if p["is_ghost"] or not p["role"]:
+            continue
+        if p["role"] == "morp":
+            morps.append({"player_id": p["id"], "role": "morp"})
+        elif p["id"] in accused_set:
+            accused_safe.append({"player_id": p["id"], "role": "safe"})
+        else:
+            safe_non_accused.append({"player_id": p["id"], "role": "safe"})
+    random.shuffle(safe_non_accused)
+    return safe_non_accused + accused_safe + morps
+
+
 def resolve_accusation(
     accused_ids: list[str],
     player_roles: dict[str, str],  # player_id -> "morp" | "safe"

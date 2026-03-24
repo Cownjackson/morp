@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, renderAccusation, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, flyHintToThumbnailWhenReady, resetHintThumbnailAnimations, hideDrawPopup } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
@@ -51,6 +51,7 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
       players: {},
       chatMessages: [],
       speechBubbles: {},
+      hintThumbnails: {},
       selectedVotes: [],
       numVotes: 1,
       _accusedMorpIds: [],
@@ -128,6 +129,7 @@ export function connectWS(lobbyId, playerId, name, isRetry) {
 
 // ─── Animation lock — defer state-changing messages while animations play ────
 let _animationLock = false;
+let _animationLockStartedAt = 0;
 let _deferredQueue = [];
 let _animationLockTimer = null;
 const _ANIMATION_LOCK_TIMEOUT_MS = 5000;
@@ -137,17 +139,25 @@ const _DEFERRED_TYPES = new Set([
   'endgame_round_end', 'round_start', 'endgame_round_start', 'game_over',
 ]);
 
-function _startAnimationLock() {
+function _startAnimationLock(timeoutMs) {
   _animationLock = true;
+  _animationLockStartedAt = Date.now();
   clearTimeout(_animationLockTimer);
-  _animationLockTimer = setTimeout(_endAnimationLock, _ANIMATION_LOCK_TIMEOUT_MS);
+  _animationLockTimer = setTimeout(_endAnimationLock, timeoutMs || _ANIMATION_LOCK_TIMEOUT_MS);
 }
 
 function _endAnimationLock() {
   _animationLock = false;
+  const lockDurationSec = (Date.now() - _animationLockStartedAt) / 1000;
   clearTimeout(_animationLockTimer);
   const queued = _deferredQueue.splice(0);
-  for (const m of queued) _processMessage(m);
+  for (const m of queued) {
+    // Shift time-based deadlines forward by how long they were deferred
+    if (m.deadline && lockDurationSec > 0) {
+      m.deadline += lockDurationSec;
+    }
+    _processMessage(m);
+  }
 }
 
 // ─── Message handler ──────────────────────────────────────────────────────────
@@ -205,19 +215,23 @@ function _processMessage(msg) {
     case 'role_assigned':
       state.role = msg.role;
       state.halfBoard = msg.half_board || null;
-      renderRoleBanner();
+      // Don't render banner yet — envelope reveal will show role first
       log(`Your role: ${msg.role}${state.halfBoard ? ' (going first — partial board visible)' : ''}`,
         msg.role === 'morp' ? 'warn' : 'ok');
       break;
 
-    case 'round_start':
+    case 'round_start': {
       showScreen('ingame');
       state.lobbyStarted = true;
       state.board      = { board_hint: msg.board_hint, words: msg.words };
       state.turnOrder  = msg.turn_order;
       state.targetWord = msg.target_word || null;
-      state.hints      = [];
+      state.hints         = [];
       state.speechBubbles = {};
+      state.hintThumbnails = {};
+      state.timersEnabled = msg.timers_enabled ?? true;
+      state.hintTimerDuration = msg.hint_timer_duration ?? 60;
+      resetHintThumbnailAnimations();
       state.endgameTargetWord = null;
       state.avatarInteraction = null;
       state.damageTarget = null;
@@ -227,50 +241,142 @@ function _processMessage(msg) {
       renderBoard();
       renderInGamePlayerRow();
       renderChat();
-      document.getElementById('board-area').classList.remove('hidden');
-      checkYourTurn();
-      showAction('hint');
-      setPhaseLabel(`ROUND ${msg.round_number} — HINTS`);
+
+      // Board starts hidden — will fade in after envelope
+      const boardArea = document.getElementById('board-area');
+      boardArea.classList.remove('hidden');
+      boardArea.style.opacity = '0';
+      boardArea.style.transition = 'opacity 0.8s ease';
+
+      setPhaseLabel(`ROUND ${msg.round_number}`);
       log(`Round ${msg.round_number} — "${msg.board_hint}"`, 'ok');
-      break;
 
-    case 'hint_received':
-      state.hints.push({ player_id: msg.player_id, text: msg.text, is_drawing: msg.is_drawing, drawing_data: msg.drawing_data });
-      state.speechBubbles[msg.player_id] = {
-        text: msg.text, skipped: !msg.text && !msg.is_drawing,
-        is_drawing: msg.is_drawing || false, drawing_data: msg.drawing_data || null,
-      };
-      renderInGamePlayerRow();
-      checkYourTurn();
+      // Show envelope role reveal, then fade in board and start hint phase
+      showEnvelopeReveal(state.role, () => {
+        renderRoleBanner();
+        boardArea.style.opacity = '1';
+        checkYourTurn();
+        showAction('hint');
+        setPhaseLabel(`ROUND ${msg.round_number} — HINTS`);
+        // If I'm the first player and timers are on, signal ready and start countdown
+        if (state.timersEnabled && state.turnOrder[0] === state.playerId) {
+          send({ type: 'hint_turn_ready' });
+          const hintTimerEl = document.getElementById('hint-timer');
+          hintTimerEl.style.display = '';
+          startTimer('hint-timer', Date.now() / 1000 + state.hintTimerDuration, () => {
+            if (state.drawingHints) {
+              const strokes = _drawState['hint-canvas']?.strokes ?? [];
+              if (strokes.length > 0) {
+                send({ type: 'submit_hint', drawing_data: strokes });
+                clearCanvas('hint-canvas');
+              }
+              hideDrawPopup();
+            } else {
+              const input = document.getElementById('hint-input');
+              const text = input?.value.trim() ?? '';
+              if (text) send({ type: 'submit_hint', text });
+            }
+          });
+        }
+      });
+      break;
+    }
+
+    case 'hint_received': {
+      const hintData = { player_id: msg.player_id, text: msg.text || '', is_drawing: msg.is_drawing || false, drawing_data: msg.drawing_data || null };
+      state.hints.push(hintData);
       log(msg.is_drawing ? `Drawing hint from ${playerName(msg.player_id)}` : `Hint from ${playerName(msg.player_id)}: "${msg.text || '(skipped)'}"`, '');
+      // Always clear the hint timer when a hint is received (someone submitted)
+      clearTimer('hint-timer');
+      document.getElementById('hint-timer').style.display = 'none';
+      if (msg.display_duration) {
+        // Live hint — animate to centerpiece, hold, then signal backend
+        // hintThumbnails set later by flyHintToThumbnail so thumbnail only appears after animation
+        showHintAtCenterpiece(msg, () => send({ type: 'phase_ready' }));
+      } else {
+        // Rejoin replay — show thumbnail immediately, no animation
+        state.hintThumbnails[msg.player_id] = hintData;
+        renderInGamePlayerRow();
+        checkYourTurn();
+      }
       break;
+    }
 
-    case 'voting_open':
-      state.hints      = msg.hints;
-      state.numVotes   = msg.num_votes;
+    case 'next_turn': {
+      // Update cached timer config in case it changed (it won't mid-game, but belt-and-suspenders)
+      if (msg.hint_timer_duration != null) state.hintTimerDuration = msg.hint_timer_duration;
+      if (msg.timers_enabled     != null) state.timersEnabled     = msg.timers_enabled;
+      const isMyTurn = msg.player_id === state.playerId;
+      flyHintToThumbnailWhenReady(() => {
+        checkYourTurn();
+        if (isMyTurn && state.timersEnabled) {
+          send({ type: 'hint_turn_ready' });
+          const hintTimerEl = document.getElementById('hint-timer');
+          hintTimerEl.style.display = '';
+          startTimer('hint-timer', Date.now() / 1000 + state.hintTimerDuration, () => {
+            if (state.drawingHints) {
+              const strokes = _drawState['hint-canvas']?.strokes ?? [];
+              if (strokes.length > 0) {
+                send({ type: 'submit_hint', drawing_data: strokes });
+                clearCanvas('hint-canvas');
+              }
+              hideDrawPopup();
+            } else {
+              const input = document.getElementById('hint-input');
+              const text = input?.value.trim() ?? '';
+              if (text) send({ type: 'submit_hint', text });
+            }
+          });
+        }
+      });
+      break;
+    }
+
+    case 'voting_open': {
+      clearTimer('hint-timer');
+      document.getElementById('hint-timer').style.display = 'none';
+      state.hints         = msg.hints;
+      state.numVotes      = msg.num_votes;
       state.selectedVotes = [];
       for (const h of msg.hints) {
-        state.speechBubbles[h.player_id] = {
-          text: h.text, skipped: !h.text && !h.is_drawing,
-          is_drawing: h.is_drawing || false, drawing_data: h.drawing_data || null,
-        };
+        // Populate thumbnails for any hints not yet shown (e.g. rejoin during voting)
+        if (!state.hintThumbnails[h.player_id]) {
+          state.hintThumbnails[h.player_id] = {
+            player_id: h.player_id, text: h.text || '', is_drawing: h.is_drawing || false, drawing_data: h.drawing_data || null,
+          };
+        }
       }
-      if (!state.isGhost) {
-        enableAvatarVoting();
-        showAction('vote');
-      } else {
-        renderInGamePlayerRow();
-      }
-      setPhaseLabel('VOTING');
-      log('Voting open!', 'ok');
+      const openVotingUI = () => {
+        if (!state.isGhost) {
+          enableAvatarVoting();
+          showAction('vote');
+        } else {
+          renderInGamePlayerRow();
+        }
+        setPhaseLabel('VOTING');
+        log('Voting open!', 'ok');
+      };
+      // Close draw popup (last hinter may still have it open)
+      hideDrawPopup();
+      // If the last hinter's card is still at centerpiece, fly it home first
+      flyHintToThumbnailWhenReady(openVotingUI);
       break;
+    }
 
-    case 'accusation_result':
+    case 'accusation_result': {
       disableAvatarVoting();
-      renderAccusation(msg);
-      showAction('accusation');
-      setPhaseLabel('ACCUSATION');
+      _startAnimationLock(30000);
+      // Show vote arrows first, then dramatic role reveal
+      setPhaseLabel('VOTES');
+      showVoteArrows(msg.votes || {}, () => {
+        setPhaseLabel('ROLE REVEAL');
+        playRoleRevealSequence(msg.reveal_order || [], () => {
+          send({ type: 'phase_ready' });
+          _endAnimationLock();
+        });
+      });
       break;
+    }
 
     case 'morp_guess_phase': {
       state._accusedMorpIds = msg.accused_morp_ids;
@@ -530,7 +636,8 @@ function _processMessage(msg) {
     }
 
     case 'game_over':
-      clearTimer('guess-timer'); clearTimer('endgame-hint-timer'); clearTimer('endgame-guess-timer');
+      clearTimer('hint-timer'); clearTimer('guess-timer'); clearTimer('endgame-hint-timer'); clearTimer('endgame-guess-timer');
+      document.getElementById('hint-timer').style.display = 'none';
       document.getElementById('game-over-title').textContent = 'Game Over!';
       document.getElementById('game-over-content').innerHTML = msg.winner_id
         ? `Winner: <strong style="color:#FFCE18">${msg.winner_name}</strong>`

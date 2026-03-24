@@ -4,6 +4,31 @@ Completed work, newest first. Add an entry when a PR merges or a standalone chan
 
 ---
 
+## 2026-03-24
+
+- **[feature]** Animated hint lifecycle — submitted hints fly from the player avatar to a centerpiece, hold for `display_duration` (5s), then fly back and shrink to a persistent thumbnail above the player; shared pipeline for text and drawing hints (Phase 3)
+- **[feature]** Floating drawing popup — drawing panel moved to a fixed popup window that auto-opens on your turn; can be minimized and reopened via pill button; hides automatically on submit or turn end
+- **[feature]** Hint timer — configurable countdown (default 60s, 5s steps) shown while it's your turn; starts only after the player's turn UI is visible (`hint_turn_ready` gate); auto-submits current strokes or typed text on expire, skips if empty
+- **[feature]** Click-to-expand hint thumbnails — click any thumbnail to scale it up (6×) for readability; click again or anywhere outside to collapse
+- **[dev]** `phase_ready` gate for hints — frontend signals backend after each hint animation completes; backend holds `next_turn` until signal received, keeping all clients in sync
+- **[dev]** `flyHintToThumbnailWhenReady` — queues the fly-back callback if `next_turn` arrives before the client's animation has armed `_inflightHint`, preventing premature draw popup on slow clients
+- **[dev]** `hint_timer_duration` config — added to `LobbyConfig` (default 60s); `hint_timer_slider` in pregame options panel; broadcast in `round_start` and `next_turn`
+
+---
+
+## 2026-03-22
+
+- **[feature]** Vote arrow visualization — after voting, directional arrows point from each voter to their accused target before the dramatic role reveal; uses pointer.png asset tip; renders via interaction-anim-layer with scroll tracking
+- **[feature]** `votes` map in `accusation_result` — server includes full `{ voter_id: [accused_ids] }` map for arrow rendering
+- **[fix]** Interaction animations scroll-locked — sticky hand, projectile, spitball, and hand mark now track scroll offset per frame so they stay locked to avatars if the user scrolls mid-animation
+- **[feature]** Envelope role reveal — on round start, players see a sealed envelope with wax seal; click to open reveals their role letter (safe/morp) with layered envelope art and SFX; board fades in after dismissal (Phase 2)
+- **[feature]** Dramatic role reveal after voting — all non-ghost players get closed envelopes on their avatars; envelopes open one by one in server-dictated order (safe first, accused safe second-to-last, morp last) with letter_open SFX; ~1.5s per reveal with extra morp pause (Phase 5)
+- **[feature]** Client-ready signaling (`phase_ready`) — frontend signals backend when animation-gated transitions complete; replaces hardcoded animation duration sleeps; backend waits with 30s timeout fallback
+- **[feature]** `reveal_order` in `accusation_result` — server builds ordered reveal array for all non-ghost players; `build_reveal_order()` in voting module with 4 unit tests
+- **[fix]** Animation lock supports custom timeouts — `_startAnimationLock(timeoutMs)` for longer animations; deferred messages with deadlines get shifted forward by lock duration
+- **[fix]** Removed vestigial accusation result panel — dramatic reveal replaces old instant accusation display; cleaned up HTML, renderAccusation(), ACTIONS entry
+- **[dev]** Art assets — envelope_closed, envelope_opened_back, envelope_opened_front, safe_letter, morp_letter PNGs; letter_open.mp3 SFX
+
 ## 2026-03-21
 
 - **[feature]** Word board click for morp guess — morp clicks board words instead of typing; word toss animation with server-echo timing; board word validation on backend (Phase 6A)

@@ -258,13 +258,15 @@ function _playProjectile(fromId, toId, interaction) {
   const dy   = to.y - from.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
   const dur  = Math.max(400, Math.min(900, dist * 1.2));
+  const scrollY0 = window.scrollY;
 
   const start = performance.now();
   function step(now) {
     const t   = Math.min(1, (now - start) / dur);
+    const sdy = window.scrollY - scrollY0;
     const arc = Math.sin(t * Math.PI) * -50;
     const px  = from.x + dx * t + (-dy / dist) * arc;
-    const py  = from.y + dy * t + (dx / dist) * arc;
+    const py  = from.y - sdy + dy * t + (dx / dist) * arc;
     proj.style.left      = px + 'px';
     proj.style.top       = py + 'px';
     proj.style.transform = `translate(-50%,-50%) scale(${0.6 + 0.8 * Math.sin(t * Math.PI)})`;
@@ -313,6 +315,7 @@ function _playSpitball(fromId, toId) {
   let launched = false;
   let lastTrailT = 0;
   const start = performance.now();
+  const scrollY0 = window.scrollY;
 
   // Lean-back: tilt sender avatar away from target
   const fromAvatar = document.querySelector(
@@ -326,6 +329,7 @@ function _playSpitball(fromId, toId) {
 
   function step(now) {
     const e = now - start;
+    const sdy = window.scrollY - scrollY0;
 
     if (e < T_LEAN) {
       // Windup — ball stays hidden, avatar is leaning via CSS class
@@ -344,7 +348,7 @@ function _playSpitball(fromId, toId) {
       const ease = 1 - Math.pow(1 - t, 1.6);
 
       const bx = from.x + dx * ease;
-      const by = from.y + dy * ease;
+      const by = from.y - sdy + dy * ease;
 
       ball.style.left = bx + 'px';
       ball.style.top  = by + 'px';
@@ -361,7 +365,7 @@ function _playSpitball(fromId, toId) {
         requestAnimationFrame(step);
       } else {
         ball.remove();
-        _spawnSplatBurst(layer, to.x, to.y);
+        _spawnSplatBurst(layer, to.x, to.y - sdy);
         _playHitReaction(toId);
         if (toId === state.playerId) _onSpitHit();
       }
@@ -415,6 +419,9 @@ function _playStickyHand(fromId, toId) {
   // Hand art points UP — offset so fingers face target direction
   const faceAngle = Math.atan2(dy, dx) + Math.PI / 2;
 
+  // Track scroll so animation stays locked to avatars
+  const scrollY0 = window.scrollY;
+
   // Unit vectors: forward toward target, perpendicular for lateral sweep
   const ux = dx / dist;
   const uy = dy / dist;
@@ -454,13 +461,13 @@ function _playStickyHand(fromId, toId) {
   let markStamped = false;
   const start = performance.now();
 
-  function _setBand(hx, hy, opacity = 1) {
-    const bx  = hx - from.x;
-    const by  = hy - from.y;
+  function _setBand(hx, hy, fx, fy, opacity = 1) {
+    const bx  = hx - fx;
+    const by  = hy - fy;
     const len = Math.sqrt(bx * bx + by * by);
     const ang = Math.atan2(by, bx);
-    band.style.left      = from.x + 'px';
-    band.style.top       = from.y + 'px';
+    band.style.left      = fx + 'px';
+    band.style.top       = fy + 'px';
     band.style.width     = len + 'px';
     band.style.opacity   = String(opacity);
     band.style.transform = `translateY(-50%) rotate(${ang}rad)`;
@@ -474,6 +481,11 @@ function _playStickyHand(fromId, toId) {
 
   function step(now) {
     const e = now - start;
+    // Scroll-adjust: shift all Y positions so animation tracks avatars
+    const sdy = window.scrollY - scrollY0;
+    const fy = from.y - sdy;
+    const ty = to.y - sdy;
+    const pY = peakY - sdy;
 
     if (e < T_WINDUP) {
       // ── WINDUP — figure-8 back lobe, sender to peak (π → 3π/2) ────────
@@ -483,14 +495,14 @@ function _playStickyHand(fromId, toId) {
       //   π    → (0,0)  = sender (start)
       //   3π/2 → (-1,0) = windup peak (behind sender) — throw launches here
       const param = Math.PI + t * (Math.PI / 2);
-      const fx = Math.sin(param);
-      const fy = Math.sin(2 * param) / 2;
+      const lx = Math.sin(param);
+      const ly = Math.sin(2 * param) / 2;
 
       const xScale = dist * 0.3;
       const yScale = dist * 0.5;
 
-      const hx = from.x + fx * xScale * ux + fy * yScale * px;
-      const hy = from.y + fx * xScale * uy + fy * yScale * py;
+      const hx = from.x + lx * xScale * ux + ly * yScale * px;
+      const hy = fy + lx * xScale * uy + ly * yScale * py;
 
       // Rotation follows the curve tangent naturally
       const tanFx = Math.cos(param);
@@ -500,7 +512,7 @@ function _playStickyHand(fromId, toId) {
       const handRot = Math.atan2(wTanY, wTanX) + Math.PI / 2;
 
       _setHand(hx, hy, 0.55 + 0.15 * t, handRot);
-      _setBand(hx, hy);
+      _setBand(hx, hy, from.x, fy);
       requestAnimationFrame(step);
 
     } else if (e < T_WINDUP + T_THROW) {
@@ -511,10 +523,10 @@ function _playStickyHand(fromId, toId) {
       // Subtle overhead arc
       const arc = Math.sin(t * Math.PI) * dist * -0.08;
       const hx = peakX + (to.x - peakX) * ease + px * arc;
-      const hy = peakY + (to.y - peakY) * ease + py * arc;
+      const hy = pY + (ty - pY) * ease + py * arc;
 
       _setHand(hx, hy, 0.7 + 0.5 * ease, faceAngle);
-      _setBand(hx, hy);
+      _setBand(hx, hy, from.x, fy);
       requestAnimationFrame(step);
 
     } else if (e < T_WINDUP + T_THROW + T_SMACK) {
@@ -528,27 +540,27 @@ function _playStickyHand(fromId, toId) {
       const scaleX = t < 0.3 ? 1.0 + 0.6 * (t / 0.3)
                    : t < 0.6 ? 1.6 - 0.8 * ((t - 0.3) / 0.3)
                    :           0.8 + 0.2 * ((t - 0.6) / 0.4);
-      _setHand(to.x, to.y, scaleX, faceAngle);
-      _setBand(to.x, to.y);
+      _setHand(to.x, ty, scaleX, faceAngle);
+      _setBand(to.x, ty, from.x, fy);
       requestAnimationFrame(step);
 
     } else if (e < T_WINDUP + T_THROW + T_SMACK + T_STICK) {
       // ── STICK — adheres with wobble ────────────────────────────────────
       const t      = (e - T_WINDUP - T_THROW - T_SMACK) / T_STICK;
       const wobble = Math.sin(t * Math.PI * 5) * 0.04 * (1 - t);
-      _setHand(to.x, to.y, 1 + wobble, faceAngle);
-      _setBand(to.x, to.y);
+      _setHand(to.x, ty, 1 + wobble, faceAngle);
+      _setBand(to.x, ty, from.x, fy);
       requestAnimationFrame(step);
 
     } else if (e < T_WINDUP + T_THROW + T_SMACK + T_STICK + T_RETRACT) {
       // ── RETRACT — slow peel then elastic snap ──────────────────────────
       const t    = (e - T_WINDUP - T_THROW - T_SMACK - T_STICK) / T_RETRACT;
       const ease = t * t * t;
-      if (!markStamped) { markStamped = true; _stampHandMark(to.x, to.y, faceAngle); }
+      if (!markStamped) { markStamped = true; _stampHandMark(to.x, ty, faceAngle); }
       const hx = to.x + (from.x - to.x) * ease;
-      const hy = to.y + (from.y - to.y) * ease;
+      const hy = ty + (fy - ty) * ease;
       _setHand(hx, hy, 1 - 0.5 * ease, faceAngle + ease * 0.8);
-      _setBand(hx, hy, 1 - ease * 0.9);
+      _setBand(hx, hy, from.x, fy, 1 - ease * 0.9);
       requestAnimationFrame(step);
 
     } else {
@@ -573,7 +585,15 @@ function _stampHandMark(x, y, rot) {
   mark.style.transform = `translate(-50%,-50%) rotate(${rot}rad)`;
   layer.appendChild(mark);
 
-  mark.addEventListener('animationend', () => mark.remove(), { once: true });
+  const markScrollY0 = window.scrollY;
+  const onScroll = () => {
+    mark.style.top = (y - (window.scrollY - markScrollY0)) + 'px';
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  mark.addEventListener('animationend', () => {
+    mark.remove();
+    window.removeEventListener('scroll', onScroll);
+  }, { once: true });
 }
 
 function _playSelfAnim(playerId) {
