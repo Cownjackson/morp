@@ -4,6 +4,18 @@ Completed work, newest first. Add an entry when a PR merges or a standalone chan
 
 ---
 
+## 2026-03-24
+
+- **[feature]** Animated hint lifecycle — submitted hints fly from the player avatar to a centerpiece, hold for `display_duration` (5s), then fly back and shrink to a persistent thumbnail above the player; shared pipeline for text and drawing hints (Phase 3)
+- **[feature]** Floating drawing popup — drawing panel moved to a fixed popup window that auto-opens on your turn; can be minimized and reopened via pill button; hides automatically on submit or turn end
+- **[feature]** Hint timer — configurable countdown (default 60s, 5s steps) shown while it's your turn; starts only after the player's turn UI is visible (`hint_turn_ready` gate); auto-submits current strokes or typed text on expire, skips if empty
+- **[feature]** Click-to-expand hint thumbnails — click any thumbnail to scale it up (6×) for readability; click again or anywhere outside to collapse
+- **[dev]** `phase_ready` gate for hints — frontend signals backend after each hint animation completes; backend holds `next_turn` until signal received, keeping all clients in sync
+- **[dev]** `flyHintToThumbnailWhenReady` — queues the fly-back callback if `next_turn` arrives before the client's animation has armed `_inflightHint`, preventing premature draw popup on slow clients
+- **[dev]** `hint_timer_duration` config — added to `LobbyConfig` (default 60s); `hint_timer_slider` in pregame options panel; broadcast in `round_start` and `next_turn`
+
+---
+
 ## 2026-03-22
 
 - **[feature]** Vote arrow visualization — after voting, directional arrows point from each voter to their accused target before the dramatic role reveal; uses pointer.png asset tip; renders via interaction-anim-layer with scroll tracking

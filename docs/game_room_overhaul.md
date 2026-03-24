@@ -517,7 +517,7 @@ Each branch groups related phases by dependency and scope. Small PRs, easy to re
 | 3 | Phase 6A — Word board click for guess | `word-board-click` | ✅ Shipped (+ endgame mechanics, animation lock, sudden death pause) |
 | 4 | Phase 2 — Board fade + role reveal | `role-reveal` | ✅ Shipped (envelope reveal + board fade) |
 | 5 | Phase 5 — Dramatic role reveal | `role-reveal` | ✅ Shipped (+ phase_ready signaling, animation lock improvements) |
-| 6 | Phase 3 — Hint display overhaul | `hint-display-overhaul` | Most complex frontend work |
+| 6 | Phase 3 — Hint display overhaul | `hint-display-overhaul` | ✅ Shipped (animated lifecycle, drawing popup, hint timer, click thumbnails; timer default 60s not 30s; click-to-expand replaces hover) |
 | 7 | Phase 7 — Auto-transition | `round-transitions` | Needs backend timer |
 | 8 | Phase 8 — Death animation | `round-transitions` | Placeholder, waiting on art |
 | 9 | Phase 1 — Magnetic snap | `magnetic-snap` | Pure frontend, cross-layout animation |

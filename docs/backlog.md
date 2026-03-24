@@ -19,7 +19,7 @@ Items move here when planned, to `changelog.md` when shipped.
   - [x] Phase 10 — Endgame board click + simultaneous reveal (partial, `word-board-click`, merged)
   - [x] Phase 2 — Role assignment & board reveal (`role-reveal`, merged)
   - [x] Phase 5 — Dramatic role reveal (`role-reveal`, merged)
-  - [ ] Phase 3 — Hint display overhaul
+  - [x] Phase 3 — Hint display overhaul
   - [ ] Phase 7 — Auto round transition
   - [ ] Phase 8 — Death animation
   - [ ] Phase 1 — Magnetic snap
@@ -39,6 +39,7 @@ Items move here when planned, to `changelog.md` when shipped.
 - [ ] **[bug]** Blank drawing renders brighter than base canvas — submitted empty drawing has unexpected brightness — unowned
 - [ ] **[feature]** Ghost heckling interactions — implemented but untested; needs a proper test pass — unowned
 - [ ] **[feature]** num_morps picker in lobby UI — expose existing engine config in the lobby; needs UX thought (max morps relative to player count) — unowned
+- [ ] **[design]** Game screen layout — game container currently overflows viewport height, causing unwanted scrolling; solution is to constrain to `100vh` with `overflow: hidden` and size the player orbit to fit; deferred in favour of quick fix (hint thumbnails now expand downward on hover to avoid covering action area) — unowned
 - [ ] **[feature]** Mobile optimization — layout and input handling for phones/tablets — unowned
 - [ ] **[feature]** Configurable starting HP — host setting before game start — unowned
 - [ ] **[feature]** Configurable max hint length — currently hard-capped at 30 chars — unowned
