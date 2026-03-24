@@ -293,8 +293,13 @@
             <div id="pregame-options-panel" class="pregame-menu-panel hidden">
               <label class="pregame-menu-option" for="timers-toggle">
                 <input type="checkbox" id="timers-toggle" checked>
-                <span>Timers enabled (30 s morp guess / endgame guess)</span>
+                <span>Timers enabled</span>
               </label>
+              <div class="pregame-menu-option pregame-slider-row">
+                <span>Hint timer: <strong id="hint-timer-label">60</strong>s</span>
+                <input type="range" id="hint-timer-slider" min="5" max="300" step="5" value="60"
+                  oninput="document.getElementById('hint-timer-label').textContent=this.value">
+              </div>
               <label class="pregame-menu-option" for="drawing-hints-toggle">
                 <input type="checkbox" id="drawing-hints-toggle" checked>
                 <span>Drawing hints (players draw instead of type)</span>
@@ -339,7 +344,10 @@
 
     <!-- HINT PHASE -->
     <div id="act-hint" class="action-section hidden">
-      <div id="turn-indicator" style="margin-bottom:8px;font-size:0.88em"></div>
+      <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px">
+        <div id="turn-indicator" style="font-size:0.88em"></div>
+        <span id="hint-timer" class="big-timer" style="display:none">60</span>
+      </div>
       <div id="your-turn-block" class="hidden">
         <!-- Text mode -->
         <div id="hint-text-block" class="row">

@@ -11,6 +11,7 @@ export function startGame() {
     type: 'start_game',
     timers_enabled: document.getElementById('timers-toggle').checked,
     drawing_hints: document.getElementById('drawing-hints-toggle').checked,
+    hint_timer_duration: document.getElementById('hint-timer-slider').valueAsNumber,
   });
 }
 

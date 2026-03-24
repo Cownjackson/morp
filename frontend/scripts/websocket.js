@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, resetHintThumbnailAnimations } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, flyHintToThumbnailWhenReady, resetHintThumbnailAnimations, hideDrawPopup } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
@@ -229,6 +229,8 @@ function _processMessage(msg) {
       state.hints         = [];
       state.speechBubbles = {};
       state.hintThumbnails = {};
+      state.timersEnabled = msg.timers_enabled ?? true;
+      state.hintTimerDuration = msg.hint_timer_duration ?? 60;
       resetHintThumbnailAnimations();
       state.endgameTargetWord = null;
       state.avatarInteraction = null;
@@ -256,6 +258,26 @@ function _processMessage(msg) {
         checkYourTurn();
         showAction('hint');
         setPhaseLabel(`ROUND ${msg.round_number} — HINTS`);
+        // If I'm the first player and timers are on, signal ready and start countdown
+        if (state.timersEnabled && state.turnOrder[0] === state.playerId) {
+          send({ type: 'hint_turn_ready' });
+          const hintTimerEl = document.getElementById('hint-timer');
+          hintTimerEl.style.display = '';
+          startTimer('hint-timer', Date.now() / 1000 + state.hintTimerDuration, () => {
+            if (state.drawingHints) {
+              const strokes = _drawState['hint-canvas']?.strokes ?? [];
+              if (strokes.length > 0) {
+                send({ type: 'submit_hint', drawing_data: strokes });
+                clearCanvas('hint-canvas');
+              }
+              hideDrawPopup();
+            } else {
+              const input = document.getElementById('hint-input');
+              const text = input?.value.trim() ?? '';
+              if (text) send({ type: 'submit_hint', text });
+            }
+          });
+        }
       });
       break;
     }
@@ -264,6 +286,9 @@ function _processMessage(msg) {
       const hintData = { player_id: msg.player_id, text: msg.text || '', is_drawing: msg.is_drawing || false, drawing_data: msg.drawing_data || null };
       state.hints.push(hintData);
       log(msg.is_drawing ? `Drawing hint from ${playerName(msg.player_id)}` : `Hint from ${playerName(msg.player_id)}: "${msg.text || '(skipped)'}"`, '');
+      // Always clear the hint timer when a hint is received (someone submitted)
+      clearTimer('hint-timer');
+      document.getElementById('hint-timer').style.display = 'none';
       if (msg.display_duration) {
         // Live hint — animate to centerpiece, hold, then signal backend
         // hintThumbnails set later by flyHintToThumbnail so thumbnail only appears after animation
@@ -277,11 +302,39 @@ function _processMessage(msg) {
       break;
     }
 
-    case 'next_turn':
-      flyHintToThumbnail(() => checkYourTurn());
+    case 'next_turn': {
+      // Update cached timer config in case it changed (it won't mid-game, but belt-and-suspenders)
+      if (msg.hint_timer_duration != null) state.hintTimerDuration = msg.hint_timer_duration;
+      if (msg.timers_enabled     != null) state.timersEnabled     = msg.timers_enabled;
+      const isMyTurn = msg.player_id === state.playerId;
+      flyHintToThumbnailWhenReady(() => {
+        checkYourTurn();
+        if (isMyTurn && state.timersEnabled) {
+          send({ type: 'hint_turn_ready' });
+          const hintTimerEl = document.getElementById('hint-timer');
+          hintTimerEl.style.display = '';
+          startTimer('hint-timer', Date.now() / 1000 + state.hintTimerDuration, () => {
+            if (state.drawingHints) {
+              const strokes = _drawState['hint-canvas']?.strokes ?? [];
+              if (strokes.length > 0) {
+                send({ type: 'submit_hint', drawing_data: strokes });
+                clearCanvas('hint-canvas');
+              }
+              hideDrawPopup();
+            } else {
+              const input = document.getElementById('hint-input');
+              const text = input?.value.trim() ?? '';
+              if (text) send({ type: 'submit_hint', text });
+            }
+          });
+        }
+      });
       break;
+    }
 
     case 'voting_open': {
+      clearTimer('hint-timer');
+      document.getElementById('hint-timer').style.display = 'none';
       state.hints         = msg.hints;
       state.numVotes      = msg.num_votes;
       state.selectedVotes = [];
@@ -303,8 +356,10 @@ function _processMessage(msg) {
         setPhaseLabel('VOTING');
         log('Voting open!', 'ok');
       };
+      // Close draw popup (last hinter may still have it open)
+      hideDrawPopup();
       // If the last hinter's card is still at centerpiece, fly it home first
-      flyHintToThumbnail(openVotingUI);
+      flyHintToThumbnailWhenReady(openVotingUI);
       break;
     }
 
@@ -581,7 +636,8 @@ function _processMessage(msg) {
     }
 
     case 'game_over':
-      clearTimer('guess-timer'); clearTimer('endgame-hint-timer'); clearTimer('endgame-guess-timer');
+      clearTimer('hint-timer'); clearTimer('guess-timer'); clearTimer('endgame-hint-timer'); clearTimer('endgame-guess-timer');
+      document.getElementById('hint-timer').style.display = 'none';
       document.getElementById('game-over-title').textContent = 'Game Over!';
       document.getElementById('game-over-content').innerHTML = msg.winner_id
         ? `Winner: <strong style="color:#FFCE18">${msg.winner_name}</strong>`

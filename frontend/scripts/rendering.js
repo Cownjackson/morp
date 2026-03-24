@@ -430,7 +430,13 @@ const _HINT_FLY_MS    = 450;   // ms for fly-to-centerpiece transition
 const _HINT_RETURN_MS = 380;   // ms for fly-back-to-thumbnail transition
 
 let _inflightHint = null;       // { el, player_id, hintData } while hint is at centerpiece
+let _pendingFlyCallback = null; // queued when next_turn arrives before showHintAtCenterpiece arms _inflightHint
 const _animatedThumbnails = new Set();  // player IDs whose thumbnail has already popped in
+
+// Collapse any expanded hint thumbnail when clicking outside
+document.addEventListener('click', () => {
+  document.querySelectorAll('.hint-thumbnail.expanded').forEach(t => t.classList.remove('expanded'));
+});
 
 function _hintCenterpiecePos() {
   return { x: window.innerWidth / 2, y: window.innerHeight * 0.5 };
@@ -463,6 +469,12 @@ function _buildHintThumbnailEl(hint) {
     el.style.animation = 'hint-thumb-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both';
     el.addEventListener('animationend', () => { el.style.animation = ''; }, { once: true });
   }
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const wasExpanded = el.classList.contains('expanded');
+    document.querySelectorAll('.hint-thumbnail.expanded').forEach(t => t.classList.remove('expanded'));
+    if (!wasExpanded) el.classList.add('expanded');
+  });
   if (!hint.text && !hint.is_drawing) {
     el.classList.add('hint-skipped');
     el.textContent = '(skip)';
@@ -512,6 +524,13 @@ export function showHintAtCenterpiece(msg, onPhaseReady) {
     };
     if (onPhaseReady) onPhaseReady();
 
+    // If next_turn arrived before we finished arming, drain the queued fly-back now
+    if (_pendingFlyCallback) {
+      const cb = _pendingFlyCallback;
+      _pendingFlyCallback = null;
+      flyHintToThumbnail(cb);
+    }
+
     // Fallback: if next_turn never arrives, clean up after 3s
     setTimeout(() => {
       if (_inflightHint && _inflightHint.el === el) {
@@ -560,6 +579,18 @@ export function flyHintToThumbnail(onDone) {
     renderInGamePlayerRow();
     if (onDone) onDone();
   }, _HINT_RETURN_MS);
+}
+
+/**
+ * Like flyHintToThumbnail but safe to call before showHintAtCenterpiece has armed _inflightHint.
+ * If _inflightHint isn't set yet, queues the callback; showHintAtCenterpiece will drain it.
+ */
+export function flyHintToThumbnailWhenReady(onDone) {
+  if (_inflightHint) {
+    flyHintToThumbnail(onDone);
+  } else {
+    _pendingFlyCallback = onDone;
+  }
 }
 
 /**

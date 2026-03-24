@@ -16,6 +16,7 @@ export const state = {
   _accusedMorpIds: [],
   isGhost: false, endgameTargetWord: null,
   drawingHints: false,
+  timersEnabled: true, hintTimerDuration: 60,
   avatarInteraction: null,   // null | 'vote' | 'damage'
   damageTarget: null,        // pid selected for damage
   _morpIdsForDamage: [],     // morp ids during damage phase
