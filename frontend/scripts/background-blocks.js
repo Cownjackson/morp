@@ -1437,94 +1437,94 @@
     const playerEntities = [];
     const playerEntitiesById = new Map();
 
-    function spawnCornerSpeedLines(block, now = performance.now()) {
-      if (!isCornerOverdriveActive(block, now)) {
-        return;
-      }
-
-      const speedLineConfig = cornerOverdriveConfig.speedLines;
-      const lifetime = Math.min(
-        speedLineConfig.lifetimeMs,
-        block.cornerOverdriveUntil - now
-      );
-      if (lifetime < 110) {
-        return;
-      }
-
-      const {
-        speed,
-        lineThickness,
-        lineLength,
-        lineSpread,
-        lineStagger,
-        sourceInset
-      } = getCornerSpeedLineMetrics(block);
-      const dirX = speed > 0 ? block.vx / speed : 0;
-      const dirY = speed > 0 ? block.vy / speed : 0;
-      const centerX = block.x + block.width / 2;
-      const centerY = block.y + block.height / 2;
-      const anchorX = centerX - dirX * sourceInset;
-      const anchorY = centerY - dirY * sourceInset;
-      const group = document.createElement('div');
-      const angle = Math.atan2(dirY, dirX) * (180 / Math.PI);
-
-      group.className = 'background-speed-line-group';
-      group.style.setProperty(
-        '--background-speed-line-transform',
-        `translate(${anchorX}px, ${anchorY}px) rotate(${angle}deg)`
-      );
-      group.style.setProperty('--background-speed-line-lifetime', `${lifetime}ms`);
-      group.style.setProperty(
-        '--background-speed-line-core',
-        rgbaString(block.colorRgb, speedLineConfig.color.coreOpacity)
-      );
-      group.style.setProperty(
-        '--background-speed-line-glow',
-        rgbaString(block.colorRgb, speedLineConfig.color.glowOpacity)
-      );
-
-      for (let index = 0; index < speedLineConfig.lineCount; index += 1) {
-        const line = document.createElement('div');
-        const yOffset =
-          (index - ((speedLineConfig.lineCount - 1) / 2)) * lineSpread;
-        const xOffset = -index * lineStagger;
-        const individualLength = Math.max(
-          speedLineConfig.length.minPx * 0.72,
-          lineLength - index * lineStagger
-        );
-
-        line.className = 'background-speed-line';
-        line.style.width = `${individualLength}px`;
-        line.style.height = `${lineThickness}px`;
-        line.style.left = `${xOffset - individualLength}px`;
-        line.style.top = `${yOffset - (lineThickness * 0.5)}px`;
-
-        const { segmentDiameter, segmentCount } = getCornerSpeedLineSegmentCount(
-          individualLength,
-          lineThickness
-        );
-        const segmentTravel = Math.max(individualLength - segmentDiameter, 0);
-
-        for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
-          const segment = document.createElement('div');
-          const progress = segmentCount === 1 ? 0 : segmentIndex / (segmentCount - 1);
-          const fadeAmount = 1 - progress * speedLineConfig.segments.tailFadeStrength;
-
-          segment.className = 'background-speed-line-segment';
-          segment.style.width = `${segmentDiameter}px`;
-          segment.style.height = `${segmentDiameter}px`;
-          segment.style.left = `${progress * segmentTravel}px`;
-          segment.style.top = `${(lineThickness - segmentDiameter) * 0.5}px`;
-          segment.style.opacity = fadeAmount.toFixed(3);
-          line.appendChild(segment);
-        }
-
-        group.appendChild(line);
-      }
-
-      speedLineLayer.appendChild(group);
-      group.addEventListener('animationend', () => group.remove(), { once: true });
-    }
+    // function spawnCornerSpeedLines(block, now = performance.now()) {
+    //   if (!isCornerOverdriveActive(block, now)) {
+    //     return;
+    //   }
+    //
+    //   const speedLineConfig = cornerOverdriveConfig.speedLines;
+    //   const lifetime = Math.min(
+    //     speedLineConfig.lifetimeMs,
+    //     block.cornerOverdriveUntil - now
+    //   );
+    //   if (lifetime < 110) {
+    //     return;
+    //   }
+    //
+    //   const {
+    //     speed,
+    //     lineThickness,
+    //     lineLength,
+    //     lineSpread,
+    //     lineStagger,
+    //     sourceInset
+    //   } = getCornerSpeedLineMetrics(block);
+    //   const dirX = speed > 0 ? block.vx / speed : 0;
+    //   const dirY = speed > 0 ? block.vy / speed : 0;
+    //   const centerX = block.x + block.width / 2;
+    //   const centerY = block.y + block.height / 2;
+    //   const anchorX = centerX - dirX * sourceInset;
+    //   const anchorY = centerY - dirY * sourceInset;
+    //   const group = document.createElement('div');
+    //   const angle = Math.atan2(dirY, dirX) * (180 / Math.PI);
+    //
+    //   group.className = 'background-speed-line-group';
+    //   group.style.setProperty(
+    //     '--background-speed-line-transform',
+    //     `translate(${anchorX}px, ${anchorY}px) rotate(${angle}deg)`
+    //   );
+    //   group.style.setProperty('--background-speed-line-lifetime', `${lifetime}ms`);
+    //   group.style.setProperty(
+    //     '--background-speed-line-core',
+    //     rgbaString(block.colorRgb, speedLineConfig.color.coreOpacity)
+    //   );
+    //   group.style.setProperty(
+    //     '--background-speed-line-glow',
+    //     rgbaString(block.colorRgb, speedLineConfig.color.glowOpacity)
+    //   );
+    //
+    //   for (let index = 0; index < speedLineConfig.lineCount; index += 1) {
+    //     const line = document.createElement('div');
+    //     const yOffset =
+    //       (index - ((speedLineConfig.lineCount - 1) / 2)) * lineSpread;
+    //     const xOffset = -index * lineStagger;
+    //     const individualLength = Math.max(
+    //       speedLineConfig.length.minPx * 0.72,
+    //       lineLength - index * lineStagger
+    //     );
+    //
+    //     line.className = 'background-speed-line';
+    //     line.style.width = `${individualLength}px`;
+    //     line.style.height = `${lineThickness}px`;
+    //     line.style.left = `${xOffset - individualLength}px`;
+    //     line.style.top = `${yOffset - (lineThickness * 0.5)}px`;
+    //
+    //     const { segmentDiameter, segmentCount } = getCornerSpeedLineSegmentCount(
+    //       individualLength,
+    //       lineThickness
+    //     );
+    //     const segmentTravel = Math.max(individualLength - segmentDiameter, 0);
+    //
+    //     for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
+    //       const segment = document.createElement('div');
+    //       const progress = segmentCount === 1 ? 0 : segmentIndex / (segmentCount - 1);
+    //       const fadeAmount = 1 - progress * speedLineConfig.segments.tailFadeStrength;
+    //
+    //       segment.className = 'background-speed-line-segment';
+    //       segment.style.width = `${segmentDiameter}px`;
+    //       segment.style.height = `${segmentDiameter}px`;
+    //       segment.style.left = `${progress * segmentTravel}px`;
+    //       segment.style.top = `${(lineThickness - segmentDiameter) * 0.5}px`;
+    //       segment.style.opacity = fadeAmount.toFixed(3);
+    //       line.appendChild(segment);
+    //     }
+    //
+    //     group.appendChild(line);
+    //   }
+    //
+    //   speedLineLayer.appendChild(group);
+    //   group.addEventListener('animationend', () => group.remove(), { once: true });
+    // }
 
     function applyCornerOverdriveVelocity(block, now = performance.now()) {
       const directionX = block.vx || block.baseVx;
@@ -1547,10 +1547,10 @@
 
         applyCornerOverdriveVelocity(block, now);
 
-        if (now - block.cornerSpeedLinesLastAt >= speedLineConfig.spawnIntervalMs) {
-          spawnCornerSpeedLines(block, now);
-          block.cornerSpeedLinesLastAt = now;
-        }
+        // if (now - block.cornerSpeedLinesLastAt >= speedLineConfig.spawnIntervalMs) {
+        //   spawnCornerSpeedLines(block, now);
+        //   block.cornerSpeedLinesLastAt = now;
+        // }
       });
     }
 
@@ -1579,7 +1579,7 @@
         normalY,
         targetSpeed * cornerOverdriveConfig.bounce.activationJiggleImpactMultiplier
       );
-      spawnCornerSpeedLines(block, now);
+      // spawnCornerSpeedLines(block, now);
     }
 
     const prototypePlayerEntity = createPlayerEntity(container, getPrototypePlayerPayload());
