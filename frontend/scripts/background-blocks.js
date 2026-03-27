@@ -28,7 +28,7 @@
   // Corner overdrive tuning is grouped by behavior so future visual passes are easy to edit.
   const cornerOverdriveConfig = Object.freeze({
     timing: Object.freeze({
-      durationMs: 10000
+      durationMs: 6000
     }),
     speed: Object.freeze({
       maxSpeedMultiplier: 2.625,
@@ -42,9 +42,9 @@
       activationJiggleImpactMultiplier: 0.95
     }),
     speedLines: Object.freeze({
-      spawnIntervalMs: 54,
-      lifetimeMs: 520,
-      lineCount: 3,
+      spawnIntervalMs: 78,
+      lifetimeMs: 420,
+      lineCount: 1,
       thickness: Object.freeze({
         minPx: 4,
         maxPx: 18,
@@ -55,7 +55,7 @@
         maxPx: 350,
         blockRatio: 0.62,
         speedFactor: 0.04,
-        multiplier: 1.56
+        multiplier: 1.34
       }),
       spread: Object.freeze({
         minPx: 12,
@@ -71,14 +71,9 @@
         minPx: 12,
         blockRatio: 0.18
       }),
-      segments: Object.freeze({
-        densityMultiplier: 1.3,
-        diameterRatio: 1.08,
-        tailFadeStrength: 0.72
-      }),
       color: Object.freeze({
-        coreOpacity: 0.82,
-        glowOpacity: 0.4
+        coreOpacity: 0.68,
+        glowOpacity: 0.24
       })
     })
   });
@@ -230,10 +225,16 @@
       minPx: 24,
       maxPx: 40,
       shortSideRatio: 0.035,
-      scale: 0.85
+      scale: 0.85,
+      detectionScale: 0.8
     },
     effects: ['cornerRipple', 'cornerOverdrive', 'dvdFanfare']
   });
+  // Debug overlays stay lightweight and can be toggled off without touching logic.
+  const debugVisualConfig = {
+    showCornerHitboxes: false,
+    showBlockHitboxes: false
+  };
   const collisionJiggleConfig = {
     maxTilt: 0.72,
     maxStretch: 0.036,
@@ -341,21 +342,6 @@
       sourceInset: Math.max(
         blockSize * speedLineConfig.sourceInset.blockRatio,
         speedLineConfig.sourceInset.minPx
-      )
-    };
-  }
-
-  function getCornerSpeedLineSegmentCount(lineLength, lineThickness) {
-    const segmentConfig = cornerOverdriveConfig.speedLines.segments;
-    const segmentDiameter = lineThickness * segmentConfig.diameterRatio;
-
-    return {
-      segmentDiameter,
-      segmentCount: Math.max(
-        4,
-        Math.round(
-          (lineLength / Math.max(segmentDiameter, 1)) * segmentConfig.densityMultiplier
-        )
       )
     };
   }
@@ -787,6 +773,10 @@
       halfHeight: height / 2,
       angle: 0
     };
+  }
+
+  function getHitboxAngleDegrees(hitbox) {
+    return (hitbox.angle * 180) / Math.PI;
   }
 
   function hitboxesOverlap(hitboxA, hitboxB) {
@@ -1321,6 +1311,13 @@
       container.appendChild(interactionLayer);
     }
 
+    let debugLayer = container.querySelector('.background-debug-layer');
+    if (!debugLayer) {
+      debugLayer = document.createElement('div');
+      debugLayer.className = 'background-debug-layer';
+      container.appendChild(debugLayer);
+    }
+
     let paletteColors = [];
     const ripples = [];
     let rippleIndex = 0;
@@ -1363,6 +1360,7 @@
       const element = container.querySelector(config.selector);
       const { width, height } = generateBlockSize(shapeModes.pop());
       const baseRadius = config.baseRadius;
+      const hitboxElement = document.createElement('div');
 
       element.style.width = `${width}px`;
       element.style.height = `${height}px`;
@@ -1375,8 +1373,13 @@
       dvdImg.style.opacity = '0';
       element.appendChild(dvdImg);
 
+      hitboxElement.className = 'background-block-hitbox';
+      hitboxElement.setAttribute('aria-hidden', 'true');
+      debugLayer.appendChild(hitboxElement);
+
       return {
         element,
+        hitboxElement,
         width,
         height,
         baseWidth: width,
@@ -1435,6 +1438,11 @@
     });
     const playerEntities = [];
     const playerEntitiesById = new Map();
+
+    function syncDebugVisualState() {
+      container.classList.toggle('show-corner-hitboxes', debugVisualConfig.showCornerHitboxes);
+      container.classList.toggle('show-block-hitboxes', debugVisualConfig.showBlockHitboxes);
+    }
 
     function spawnCornerSpeedLines(block, now = performance.now()) {
       if (!isCornerOverdriveActive(block, now)) {
@@ -1497,26 +1505,7 @@
         line.style.height = `${lineThickness}px`;
         line.style.left = `${xOffset - individualLength}px`;
         line.style.top = `${yOffset - (lineThickness * 0.5)}px`;
-
-        const { segmentDiameter, segmentCount } = getCornerSpeedLineSegmentCount(
-          individualLength,
-          lineThickness
-        );
-        const segmentTravel = Math.max(individualLength - segmentDiameter, 0);
-
-        for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
-          const segment = document.createElement('div');
-          const progress = segmentCount === 1 ? 0 : segmentIndex / (segmentCount - 1);
-          const fadeAmount = 1 - progress * speedLineConfig.segments.tailFadeStrength;
-
-          segment.className = 'background-speed-line-segment';
-          segment.style.width = `${segmentDiameter}px`;
-          segment.style.height = `${segmentDiameter}px`;
-          segment.style.left = `${progress * segmentTravel}px`;
-          segment.style.top = `${(lineThickness - segmentDiameter) * 0.5}px`;
-          segment.style.opacity = fadeAmount.toFixed(3);
-          line.appendChild(segment);
-        }
+        line.style.opacity = (speedLineConfig.lineCount === 1 ? 0.82 : (1 - (index * 0.18))).toFixed(3);
 
         group.appendChild(line);
       }
@@ -1755,7 +1744,14 @@
           cornerTriggerConfig.size.maxPx
         )
       );
-      return Math.max(1, Math.round(baseSize * cornerTriggerConfig.size.scale));
+      return Math.max(
+        1,
+        Math.round(
+          baseSize
+          * cornerTriggerConfig.size.scale
+          * cornerTriggerConfig.size.detectionScale
+        )
+      );
     }
 
     function getCornerTriggerDefinitions(viewport = getSceneViewport()) {
@@ -1809,6 +1805,30 @@
         triggerBox.element.style.width = `${definition.size}px`;
         triggerBox.element.style.height = `${definition.size}px`;
         triggerBox.element.style.transform = `translate(${definition.left}px, ${definition.top}px)`;
+      });
+    }
+
+    function renderBlockHitboxOverlay(block) {
+      if (!block?.hitboxElement) {
+        return;
+      }
+
+      const hitbox = getHitbox(block);
+      block.hitboxElement.style.width = `${hitbox.halfWidth * 2}px`;
+      block.hitboxElement.style.height = `${hitbox.halfHeight * 2}px`;
+      block.hitboxElement.style.left = `${hitbox.centerX}px`;
+      block.hitboxElement.style.top = `${hitbox.centerY}px`;
+      block.hitboxElement.style.transform =
+        `translate(-50%, -50%) rotate(${getHitboxAngleDegrees(hitbox)}deg)`;
+    }
+
+    function renderBlockHitboxOverlays() {
+      if (!debugVisualConfig.showBlockHitboxes) {
+        return;
+      }
+
+      blocks.forEach((block) => {
+        renderBlockHitboxOverlay(block);
       });
     }
 
@@ -2137,6 +2157,7 @@
         positionEntityInViewport(entity, viewport);
       });
       syncCornerTriggerOccupancy();
+      renderBlockHitboxOverlays();
     }
 
     function spawnRipple(x, y) {
@@ -2292,6 +2313,7 @@
         renderBlock(block);
       });
 
+      renderBlockHitboxOverlays();
       updateLogoPaint(now);
       updateRipples(now);
 
@@ -2355,6 +2377,7 @@
 
     stableViewportSnapshot = getViewportSnapshot();
     viewportState = measureSceneViewport(stableViewportSnapshot);
+    syncDebugVisualState();
     runLayoutRefresh();
     requestAnimationFrame((now) => {
       lastTime = now;
@@ -2371,6 +2394,8 @@
     window.refreshBackgroundLogoPaint = () => {
       scheduleLogoRefresh(1);
     };
+    window.backgroundDebugVisualConfig = debugVisualConfig;
+    window.syncBackgroundDebugVisuals = syncDebugVisualState;
     syncPrototypePlayer(window.backgroundPrototypePlayerData || {});
     container.dataset.initialized = 'true';
   }
