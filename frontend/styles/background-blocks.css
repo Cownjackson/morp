@@ -46,48 +46,17 @@
   background: transparent;
 }
 
-.background-debug-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-}
-
 .background-corner-trigger-box {
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 2;
+  z-index: 0;
   box-sizing: border-box;
   pointer-events: none;
   opacity: 0;
   background: transparent;
   border: 0;
   box-shadow: none;
-}
-
-.background-block-layer.show-corner-hitboxes .background-corner-trigger-box {
-  opacity: 1;
-  border: 1px solid rgba(255, 244, 124, 0.75);
-  background: rgba(255, 244, 124, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
-}
-
-.background-block-hitbox {
-  position: fixed;
-  left: 0;
-  top: 0;
-  box-sizing: border-box;
-  border: 1px dashed rgba(113, 178, 230, 0.95);
-  background: rgba(113, 178, 230, 0.08);
-  border-radius: 8px;
-  opacity: 0;
-  transform-origin: center center;
-  will-change: transform, width, height, left, top;
-}
-
-.background-block-layer.show-block-hitboxes .background-block-hitbox {
-  opacity: 1;
 }
 
 .swatch {

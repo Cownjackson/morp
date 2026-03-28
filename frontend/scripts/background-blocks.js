@@ -230,11 +230,6 @@
     },
     effects: ['cornerRipple', 'cornerOverdrive', 'dvdFanfare']
   });
-  // Debug overlays stay lightweight and can be toggled off without touching logic.
-  const debugVisualConfig = {
-    showCornerHitboxes: false,
-    showBlockHitboxes: false
-  };
   const collisionJiggleConfig = {
     maxTilt: 0.72,
     maxStretch: 0.036,
@@ -775,10 +770,6 @@
     };
   }
 
-  function getHitboxAngleDegrees(hitbox) {
-    return (hitbox.angle * 180) / Math.PI;
-  }
-
   function hitboxesOverlap(hitboxA, hitboxB) {
     const axes = [...getAxes(hitboxA), ...getAxes(hitboxB)];
 
@@ -1311,13 +1302,6 @@
       container.appendChild(interactionLayer);
     }
 
-    let debugLayer = container.querySelector('.background-debug-layer');
-    if (!debugLayer) {
-      debugLayer = document.createElement('div');
-      debugLayer.className = 'background-debug-layer';
-      container.appendChild(debugLayer);
-    }
-
     let paletteColors = [];
     const ripples = [];
     let rippleIndex = 0;
@@ -1360,7 +1344,6 @@
       const element = container.querySelector(config.selector);
       const { width, height } = generateBlockSize(shapeModes.pop());
       const baseRadius = config.baseRadius;
-      const hitboxElement = document.createElement('div');
 
       element.style.width = `${width}px`;
       element.style.height = `${height}px`;
@@ -1373,13 +1356,8 @@
       dvdImg.style.opacity = '0';
       element.appendChild(dvdImg);
 
-      hitboxElement.className = 'background-block-hitbox';
-      hitboxElement.setAttribute('aria-hidden', 'true');
-      debugLayer.appendChild(hitboxElement);
-
       return {
         element,
-        hitboxElement,
         width,
         height,
         baseWidth: width,
@@ -1438,11 +1416,6 @@
     });
     const playerEntities = [];
     const playerEntitiesById = new Map();
-
-    function syncDebugVisualState() {
-      container.classList.toggle('show-corner-hitboxes', debugVisualConfig.showCornerHitboxes);
-      container.classList.toggle('show-block-hitboxes', debugVisualConfig.showBlockHitboxes);
-    }
 
     function spawnCornerSpeedLines(block, now = performance.now()) {
       if (!isCornerOverdriveActive(block, now)) {
@@ -1808,30 +1781,6 @@
       });
     }
 
-    function renderBlockHitboxOverlay(block) {
-      if (!block?.hitboxElement) {
-        return;
-      }
-
-      const hitbox = getHitbox(block);
-      block.hitboxElement.style.width = `${hitbox.halfWidth * 2}px`;
-      block.hitboxElement.style.height = `${hitbox.halfHeight * 2}px`;
-      block.hitboxElement.style.left = `${hitbox.centerX}px`;
-      block.hitboxElement.style.top = `${hitbox.centerY}px`;
-      block.hitboxElement.style.transform =
-        `translate(-50%, -50%) rotate(${getHitboxAngleDegrees(hitbox)}deg)`;
-    }
-
-    function renderBlockHitboxOverlays() {
-      if (!debugVisualConfig.showBlockHitboxes) {
-        return;
-      }
-
-      blocks.forEach((block) => {
-        renderBlockHitboxOverlay(block);
-      });
-    }
-
     function getActiveCornerTriggerIds(block) {
       const activeTriggerIds = new Set();
       const blockHitbox = getHitbox(block);
@@ -2157,7 +2106,6 @@
         positionEntityInViewport(entity, viewport);
       });
       syncCornerTriggerOccupancy();
-      renderBlockHitboxOverlays();
     }
 
     function spawnRipple(x, y) {
@@ -2313,7 +2261,6 @@
         renderBlock(block);
       });
 
-      renderBlockHitboxOverlays();
       updateLogoPaint(now);
       updateRipples(now);
 
@@ -2377,7 +2324,6 @@
 
     stableViewportSnapshot = getViewportSnapshot();
     viewportState = measureSceneViewport(stableViewportSnapshot);
-    syncDebugVisualState();
     runLayoutRefresh();
     requestAnimationFrame((now) => {
       lastTime = now;
@@ -2394,8 +2340,6 @@
     window.refreshBackgroundLogoPaint = () => {
       scheduleLogoRefresh(1);
     };
-    window.backgroundDebugVisualConfig = debugVisualConfig;
-    window.syncBackgroundDebugVisuals = syncDebugVisualState;
     syncPrototypePlayer(window.backgroundPrototypePlayerData || {});
     container.dataset.initialized = 'true';
   }
