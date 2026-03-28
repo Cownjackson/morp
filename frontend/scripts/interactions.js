@@ -216,7 +216,7 @@ function _startCooldown() {
 }
 
 // ─── Handle incoming interaction (server echo) ────────────────────────────────
-export function handleInteraction({ player_id, interaction, target_id }) {
+export function handleInteraction({ player_id, interaction, target_id, sound }) {
   if (target_id) {
     if (interaction === 'sticky_hand') {
       _playStickyHand(player_id, target_id);
@@ -227,6 +227,12 @@ export function handleInteraction({ player_id, interaction, target_id }) {
     }
   } else {
     _playSelfAnim(player_id);
+    _playNoiseOverlay(player_id);
+    if (interaction === 'meow' && sound) {
+      const sfx = new Audio(`/music/meows/${sound}`);
+      sfx.volume = 0.5;
+      sfx.play().catch(() => {});
+    }
   }
 }
 
@@ -598,6 +604,32 @@ function _stampHandMark(x, y, rot) {
 
 function _playSelfAnim(playerId) {
   _applyAvatarClass(playerId, 'ix-self');
+}
+
+// ─── Noise overlay — cycles noise1/noise2 PNGs over avatar ──────────────────
+function _playNoiseOverlay(playerId) {
+  const orbit = document.getElementById('game-player-row');
+  if (!orbit) return;
+  const wrap = orbit.querySelector(`[data-player-id="${playerId}"]`);
+  if (!wrap) return;
+  const avatar = wrap.querySelector('.moop-avatar');
+  if (!avatar) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'ix-noise-overlay';
+  overlay.style.backgroundImage = 'url(/assets/noise/noise1.png)';
+  avatar.appendChild(overlay);
+
+  let frame = 0;
+  const totalFrames = 6; // 3 full cycles of noise1/noise2
+  const interval = setInterval(() => {
+    frame++;
+    overlay.style.backgroundImage = `url(/assets/noise/noise${(frame % 2) + 1}.png)`;
+    if (frame >= totalFrames) {
+      clearInterval(interval);
+      overlay.remove();
+    }
+  }, 120);
 }
 
 function _playHitReaction(playerId) {

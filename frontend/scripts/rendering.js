@@ -4,6 +4,13 @@ import { renderMoopInto } from './cosmetics.js';
 import { buildMoopSprite } from './moop-sprite.js';
 import { renderStrokesToCanvas, clearCanvas } from './drawing.js';
 
+// ─── Your-turn notification sound ─────────────────────────────────────────────
+export function playYourTurnSound() {
+  const sfx = new Audio('/music/your_turn.mp3');
+  sfx.volume = 0.45;
+  sfx.play().catch(() => {});
+}
+
 // ─── Role banner ──────────────────────────────────────────────────────────────
 export function renderRoleBanner() {
   const el = document.getElementById('role-banner');
@@ -405,6 +412,7 @@ export function checkYourTurn() {
       clearCanvas('hint-canvas');
       openDrawPopup();
     }
+    playYourTurnSound();
   } else {
     hideDrawPopup();
   }

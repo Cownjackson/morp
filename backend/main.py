@@ -1,6 +1,7 @@
 import asyncio
 import os
 import pathlib
+import random
 import secrets
 import signal
 import string
@@ -48,6 +49,10 @@ _interaction_times: dict[str, float] = {}   # "lobby_id:player_id" -> last inter
 _phase_gates: dict[str, asyncio.Event] = {}  # lobby_id -> event for animation-gated transitions
 
 _INTERACTION_COOLDOWN = 1.5
+
+# Discover meow sound files at startup
+_MEOW_DIR = pathlib.Path(__file__).parent.parent / "frontend" / "music" / "meows"
+_MEOW_FILES = sorted(p.name for p in _MEOW_DIR.glob("*.mp3")) if _MEOW_DIR.is_dir() else []
 
 _TIMER_SECONDS = 30  # duration for morp-guess and endgame-guess timers
 _TIMER_GRACE_SECONDS = 2  # extra buffer before server auto-submits, gives client time to submit first
@@ -586,12 +591,15 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
                 if not target or not target.is_connected or target.is_ghost:
                     raise ValueError("Target is not available.")
             _interaction_times[_key] = time.time()
-            await manager.broadcast(lobby_id, {
+            broadcast_msg: dict = {
                 "type": "interaction",
                 "player_id": player_id,
                 "interaction": interaction,
                 "target_id": target_id,
-            })
+            }
+            if interaction == "meow" and _MEOW_FILES:
+                broadcast_msg["sound"] = random.choice(_MEOW_FILES)
+            await manager.broadcast(lobby_id, broadcast_msg)
 
         elif msg_type == "chat":
             text = data.get("text", "").strip()[:150]
