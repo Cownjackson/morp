@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morp — Icon Workshop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background: #1A0A2E;
+      color: #E8D5F5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px;
+      gap: 32px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #D0BBF6;
+      letter-spacing: 0.04em;
+    }
+
+    .workshop {
+      display: flex;
+      gap: 40px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ── Preview ── */
+    .preview-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .preview-label {
+      font-size: 0.8rem;
+      color: #806878;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .icon-preview-wrap {
+      position: relative;
+    }
+
+    /* iOS icon shape preview */
+    #icon-preview {
+      width: 180px;
+      height: 180px;
+      border-radius: 40px; /* approximate iOS squircle */
+      display: block;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    }
+
+    .bg-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.88rem;
+      color: #C09AB8;
+    }
+
+    #bg-color {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: none;
+      padding: 0;
+    }
+
+    .download-btn {
+      background: #5A2878;
+      color: #F0E0FF;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 28px;
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .download-btn:hover { background: #7A3898; }
+    .download-btn:active { background: #3A1858; }
+
+    /* ── Pickers ── */
+    .pickers-col {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      min-width: 220px;
+    }
+
+    .picker-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .picker-group label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #806878;
+    }
+
+    .picker-group select {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 0.95rem;
+      background: #2A1040;
+      color: #E8D5F5;
+      border: 1px solid #5A2878;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .picker-group select:focus { border-color: #9B59B6; }
+  </style>
+</head>
+<body>
+  <h1>Icon Workshop</h1>
+
+  <div class="workshop">
+
+    <div class="preview-col">
+      <span class="preview-label">Preview (180×180)</span>
+      <canvas id="icon-preview" width="180" height="180"></canvas>
+      <div class="bg-row">
+        <label for="bg-color">Background</label>
+        <input type="color" id="bg-color" value="#1A0A2E">
+      </div>
+      <button class="download-btn" id="download-btn">Download PNG</button>
+    </div>
+
+    <div class="pickers-col" id="pickers"></div>
+
+  </div>
+
+  <script type="module">
+    import { COSMETIC_CATEGORIES } from './scripts/constants.js';
+    import { buildMoopSprite } from './scripts/moop-sprite.js';
+
+    const canvas = document.getElementById('icon-preview');
+    const ctx = canvas.getContext('2d');
+    const pickerContainer = document.getElementById('pickers');
+    const bgInput = document.getElementById('bg-color');
+    const downloadBtn = document.getElementById('download-btn');
+
+    // Current selections: { [categoryId]: itemId }
+    const selected = {};
+
+    // Build picker UI from constants
+    COSMETIC_CATEGORIES.forEach(({ id, label, items }) => {
+      selected[id] = items.find(i => i.default)?.id
+        ?? items.find(i => i.type === 'none')?.id
+        ?? items[0]?.id;
+
+      const group = document.createElement('div');
+      group.className = 'picker-group';
+
+      const lbl = document.createElement('label');
+      lbl.textContent = label;
+      lbl.htmlFor = `pick-${id}`;
+
+      const sel = document.createElement('select');
+      sel.id = `pick-${id}`;
+      items.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.id;
+        opt.textContent = item.name;
+        if (item.id === selected[id]) opt.selected = true;
+        sel.appendChild(opt);
+      });
+
+      sel.addEventListener('change', () => {
+        selected[id] = sel.value;
+        render();
+      });
+
+      group.appendChild(lbl);
+      group.appendChild(sel);
+      pickerContainer.appendChild(group);
+    });
+
+    async function render() {
+      const bg = bgInput.value;
+      const size = canvas.width;
+
+      ctx.clearRect(0, 0, size, size);
+
+      // Fill background
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, size, size);
+
+      try {
+        const sprite = await buildMoopSprite(selected);
+        const img = new Image();
+        img.src = sprite.src;
+        await new Promise(res => { img.onload = res; });
+
+        // Use opaque bounds to crop transparent space and center the moop
+        const { bounds, width: sw, height: sh } = sprite;
+        const sx = bounds.left * sw;
+        const sy = bounds.top * sh;
+        const srcW = bounds.width * sw;
+        const srcH = bounds.height * sh;
+
+        const pad = 16;
+        const maxW = size - pad * 2;
+        const maxH = size - pad * 2;
+        const scale = Math.min(maxW / srcW, maxH / srcH);
+        const drawW = srcW * scale;
+        const drawH = srcH * scale;
+        const dx = (size - drawW) / 2;
+        const dy = (size - drawH) / 2;
+
+        ctx.drawImage(img, sx, sy, srcW, srcH, dx, dy, drawW, drawH);
+      } catch (e) {
+        ctx.fillStyle = '#5A2878';
+        ctx.font = '14px Fredoka';
+        ctx.textAlign = 'center';
+        ctx.fillText('load error', size / 2, size / 2);
+        console.error(e);
+      }
+    }
+
+    bgInput.addEventListener('input', render);
+
+    downloadBtn.addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.download = 'morp-icon.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    });
+
+    render();
+  </script>
+</body>
+</html>

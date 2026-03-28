@@ -211,6 +211,10 @@ async def kick_player(lobby_id: str, body: KickRequest):
         rs = engine.state.round_state
         hints_before = len(rs.hints) if rs and phase_before == GamePhase.HINT else 0
 
+        # Cancel hint timer if the kicked player is the current hint player
+        if phase_before == GamePhase.HINT and rs and rs.current_player_id() == body.target_id:
+            _cancel_timer(lobby_id)
+
         # Mutate engine state first so the disconnect handler sees correct state
         engine.kick_player(body.player_id, body.target_id)
     except ValueError as e:
@@ -243,6 +247,8 @@ async def kick_player(lobby_id: str, body: KickRequest):
             })
     elif phase_before == GamePhase.VOTING and phase_after == GamePhase.ACCUSATION:
         await _handle_accusation(lobby_id, engine)
+    elif phase_before == GamePhase.ACCUSATION and phase_after != GamePhase.ACCUSATION:
+        await _check_round_end(lobby_id, engine)
 
     return {"ok": True}
 
@@ -373,6 +379,10 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
         rs = engine.state.round_state
         hints_before = len(rs.hints) if rs and phase_before == GamePhase.HINT else 0
 
+        # Cancel the hint timer if it was running for the disconnecting player
+        if phase_before == GamePhase.HINT and rs and rs.current_player_id() == player_id:
+            _cancel_timer(lobby_id)
+
         manager.disconnect(lobby_id, player_id)
         if player_id not in engine.lobby.players:
             if engine.all_disconnected():
@@ -405,6 +415,8 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str, player_id: str
                 })
         elif phase_before == GamePhase.VOTING and phase_after == GamePhase.ACCUSATION:
             await _handle_accusation(lobby_id, engine)
+        elif phase_before == GamePhase.ACCUSATION and phase_after != GamePhase.ACCUSATION:
+            await _check_round_end(lobby_id, engine)
         elif phase_before == GamePhase.ENDGAME_GHOST_HINTS and phase_after == GamePhase.ENDGAME_GUESSING:
             await _broadcast_endgame_hints_revealed(lobby_id, engine)
 

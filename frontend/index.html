@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Morp</title>
+  <link rel="apple-touch-icon" href="assets/morp-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -296,8 +297,8 @@
                 <span>Timers enabled</span>
               </label>
               <div class="pregame-menu-option pregame-slider-row">
-                <span>Hint timer: <strong id="hint-timer-label">60</strong>s</span>
-                <input type="range" id="hint-timer-slider" min="5" max="300" step="5" value="60"
+                <span>Hint timer: <strong id="hint-timer-label">120</strong>s</span>
+                <input type="range" id="hint-timer-slider" min="5" max="300" step="5" value="120"
                   oninput="document.getElementById('hint-timer-label').textContent=this.value">
               </div>
               <label class="pregame-menu-option" for="drawing-hints-toggle">
@@ -413,7 +414,7 @@
           <div id="endgame-ghost-drawing-block" class="hidden">
             <div class="draw-panel">
               <div class="draw-toolbar" id="endgame-ghost-toolbar">
-                <div class="draw-current-color" id="endgame-current-color" style="background:#FFFDFD"></div>
+                <div class="draw-current-color" id="endgame-current-color" style="background:#222"></div>
                 <div class="draw-color-grid">
                   <button class="color-swatch" data-color="#AE2963" style="background:#AE2963" title="Raspberry"  onclick="setDrawColor('endgame',this)"></button>
                   <button class="color-swatch" data-color="#B21232" style="background:#B21232" title="Punch"       onclick="setDrawColor('endgame',this)"></button>
@@ -451,7 +452,7 @@
                   <button class="color-swatch" data-color="#CE9767" style="background:#CE9767" title="Sand"        onclick="setDrawColor('endgame',this)"></button>
                   <button class="color-swatch" data-color="#FBC99A" style="background:#FBC99A" title="Cream"       onclick="setDrawColor('endgame',this)"></button>
                   <button class="color-swatch" data-color="#F3E49D" style="background:#F3E49D" title="Vanilla"     onclick="setDrawColor('endgame',this)"></button>
-                  <button class="color-swatch active" data-color="#FFFDFD" style="background:#FFFDFD" title="White" onclick="setDrawColor('endgame',this)"></button>
+                  <button class="color-swatch active" data-color="#FFFDFD" style="background:#222" title="White" onclick="setDrawColor('endgame',this)"></button>
                   <button class="color-swatch" data-color="#020202" style="background:#020202" title="Black"       onclick="setDrawColor('endgame',this)"></button>
                 </div>
                 <div class="draw-sidebar-sep"></div>
@@ -470,7 +471,7 @@
               </div>
               <div class="draw-canvas-wrap">
                 <canvas id="endgame-ghost-canvas" width="560" height="360"
-                  style="background:#111;border:1px solid #3A2848;border-radius:4px;cursor:crosshair;touch-action:none;display:block;width:100%">
+                  style="background:#fff;border:1px solid #3A2848;border-radius:4px;cursor:crosshair;touch-action:none;display:block;width:100%">
                 </canvas>
               </div>
             </div>
@@ -530,7 +531,7 @@
   <div id="hint-drawing-block" class="draw-popup-body">
     <div class="draw-panel">
       <div class="draw-toolbar" id="hint-toolbar">
-        <div class="draw-current-color" id="hint-current-color" style="background:#FFFDFD"></div>
+        <div class="draw-current-color" id="hint-current-color" style="background:#222"></div>
         <div class="draw-color-grid">
           <button class="color-swatch" data-color="#AE2963" style="background:#AE2963" title="Raspberry"  onclick="setDrawColor('hint',this)"></button>
           <button class="color-swatch" data-color="#B21232" style="background:#B21232" title="Punch"       onclick="setDrawColor('hint',this)"></button>
@@ -568,7 +569,7 @@
           <button class="color-swatch" data-color="#CE9767" style="background:#CE9767" title="Sand"        onclick="setDrawColor('hint',this)"></button>
           <button class="color-swatch" data-color="#FBC99A" style="background:#FBC99A" title="Cream"       onclick="setDrawColor('hint',this)"></button>
           <button class="color-swatch" data-color="#F3E49D" style="background:#F3E49D" title="Vanilla"     onclick="setDrawColor('hint',this)"></button>
-          <button class="color-swatch active" data-color="#FFFDFD" style="background:#FFFDFD" title="White" onclick="setDrawColor('hint',this)"></button>
+          <button class="color-swatch active" data-color="#FFFDFD" style="background:#222" title="White" onclick="setDrawColor('hint',this)"></button>
           <button class="color-swatch" data-color="#020202" style="background:#020202" title="Black"       onclick="setDrawColor('hint',this)"></button>
         </div>
         <div class="draw-sidebar-sep"></div>
@@ -587,7 +588,7 @@
       </div>
       <div class="draw-canvas-wrap">
         <canvas id="hint-canvas" width="560" height="360"
-          style="background:#111;border:1px solid #3A2848;border-radius:4px;cursor:crosshair;touch-action:none;display:block;width:100%">
+          style="background:#fff;border:1px solid #3A2848;border-radius:4px;cursor:crosshair;touch-action:none;display:block;width:100%">
         </canvas>
       </div>
     </div>

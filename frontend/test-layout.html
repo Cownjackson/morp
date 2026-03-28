@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morp — Layout Test</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/main.css">
+  <style>
+    /* Test harness controls — not part of real app */
+    #test-controls {
+      position: fixed;
+      top: 8px;
+      right: 8px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: rgba(0,0,0,0.85);
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 0.7em;
+    }
+    #test-controls button {
+      padding: 4px 8px;
+      font-size: 0.85em;
+      cursor: pointer;
+      background: #2A1040;
+      color: #D0BBF6;
+      border: 1px solid #5A2878;
+      border-radius: 4px;
+    }
+    #test-controls button:hover { background: #3A1858; }
+    #test-controls button.active { background: #5A2878; color: #fff; }
+    #test-controls .label { color: #806878; font-size: 0.75em; margin-top: 4px; }
+    #viewport-info {
+      position: fixed;
+      bottom: 8px;
+      right: 8px;
+      z-index: 9999;
+      background: rgba(0,0,0,0.8);
+      color: #87DCAB;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.7em;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <!-- Simulate the in-game header (not landing mode) -->
+  <header>
+    <h1>MORP</h1>
+    <span id="lobby-code-display">ABC123</span>
+    <span id="phase-label" style="color:#D1912A;font-size:0.82em">Hint Phase</span>
+  </header>
+
+  <!-- Game layout — mirrors real #game-layout structure -->
+  <div id="game-layout" class="stage-layout">
+
+    <!-- Board -->
+    <div id="board-area">
+      <div id="board-header">
+        <span id="board-theme-tag">Animals</span>
+      </div>
+      <div id="board-grid"></div>
+      <div id="half-board-note" style="display:none">You are morp and went first: highlighted words are your partial view.</div>
+    </div>
+
+    <!-- Action area -->
+    <div id="action-area">
+      <div id="act-hint" class="action-section">
+        <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px">
+          <div id="turn-indicator" style="font-size:0.88em;color:#C09AB8">Player2 is drawing...</div>
+          <span id="hint-timer" class="big-timer">47</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Player orbit -->
+    <div id="game-player-row" class="player-orbit"></div>
+
+  </div>
+
+  <!-- Chat panel (fixed) -->
+  <div id="chat-wrap" class="chat-panel">
+    <div id="chat-messages" class="chat-messages">
+      <div style="color:#C09AB8;font-size:0.82em;padding:4px 8px">Player1: gl everyone</div>
+    </div>
+    <div class="chat-input-row">
+      <input type="text" class="chat-input" placeholder="Chat..." maxlength="150" autocomplete="off">
+    </div>
+  </div>
+
+  <!-- Test harness -->
+  <div id="test-controls">
+    <span class="label">Board size</span>
+    <button onclick="setBoard(16)" class="active" data-board="16">4x4 (16)</button>
+    <button onclick="setBoard(25)" data-board="25">5x5 (25)</button>
+    <button onclick="setBoard(9)" data-board="9">3x3 (9)</button>
+    <button onclick="setBoard(20)" data-board="20">4x5 (20)</button>
+    <span class="label">Players</span>
+    <button onclick="setPlayers(3)" data-players="3">3</button>
+    <button onclick="setPlayers(6)" class="active" data-players="6">6</button>
+    <button onclick="setPlayers(10)" data-players="10">10</button>
+  </div>
+  <div id="viewport-info"></div>
+
+  <script>
+    // ── Word lists ──
+    const WORDS = [
+      'Cat','Dog','Horse','Eagle','Snake','Bear','Wolf','Hawk',
+      'Deer','Fox','Owl','Frog','Lion','Tiger','Whale','Shark',
+      'Crow','Bat','Elk','Otter','Seal','Lynx','Moose','Crane','Dove'
+    ];
+
+    const PLAYER_NAMES = ['Alice','Bob','Charlie','Diana','Echo','Frank','Grace','Hank','Iris','Jake'];
+    const PLAYER_COLORS = ['#B21232','#2574B4','#87DCAB','#D1922C','#682ECD','#EE60AB','#A3AF0C','#F15241','#71B2E6','#D99EFF'];
+
+    // ── Seat positions (from rendering.js) ──
+    const SEAT_POSITIONS = [
+      [0.500, 0.200],  // 0 — top center
+      [0.740, 0.220],  // 1 — top right
+      [0.880, 0.360],  // 2 — right upper
+      [0.840, 0.540],  // 3 — right lower
+      [0.700, 0.680],  // 4 — bottom right
+      [0.500, 0.720],  // 5 — bottom center
+      [0.300, 0.680],  // 6 — bottom left
+      [0.160, 0.540],  // 7 — left lower
+      [0.120, 0.360],  // 8 — left upper
+      [0.260, 0.220],  // 9 — top left
+    ];
+
+    let currentBoardSize = 16;
+    let currentPlayerCount = 6;
+
+    function setBoard(n) {
+      currentBoardSize = n;
+      renderBoard();
+      document.querySelectorAll('[data-board]').forEach(b => b.classList.toggle('active', +b.dataset.board === n));
+    }
+
+    function setPlayers(n) {
+      currentPlayerCount = n;
+      renderPlayers();
+      document.querySelectorAll('[data-players]').forEach(b => b.classList.toggle('active', +b.dataset.players === n));
+    }
+
+    function renderBoard() {
+      const grid = document.getElementById('board-grid');
+      const words = WORDS.slice(0, currentBoardSize);
+      const cols = Math.ceil(Math.sqrt(words.length));
+      grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      grid.innerHTML = '';
+      words.forEach((word, i) => {
+        const cell = document.createElement('div');
+        cell.className = 'word-cell' + (i === 2 ? ' target' : '');
+        cell.textContent = word;
+        grid.appendChild(cell);
+      });
+    }
+
+    function renderPlayers() {
+      const el = document.getElementById('game-player-row');
+      el.innerHTML = '';
+      const N = currentPlayerCount;
+      const W = el.clientWidth || 640;
+      const H = el.clientHeight || 400;
+
+      // Avatar sizing — scale relative to container dimensions
+      const minDim = Math.min(W, H);
+      const isMobile = W <= 430;
+      const scaleFactor = isMobile ? 0.33 : 0.286;
+      const cap = isMobile ? 200 : 208;
+      const baseSize = Math.min(minDim * scaleFactor, cap);
+      const countPenalty = Math.max(0, N - 3) * (baseSize * 0.06);
+      const avatarSize = Math.max(44, Math.round(baseSize - countPenalty));
+      // Scale hint thumbnails relative to avatar/container size
+      const hintScale = Math.max(1, Math.min(3, avatarSize / 50));
+      el.style.setProperty('--hint-scale', hintScale.toFixed(2));
+
+      for (let idx = 0; idx < N; idx++) {
+        const seatIdx = Math.round(idx * SEAT_POSITIONS.length / N) % SEAT_POSITIONS.length;
+        const [xf, yf] = SEAT_POSITIONS[seatIdx];
+        const x = W * xf;
+        const y = H * yf;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'avatar-wrap';
+        wrap.style.left = x + 'px';
+        wrap.style.top = y + 'px';
+
+        // Avatar circle (colored div, not real moop sprite)
+        const circle = document.createElement('div');
+        circle.className = 'moop-avatar';
+        circle.style.width = avatarSize + 'px';
+        circle.style.height = avatarSize + 'px';
+        circle.style.background = PLAYER_COLORS[idx];
+        circle.style.borderRadius = '50%';
+        circle.style.display = 'flex';
+        circle.style.alignItems = 'center';
+        circle.style.justifyContent = 'center';
+        circle.style.fontSize = '1.2em';
+        circle.style.fontWeight = 'bold';
+        circle.textContent = PLAYER_NAMES[idx][0];
+        if (idx === 0) circle.classList.add('is-you');
+        if (idx === 1) circle.classList.add('is-active');
+
+        // Hint thumbnails — "held" on avatar, appended after circle so it layers on top
+        const HINT_TEXTS = ['tree','sun','river','cloud','moon','star','leaf','wave','fire','wind'];
+        let thumb = null;
+        if (idx !== 1 && idx < 8) { // idx 1 is active/drawing, skip them
+          thumb = document.createElement('div');
+          if (idx % 2 === 0) {
+            // Drawing hint — small canvas thumbnail
+            thumb.className = 'hint-thumbnail hint-thumbnail-drawing';
+            const cv = document.createElement('canvas');
+            cv.width = 180; cv.height = 116;
+            const ctx = cv.getContext('2d');
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, 180, 116);
+            ctx.strokeStyle = ['#F15241','#87DCAB','#FFCE18','#71B2E6','#EE60AB'][idx % 5];
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(90, 58, 30 + idx * 3, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(40, 90); ctx.lineTo(90, 30 + idx * 5); ctx.lineTo(140, 90);
+            ctx.stroke();
+            thumb.appendChild(cv);
+          } else {
+            thumb.className = 'hint-thumbnail';
+            thumb.textContent = HINT_TEXTS[idx] || 'hint';
+          }
+          // Right-side players show hint on their left (tablet/mobile only)
+          if (xf > 0.55 && W <= 1024) thumb.classList.add('hint-left');
+        }
+
+        // Name
+        const nameEl = document.createElement('div');
+        nameEl.className = 'avatar-name' + (idx === 0 ? ' is-you' : '');
+        nameEl.textContent = PLAYER_NAMES[idx];
+
+        // HP pips
+        const hpEl = document.createElement('div');
+        hpEl.className = 'hp-pips';
+        const hp = idx === 3 ? 1 : (idx === 4 ? 2 : 3);
+        for (let i = 0; i < 3; i++) {
+          const pip = document.createElement('div');
+          pip.className = 'hp-pip' + (i >= hp ? ' empty' : '');
+          hpEl.appendChild(pip);
+        }
+
+        wrap.appendChild(circle);
+        if (thumb) wrap.appendChild(thumb);
+        wrap.appendChild(nameEl);
+        wrap.appendChild(hpEl);
+        el.appendChild(wrap);
+      }
+    }
+
+    // Viewport info
+    function updateViewportInfo() {
+      document.getElementById('viewport-info').textContent = `${window.innerWidth} x ${window.innerHeight}`;
+    }
+    window.addEventListener('resize', () => {
+      updateViewportInfo();
+      renderPlayers();
+    });
+
+    // Init
+    renderBoard();
+    renderPlayers();
+    updateViewportInfo();
+  </script>
+</body>
+</html>
