@@ -230,7 +230,7 @@ function _processMessage(msg) {
       state.speechBubbles = {};
       state.hintThumbnails = {};
       state.timersEnabled = msg.timers_enabled ?? true;
-      state.hintTimerDuration = msg.hint_timer_duration ?? 60;
+      state.hintTimerDuration = msg.hint_timer_duration ?? 120;
       resetHintThumbnailAnimations();
       state.endgameTargetWord = null;
       state.avatarInteraction = null;
