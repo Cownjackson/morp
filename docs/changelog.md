@@ -6,6 +6,10 @@ Completed work, newest first. Add an entry when a PR merges or a standalone chan
 
 ## 2026-03-28
 
+- **[feature]** Meow interaction sounds — backend picks a random meow from `music/meows/` and broadcasts it so all players hear the same clip
+- **[feature]** Noise overlay for self-interactions — bark and meow cycle `noise1.png`/`noise2.png` texture over the player avatar as a visual indicator
+- **[feature]** Your-turn notification sound — `your_turn.mp3` plays when it's your turn to draw a hint (normal rounds + endgame ghost hints)
+- **[fix]** Blank drawing rendering — empty canvas submissions now render as white instead of transparent
 - **[feature]** Responsive game room layout — CSS Grid layout (`grid-template-rows: auto auto 1fr`) fills viewport with zero scrolling on mobile (430px), tablet (768px), 1080p, 1440p, and ultrawide; board and action area auto-center with fluid `clamp()` sizing; player orbit fills remaining space with container-relative avatar scaling
 - **[feature]** Held-card hint thumbnails — hints display as small rotated cards tucked against player avatars; side-aware placement flips hints for right-side players on tablet/mobile; click-to-expand with smooth scale animation
 - **[feature]** Pass-through chat — chat panel uses `pointer-events: none` so clicks reach hints underneath; messages auto-fade after 5s; focus on input re-enables interaction; hidden scrollbar
