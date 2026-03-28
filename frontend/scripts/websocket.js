@@ -258,12 +258,13 @@ function _processMessage(msg) {
         checkYourTurn();
         showAction('hint');
         setPhaseLabel(`ROUND ${msg.round_number} — HINTS`);
-        // If I'm the first player and timers are on, signal ready and start countdown
-        if (state.timersEnabled && state.turnOrder[0] === state.playerId) {
-          send({ type: 'hint_turn_ready' });
+        // Show timer for all players; auto-submit only for the active player
+        if (state.timersEnabled) {
+          const isFirst = state.turnOrder[0] === state.playerId;
+          if (isFirst) send({ type: 'hint_turn_ready' });
           const hintTimerEl = document.getElementById('hint-timer');
           hintTimerEl.style.display = '';
-          startTimer('hint-timer', Date.now() / 1000 + state.hintTimerDuration, () => {
+          const onExpire = isFirst ? () => {
             if (state.drawingHints) {
               const strokes = _drawState['hint-canvas']?.strokes ?? [];
               if (strokes.length > 0) {
@@ -276,7 +277,8 @@ function _processMessage(msg) {
               const text = input?.value.trim() ?? '';
               if (text) send({ type: 'submit_hint', text });
             }
-          });
+          } : null;
+          startTimer('hint-timer', Date.now() / 1000 + state.hintTimerDuration, onExpire);
         }
       });
       break;
@@ -309,11 +311,11 @@ function _processMessage(msg) {
       const isMyTurn = msg.player_id === state.playerId;
       flyHintToThumbnailWhenReady(() => {
         checkYourTurn();
-        if (isMyTurn && state.timersEnabled) {
-          send({ type: 'hint_turn_ready' });
+        if (state.timersEnabled) {
+          if (isMyTurn) send({ type: 'hint_turn_ready' });
           const hintTimerEl = document.getElementById('hint-timer');
           hintTimerEl.style.display = '';
-          startTimer('hint-timer', Date.now() / 1000 + state.hintTimerDuration, () => {
+          const onExpire = isMyTurn ? () => {
             if (state.drawingHints) {
               const strokes = _drawState['hint-canvas']?.strokes ?? [];
               if (strokes.length > 0) {
@@ -326,7 +328,8 @@ function _processMessage(msg) {
               const text = input?.value.trim() ?? '';
               if (text) send({ type: 'submit_hint', text });
             }
-          });
+          } : null;
+          startTimer('hint-timer', Date.now() / 1000 + state.hintTimerDuration, onExpire);
         }
       });
       break;

@@ -20,8 +20,8 @@ Items move here when planned, to `changelog.md` when shipped.
   - [x] Phase 2 — Role assignment & board reveal (`role-reveal`, merged)
   - [x] Phase 5 — Dramatic role reveal (`role-reveal`, merged)
   - [x] Phase 3 — Hint display overhaul
-  - [ ] Phase 7 — Auto round transition
-  - [ ] Phase 8 — Death animation
+  - [ ] Phase 7 — Auto round transition (5s countdown, host pause/resume at end-of-round only)
+  - [ ] Phase 8 — Death & damage animations (goomba stomp, falling object self-damage, ghost departure)
   - [ ] Phase 1 — Magnetic snap
   - [ ] Phase 9 — Sudden Death fanfare (full-screen overlay, SFX)
   - [ ] Phase 10 — Endgame shootout presentation (Ready… DRAW!, one-shot lockout)

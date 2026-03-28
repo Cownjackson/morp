@@ -8,14 +8,14 @@ const _maskState = {};
 
 // Per-tool-key settings: hint canvas vs endgame ghost canvas
 const _drawTools = {
-  hint:    { color: '#FFFDFD', size: 3, eraser: false, fill: false },
-  endgame: { color: '#FFFDFD', size: 3, eraser: false, fill: false },
+  hint:    { color: '#222', size: 3, eraser: false, fill: false },
+  endgame: { color: '#222', size: 3, eraser: false, fill: false },
 };
 
 function _fillBg(ctx, canvas) {
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = '#111';
+  ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.restore();
 }

@@ -7,7 +7,7 @@ class LobbyConfig(BaseModel):
     max_players: int = 10
     timers_enabled: bool = True
     drawing_hints: bool = False
-    hint_timer_duration: int = 60
+    hint_timer_duration: int = 120
 
 
 class Lobby(BaseModel):
