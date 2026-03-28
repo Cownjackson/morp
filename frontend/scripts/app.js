@@ -5,7 +5,7 @@ import { getCosmetics, initMoopCustomizer } from './cosmetics.js';
 import { buildMoopSprite } from './moop-sprite.js';
 import { initModals } from './modals.js';
 import { initMusic } from './music.js';
-import { initCanvas, clearCanvas, undoStroke, setDrawColor, setDrawSize, toggleEraser, toggleFill } from './drawing.js';
+import { initCanvas, clearCanvas, undoStroke, setDrawColor, setDrawSize, toggleEraser, toggleFill, toggleLine } from './drawing.js';
 import { createLobby, joinLobby, setCustomBoards, copyBoardTemplate } from './lobby.js';
 import { startGame, submitHint, submitVotes, submitMorpGuess, submitEndgameGhostHint, submitEndgameGuess, resetToLobby, leaveLobby, copyLobbyCode, sendChat } from './actions.js';
 import { confirmDamage, openDrawPopup, minimizeDrawPopup } from './rendering.js';
@@ -35,6 +35,7 @@ window.setDrawColor = setDrawColor;
 window.setDrawSize = setDrawSize;
 window.toggleEraser = toggleEraser;
 window.toggleFill = toggleFill;
+window.toggleLine = toggleLine;
 window.undoStroke = undoStroke;
 window.clearCanvas = clearCanvas;
 
