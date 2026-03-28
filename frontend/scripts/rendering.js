@@ -55,16 +55,16 @@ export function renderBoard() {
 // Placeholder values — replace with artist-encoded coords once centerpiece art lands.
 // Up to 10 seats; players fill from seat 0 upward.
 const SEAT_POSITIONS = [
-  [0.500, 0.260],  // 0 — top center
-  [0.747, 0.306],  // 1 — top right
-  [0.900, 0.426],  // 2 — right upper
-  [0.900, 0.574],  // 3 — right lower
-  [0.747, 0.694],  // 4 — bottom right
-  [0.500, 0.740],  // 5 — bottom center
-  [0.253, 0.694],  // 6 — bottom left
-  [0.100, 0.574],  // 7 — left lower
-  [0.100, 0.426],  // 8 — left upper
-  [0.253, 0.306],  // 9 — top left
+  [0.500, 0.200],  // 0 — top center
+  [0.740, 0.220],  // 1 — top right
+  [0.880, 0.360],  // 2 — right upper
+  [0.840, 0.540],  // 3 — right lower
+  [0.700, 0.680],  // 4 — bottom right
+  [0.500, 0.720],  // 5 — bottom center
+  [0.300, 0.680],  // 6 — bottom left
+  [0.160, 0.540],  // 7 — left lower
+  [0.120, 0.360],  // 8 — left upper
+  [0.260, 0.220],  // 9 — top left
 ];
 
 // ─── Player layout ────────────────────────────────────────────────────────────
@@ -105,31 +105,6 @@ function renderPlayers(containerId, { avatarSize = 80 } = {}) {
     wrap.dataset.playerId = p.id;
     wrap.style.left = x + 'px';
     wrap.style.top  = y + 'px';
-
-    // Hint thumbnail (hint phase) or speech bubble (endgame ghost hints)
-    const thumbnail = state.hintThumbnails[p.id];
-    const bubble    = state.speechBubbles[p.id];
-    if (thumbnail !== undefined) {
-      const tEl = _buildHintThumbnailEl(thumbnail);
-      wrap.appendChild(tEl);
-    } else if (bubble !== undefined) {
-      const bel = document.createElement('div');
-      const dirClass = bubbleDir !== 'above' ? ` bubble-${bubbleDir}` : '';
-      if (bubble.skipped) {
-        bel.className = 'speech-bubble skipped' + dirClass;
-        bel.textContent = '(skipped)';
-      } else if (bubble.is_drawing && bubble.drawing_data) {
-        bel.className = 'speech-bubble drawing-bubble' + dirClass;
-        const cv = document.createElement('canvas');
-        cv.width = 360; cv.height = 232;
-        renderStrokesToCanvas(cv, bubble.drawing_data);
-        bel.appendChild(cv);
-      } else {
-        bel.className = 'speech-bubble' + dirClass;
-        bel.textContent = bubble.text;
-      }
-      wrap.appendChild(bel);
-    }
 
     // Avatar moop
     const circle = document.createElement('div');
@@ -179,6 +154,35 @@ function renderPlayers(containerId, { avatarSize = 80 } = {}) {
     }
 
     wrap.appendChild(circle);
+
+    // Hint thumbnail (hint phase) or speech bubble (endgame ghost hints)
+    // Appended after circle so it layers on top (held-card look)
+    const thumbnail = state.hintThumbnails[p.id];
+    const bubble    = state.speechBubbles[p.id];
+    const hintOnLeft = xf > 0.55 && W <= 1024; // only flip on tablet/mobile
+    if (thumbnail !== undefined) {
+      const tEl = _buildHintThumbnailEl(thumbnail);
+      if (hintOnLeft) tEl.classList.add('hint-left');
+      wrap.appendChild(tEl);
+    } else if (bubble !== undefined) {
+      const bel = document.createElement('div');
+      const dirClass = bubbleDir !== 'above' ? ` bubble-${bubbleDir}` : '';
+      if (bubble.skipped) {
+        bel.className = 'speech-bubble skipped' + dirClass;
+        bel.textContent = '(skipped)';
+      } else if (bubble.is_drawing && bubble.drawing_data) {
+        bel.className = 'speech-bubble drawing-bubble' + dirClass;
+        const cv = document.createElement('canvas');
+        cv.width = 360; cv.height = 232;
+        renderStrokesToCanvas(cv, bubble.drawing_data);
+        bel.appendChild(cv);
+      } else {
+        bel.className = 'speech-bubble' + dirClass;
+        bel.textContent = bubble.text;
+      }
+      wrap.appendChild(bel);
+    }
+
     wrap.appendChild(nameEl);
     wrap.appendChild(hpEl);
 
@@ -207,11 +211,40 @@ function renderPlayers(containerId, { avatarSize = 80 } = {}) {
 }
 
 export function renderInGamePlayerRow() {
+  const el = document.getElementById('game-player-row');
+  if (!el) return;
+  // If container has no dimensions yet (just un-hidden), defer until after reflow
+  if (el.clientWidth === 0 || el.clientHeight === 0) {
+    requestAnimationFrame(() => renderInGamePlayerRow());
+    return;
+  }
   const N = Object.values(state.players).length;
-  // 320px at 3 players, scales down to ~160px at 10 — keeps avatars from overlapping
-  const avatarSize = Math.max(160, Math.round(320 - Math.max(0, N - 3) * 22));
+  const W = el.clientWidth;
+  const H = el.clientHeight;
+  const minDim = Math.min(W, H);
+  const isMobile = W <= 430;
+  // Scale avatar relative to container, reduce per extra player beyond 3
+  // Mobile gets 50% boost, desktop/tablet gets 30% boost
+  const scaleFactor = isMobile ? 0.33 : 0.286;
+  const cap = isMobile ? 200 : 208;
+  const baseSize = Math.min(minDim * scaleFactor, cap);
+  const countPenalty = Math.max(0, N - 3) * (baseSize * 0.06);
+  const avatarSize = Math.max(44, Math.round(baseSize - countPenalty));
+  // Scale hint thumbnails relative to avatar/container size
+  const hintScale = Math.max(1, Math.min(3, avatarSize / 50));
+  el.style.setProperty('--hint-scale', hintScale.toFixed(2));
   renderPlayers('game-player-row', { avatarSize });
 }
+
+// Re-layout player orbit on resize (e.g. device rotation, window drag)
+let _resizeRaf = 0;
+window.addEventListener('resize', () => {
+  cancelAnimationFrame(_resizeRaf);
+  _resizeRaf = requestAnimationFrame(() => {
+    const el = document.getElementById('game-player-row');
+    if (el && el.children.length > 0) renderInGamePlayerRow();
+  });
+});
 
 let backgroundLobbySyncToken = 0;
 
@@ -321,6 +354,7 @@ export function renderPregameLobby() {
   refreshBackgroundLogoPaint({ delayed: true, late: true });
 }
 
+let _chatFadeTimer = 0;
 export function renderChat() {
   const chatEl = document.getElementById('chat-messages');
   if (!chatEl) return;
@@ -337,6 +371,12 @@ export function renderChat() {
     chatEl.appendChild(d);
   }
   chatEl.scrollTop = chatEl.scrollHeight;
+  // Unfade all messages, then fade after 5s of inactivity
+  chatEl.querySelectorAll('.chat-faded').forEach(el => el.classList.remove('chat-faded'));
+  clearTimeout(_chatFadeTimer);
+  _chatFadeTimer = setTimeout(() => {
+    chatEl.querySelectorAll('div').forEach(el => el.classList.add('chat-faded'));
+  }, 5000);
 }
 
 // ─── Hint phase ───────────────────────────────────────────────────────────────
@@ -552,7 +592,7 @@ export function flyHintToThumbnail(onDone) {
   const { el, player_id, hintData } = _inflightHint;
   _inflightHint = null;
 
-  // Target the top edge of the avatar-wrap so the card lands where the thumbnail will appear
+  // Target the avatar's bottom-right where the held-card thumbnail will appear
   const orbit = document.getElementById('game-player-row');
   const wrap  = orbit?.querySelector(`[data-player-id="${player_id}"]`);
   if (!wrap) {
@@ -563,9 +603,10 @@ export function flyHintToThumbnail(onDone) {
     return;
   }
 
-  const r   = wrap.getBoundingClientRect();
-  const tx  = r.left + r.width / 2;
-  const ty  = r.top;
+  const avatar = wrap.querySelector('.moop-avatar');
+  const r   = avatar ? avatar.getBoundingClientRect() : wrap.getBoundingClientRect();
+  const tx  = r.right;
+  const ty  = r.bottom - r.height * 0.2;
 
   el.style.transition = `all ${_HINT_RETURN_MS}ms cubic-bezier(0.4, 0, 0.6, 1)`;
   el.style.left       = tx + 'px';
@@ -1136,8 +1177,10 @@ export function showEnvelopeReveal(role, onDismiss) {
     }, 300);
   }
 
-  // TODO: consider auto-opening the envelope after ~3s if the player hasn't clicked
+  // Auto-open after 3s if the player hasn't clicked
+  const autoOpenTimer = setTimeout(openEnvelope, 3000);
   overlay.addEventListener('click', () => {
+    clearTimeout(autoOpenTimer);
     if (phase === 'closed') openEnvelope();
     else if (phase === 'revealed') dismiss();
   });

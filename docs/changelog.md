@@ -4,6 +4,23 @@ Completed work, newest first. Add an entry when a PR merges or a standalone chan
 
 ---
 
+## 2026-03-28
+
+- **[feature]** Responsive game room layout — CSS Grid layout (`grid-template-rows: auto auto 1fr`) fills viewport with zero scrolling on mobile (430px), tablet (768px), 1080p, 1440p, and ultrawide; board and action area auto-center with fluid `clamp()` sizing; player orbit fills remaining space with container-relative avatar scaling
+- **[feature]** Held-card hint thumbnails — hints display as small rotated cards tucked against player avatars; side-aware placement flips hints for right-side players on tablet/mobile; click-to-expand with smooth scale animation
+- **[feature]** Pass-through chat — chat panel uses `pointer-events: none` so clicks reach hints underneath; messages auto-fade after 5s; focus on input re-enables interaction; hidden scrollbar
+- **[feature]** Visible timers for all players — hint timer now displays for non-active players (auto-submit only fires for the active player)
+- **[feature]** Envelope auto-open — role reveal envelope auto-opens after 3 seconds if not clicked
+- **[feature]** White drawing canvas — canvas background changed from dark grey to white; default stroke color changed from near-white to dark (#222)
+- **[feature]** Turn notification sound — plays when it becomes your turn to hint
+- **[feature]** iOS web app icons — added home screen icons for iOS
+- **[feature]** Custom avatar sprites — added Buffy and Oscar moop sprites
+- **[fix]** First-render avatar sizing — deferred `renderInGamePlayerRow` via `requestAnimationFrame` when container has zero dimensions after screen transition
+- **[fix]** Hint timer default — increased from 60s to 120s for drawing hints
+- **[dev]** Static layout mockup (`test-layout.html`) — standalone test page linking real CSS for visual iteration at multiple viewport sizes
+
+---
+
 ## 2026-03-24
 
 - **[feature]** Animated hint lifecycle — submitted hints fly from the player avatar to a centerpiece, hold for `display_duration` (5s), then fly back and shrink to a persistent thumbnail above the player; shared pipeline for text and drawing hints (Phase 3)
