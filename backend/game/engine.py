@@ -404,6 +404,10 @@ class GameEngine:
             return True
         else:
             self.on_player_disconnect(target_id)
+            # Fully remove the kicked player immediately rather than leaving as disconnected
+            if target_id in self.lobby.players:
+                del self.lobby.players[target_id]
+            self._reassign_host_if_needed()
             return False
 
     def leave_player(self, player_id: str) -> bool:
@@ -438,16 +442,27 @@ class GameEngine:
             self._skip_disconnected_hints()
         elif phase == GamePhase.VOTING:
             self._check_voting_complete()
+        elif phase == GamePhase.ACCUSATION:
+            self._skip_disconnected_damage()
 
     def _reassign_host_if_needed(self) -> None:
         current_host = self.lobby.players.get(self.lobby.host_id)
-        if current_host and current_host.is_connected and not current_host.is_ghost:
+        if current_host and current_host.is_connected:
             return
         for p in self.lobby.players.values():
             if p.is_connected and not p.is_ghost:
                 self.lobby.host_id = p.id
                 return
         self.lobby.host_id = ""
+
+    def _skip_disconnected_damage(self) -> None:
+        """Remove disconnected morps from the pending damage queue; resolve round if all done."""
+        self._pending_damage_morps = [
+            mid for mid in self._pending_damage_morps
+            if self.lobby.players.get(mid) and self.lobby.players[mid].is_connected
+        ]
+        if not self._pending_damage_morps:
+            self._resolve_round()
 
     def _skip_disconnected_hints(self) -> None:
         rs = self.state.round_state
