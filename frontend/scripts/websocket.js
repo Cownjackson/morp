@@ -4,7 +4,7 @@ import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRo
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
-import { _drawState, clearCanvas } from './drawing.js';
+import { _drawState, clearCanvas, finalizeStroke } from './drawing.js';
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 let _wsRetries = 0;
@@ -266,6 +266,7 @@ function _processMessage(msg) {
           hintTimerEl.style.display = '';
           const onExpire = isFirst ? () => {
             if (state.drawingHints) {
+              finalizeStroke('hint-canvas');
               const strokes = _drawState['hint-canvas']?.strokes ?? [];
               if (strokes.length > 0) {
                 send({ type: 'submit_hint', drawing_data: strokes });
@@ -317,6 +318,7 @@ function _processMessage(msg) {
           hintTimerEl.style.display = '';
           const onExpire = isMyTurn ? () => {
             if (state.drawingHints) {
+              finalizeStroke('hint-canvas');
               const strokes = _drawState['hint-canvas']?.strokes ?? [];
               if (strokes.length > 0) {
                 send({ type: 'submit_hint', drawing_data: strokes });
@@ -548,6 +550,7 @@ function _processMessage(msg) {
     case 'endgame_hint_phase_over': {
       if (state.isGhost && !document.getElementById('endgame-ghost-input-block').classList.contains('hidden')) {
         if (state.drawingHints) {
+          finalizeStroke('endgame-ghost-canvas');
           const strokes = _drawState['endgame-ghost-canvas']?.strokes ?? [];
           if (strokes.length > 0) send({ type: 'endgame_submit_ghost_hint', drawing_data: strokes });
         } else {

@@ -8,8 +8,8 @@ const _maskState = {};
 
 // Per-tool-key settings: hint canvas vs endgame ghost canvas
 const _drawTools = {
-  hint:    { color: '#222', size: 3, eraser: false, fill: false },
-  endgame: { color: '#222', size: 3, eraser: false, fill: false },
+  hint:    { color: '#222', size: 3, eraser: false, fill: false, line: false },
+  endgame: { color: '#222', size: 3, eraser: false, fill: false, line: false },
 };
 
 function _fillBg(ctx, canvas) {
@@ -84,6 +84,11 @@ export function initCanvas(canvasId, toolKey) {
       eraser: t.eraser,
       points: [{ ...ds.lastPos }],
     };
+    if (t.line) {
+      // Line tool: save canvas snapshot for preview restoration
+      ds._lineSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      return;
+    }
     // Draw a dot on display canvas and mask
     applyStyle(ctx, t.eraser, t.color, t.size);
     ctx.beginPath();
@@ -100,6 +105,18 @@ export function initCanvas(canvasId, toolKey) {
     if (!ds.drawing) return;
     const pos = getPos(e);
     const t   = _drawTools[toolKey];
+
+    if (t.line) {
+      // Line tool: restore snapshot then draw preview line
+      ctx.putImageData(ds._lineSnapshot, 0, 0);
+      applyStyle(ctx, t.eraser, t.color, t.size);
+      ctx.beginPath();
+      ctx.moveTo(ds.currentStroke.points[0].x, ds.currentStroke.points[0].y);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      return;
+    }
+
     // Draw on display canvas
     applyStyle(ctx, t.eraser, t.color, t.size);
     ctx.beginPath();
@@ -116,10 +133,36 @@ export function initCanvas(canvasId, toolKey) {
     ds.currentStroke.points.push({ ...pos });
   }
 
-  function endDraw() {
+  function endDraw(e) {
     const ds = _drawState[canvasId];
     if (!ds.drawing) return;
+    const t = _drawTools[toolKey];
     ds.drawing = false;
+
+    if (t.line && ds.currentStroke) {
+      // Line tool: commit the final line
+      const endPos = e && (e.changedTouches || e.clientX !== undefined)
+        ? getPos(e) : ds.lastPos;
+      ctx.putImageData(ds._lineSnapshot, 0, 0);
+      ds.currentStroke.points = [ds.currentStroke.points[0], { ...endPos }];
+      // Draw final line on display canvas
+      applyStyle(ctx, t.eraser, t.color, t.size);
+      ctx.beginPath();
+      ctx.moveTo(ds.currentStroke.points[0].x, ds.currentStroke.points[0].y);
+      ctx.lineTo(endPos.x, endPos.y);
+      ctx.stroke();
+      // Draw on mask canvas
+      applyStyle(maskCtx, t.eraser, '#fff', t.size);
+      maskCtx.beginPath();
+      maskCtx.moveTo(ds.currentStroke.points[0].x, ds.currentStroke.points[0].y);
+      maskCtx.lineTo(endPos.x, endPos.y);
+      maskCtx.stroke();
+      ds.strokes.push(ds.currentStroke);
+      ds.currentStroke = null;
+      ds._lineSnapshot = null;
+      return;
+    }
+
     ctx.globalCompositeOperation     = 'source-over';
     maskCtx.globalCompositeOperation = 'source-over';
     if (ds.currentStroke && ds.currentStroke.points.length > 0) {
@@ -135,6 +178,18 @@ export function initCanvas(canvasId, toolKey) {
   canvas.addEventListener('touchstart', e => { e.preventDefault(); startDraw(e); }, { passive: false });
   canvas.addEventListener('touchmove',  e => { e.preventDefault(); moveDraw(e); },  { passive: false });
   canvas.addEventListener('touchend',   endDraw);
+}
+
+// Commit any in-flight stroke (e.g. mouse still held when timer expires)
+export function finalizeStroke(canvasId) {
+  const ds = _drawState[canvasId];
+  if (!ds || !ds.drawing) return;
+  ds.drawing = false;
+  if (ds.currentStroke && ds.currentStroke.points.length > 0) {
+    ds.strokes.push(ds.currentStroke);
+  }
+  ds.currentStroke = null;
+  ds._lineSnapshot = null;
 }
 
 export function clearCanvas(canvasId) {
@@ -453,20 +508,40 @@ export function toggleEraser(toolKey, el) {
   const t = _drawTools[toolKey];
   t.eraser = !t.eraser;
   t.fill = false;
+  t.line = false;
   el.classList.toggle('active', t.eraser);
   const toolbar = el.closest('.draw-toolbar');
   toolbar.querySelectorAll('.color-swatch').forEach(b => b.classList.toggle('active', !t.eraser && b.dataset.color === t.color));
   const fillBtn = toolbar.querySelector('.fill-btn');
   if (fillBtn) fillBtn.classList.remove('active');
+  const lineBtn = toolbar.querySelector('.line-btn');
+  if (lineBtn) lineBtn.classList.remove('active');
 }
 
 export function toggleFill(toolKey, el) {
   const t = _drawTools[toolKey];
   t.fill = !t.fill;
   t.eraser = false;
+  t.line = false;
   el.classList.toggle('active', t.fill);
   const toolbar = el.closest('.draw-toolbar');
   toolbar.querySelectorAll('.color-swatch').forEach(b => b.classList.toggle('active', !t.fill && b.dataset.color === t.color));
   const eraserBtn = toolbar.querySelector('.eraser-btn');
   if (eraserBtn) eraserBtn.classList.remove('active');
+  const lineBtn = toolbar.querySelector('.line-btn');
+  if (lineBtn) lineBtn.classList.remove('active');
+}
+
+export function toggleLine(toolKey, el) {
+  const t = _drawTools[toolKey];
+  t.line = !t.line;
+  t.eraser = false;
+  t.fill = false;
+  el.classList.toggle('active', t.line);
+  const toolbar = el.closest('.draw-toolbar');
+  toolbar.querySelectorAll('.color-swatch').forEach(b => b.classList.toggle('active', !t.line && b.dataset.color === t.color));
+  const eraserBtn = toolbar.querySelector('.eraser-btn');
+  if (eraserBtn) eraserBtn.classList.remove('active');
+  const fillBtn = toolbar.querySelector('.fill-btn');
+  if (fillBtn) fillBtn.classList.remove('active');
 }
