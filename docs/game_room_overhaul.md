@@ -2,7 +2,7 @@
 
 **Status:** In Progress
 **Branch:** `gameplay-enhancements` (base), feature branches per phase
-**Last updated:** 2026-03-21
+**Last updated:** 2026-03-28
 
 ---
 
@@ -501,7 +501,8 @@ Each branch groups related phases by dependency and scope. Small PRs, easy to re
 | `word-board-click` | 6A, 9 (partial), 10 (partial) | Board click guess + endgame simultaneous reveal + animation lock + sudden death pause | ✅ Merged |
 | `role-reveal` | 2, 5 | Both role-related; Phase 2 pure frontend, Phase 5 needs backend + phase_ready signaling | ✅ Merged |
 | `vote-arrows` | Post-vote visualization + interaction scroll fix | Vote arrows from voters to accused; scroll-lock fix for all interaction animations | ✅ Merged |
-| `hint-display-overhaul` | 3 | Large, self-contained, needs backend work |
+| `hint-display-overhaul` | 3 | Large, self-contained, needs backend work | ✅ Merged |
+| `game-room-layout` | Cross-cutting | Responsive layout overhaul: CSS Grid, fluid sizing, mobile/tablet/desktop breakpoints, held-card hints, pass-through chat | ✅ Merged |
 | `round-transitions` | 7, 8 | Round lifecycle (auto-transition + death animation) |
 | `endgame-overhaul` | 9, 10, 11 | Endgame is one connected flow |
 | `magnetic-snap` | 1 | Isolated cross-layout animation |
@@ -517,7 +518,7 @@ Each branch groups related phases by dependency and scope. Small PRs, easy to re
 | 3 | Phase 6A — Word board click for guess | `word-board-click` | ✅ Shipped (+ endgame mechanics, animation lock, sudden death pause) |
 | 4 | Phase 2 — Board fade + role reveal | `role-reveal` | ✅ Shipped (envelope reveal + board fade) |
 | 5 | Phase 5 — Dramatic role reveal | `role-reveal` | ✅ Shipped (+ phase_ready signaling, animation lock improvements) |
-| 6 | Phase 3 — Hint display overhaul | `hint-display-overhaul` | ✅ Shipped (animated lifecycle, drawing popup, hint timer, click thumbnails; timer default 60s not 30s; click-to-expand replaces hover) |
+| 6 | Phase 3 — Hint display overhaul | `hint-display-overhaul` | ✅ Shipped (animated lifecycle, drawing popup, hint timer, click thumbnails; timer default 120s; click-to-expand replaces hover; held-card thumbnails in `game-room-layout`) |
 | 7 | Phase 7 — Auto-transition | `round-transitions` | Needs backend timer |
 | 8 | Phase 8 — Death animation | `round-transitions` | Placeholder, waiting on art |
 | 9 | Phase 1 — Magnetic snap | `magnetic-snap` | Pure frontend, cross-layout animation |
