@@ -2525,6 +2525,18 @@ body.screen-pregame #log {
 }
 .moop-avatar.ix-hit  { animation: ix-hit  0.5s ease-out forwards; }
 .moop-avatar.ix-self { animation: ix-self 0.4s ease-out forwards; }
+/* ── Noise overlay (self-interaction visual) ── */
+.ix-noise-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.55;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  z-index: 2;
+}
 /* ── Sticky hand ── */
 .ix-sticky-hand {
   position: fixed;

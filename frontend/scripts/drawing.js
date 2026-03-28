@@ -406,10 +406,10 @@ function _drawStrokeOnCtx(ctx, stroke, scaleX, scaleY, maskCtx) {
 // Source canvas size is always 560×360 (hint-canvas / endgame-ghost-canvas dimensions)
 const _SRC_W = 560, _SRC_H = 360;
 export function renderStrokesToCanvas(canvas, strokes) {
-  if (!strokes || !strokes.length) return;
   const ctx = canvas.getContext('2d');
   ctx.globalCompositeOperation = 'source-over';
   _fillBg(ctx, canvas);
+  if (!strokes || !strokes.length) return;
 
   // Build a temporary mask for fill boundary detection during replay
   const maskCanvas = document.createElement('canvas');
