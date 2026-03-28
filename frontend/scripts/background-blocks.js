@@ -28,7 +28,7 @@
   // Corner overdrive tuning is grouped by behavior so future visual passes are easy to edit.
   const cornerOverdriveConfig = Object.freeze({
     timing: Object.freeze({
-      durationMs: 6000
+      durationMs: 10000
     }),
     speed: Object.freeze({
       maxSpeedMultiplier: 2.625,
@@ -42,9 +42,9 @@
       activationJiggleImpactMultiplier: 0.95
     }),
     speedLines: Object.freeze({
-      spawnIntervalMs: 78,
-      lifetimeMs: 420,
-      lineCount: 1,
+      spawnIntervalMs: 54,
+      lifetimeMs: 520,
+      lineCount: 3,
       thickness: Object.freeze({
         minPx: 4,
         maxPx: 18,
@@ -55,7 +55,7 @@
         maxPx: 350,
         blockRatio: 0.62,
         speedFactor: 0.04,
-        multiplier: 1.34
+        multiplier: 1.56
       }),
       spread: Object.freeze({
         minPx: 12,
@@ -71,9 +71,14 @@
         minPx: 12,
         blockRatio: 0.18
       }),
+      segments: Object.freeze({
+        densityMultiplier: 1.3,
+        diameterRatio: 1.08,
+        tailFadeStrength: 0.72
+      }),
       color: Object.freeze({
-        coreOpacity: 0.68,
-        glowOpacity: 0.24
+        coreOpacity: 0.82,
+        glowOpacity: 0.4
       })
     })
   });
@@ -225,8 +230,7 @@
       minPx: 24,
       maxPx: 40,
       shortSideRatio: 0.035,
-      scale: 0.85,
-      detectionScale: 0.8
+      scale: 0.85
     },
     effects: ['cornerRipple', 'cornerOverdrive', 'dvdFanfare']
   });
@@ -337,6 +341,21 @@
       sourceInset: Math.max(
         blockSize * speedLineConfig.sourceInset.blockRatio,
         speedLineConfig.sourceInset.minPx
+      )
+    };
+  }
+
+  function getCornerSpeedLineSegmentCount(lineLength, lineThickness) {
+    const segmentConfig = cornerOverdriveConfig.speedLines.segments;
+    const segmentDiameter = lineThickness * segmentConfig.diameterRatio;
+
+    return {
+      segmentDiameter,
+      segmentCount: Math.max(
+        4,
+        Math.round(
+          (lineLength / Math.max(segmentDiameter, 1)) * segmentConfig.densityMultiplier
+        )
       )
     };
   }
@@ -1478,7 +1497,26 @@
         line.style.height = `${lineThickness}px`;
         line.style.left = `${xOffset - individualLength}px`;
         line.style.top = `${yOffset - (lineThickness * 0.5)}px`;
-        line.style.opacity = (speedLineConfig.lineCount === 1 ? 0.82 : (1 - (index * 0.18))).toFixed(3);
+
+        const { segmentDiameter, segmentCount } = getCornerSpeedLineSegmentCount(
+          individualLength,
+          lineThickness
+        );
+        const segmentTravel = Math.max(individualLength - segmentDiameter, 0);
+
+        for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
+          const segment = document.createElement('div');
+          const progress = segmentCount === 1 ? 0 : segmentIndex / (segmentCount - 1);
+          const fadeAmount = 1 - progress * speedLineConfig.segments.tailFadeStrength;
+
+          segment.className = 'background-speed-line-segment';
+          segment.style.width = `${segmentDiameter}px`;
+          segment.style.height = `${segmentDiameter}px`;
+          segment.style.left = `${progress * segmentTravel}px`;
+          segment.style.top = `${(lineThickness - segmentDiameter) * 0.5}px`;
+          segment.style.opacity = fadeAmount.toFixed(3);
+          line.appendChild(segment);
+        }
 
         group.appendChild(line);
       }
@@ -1717,14 +1755,7 @@
           cornerTriggerConfig.size.maxPx
         )
       );
-      return Math.max(
-        1,
-        Math.round(
-          baseSize
-          * cornerTriggerConfig.size.scale
-          * cornerTriggerConfig.size.detectionScale
-        )
-      );
+      return Math.max(1, Math.round(baseSize * cornerTriggerConfig.size.scale));
     }
 
     function getCornerTriggerDefinitions(viewport = getSceneViewport()) {
