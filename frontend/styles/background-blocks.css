@@ -67,6 +67,33 @@
   border-radius: 28px;
   will-change: transform;
   pointer-events: none;
+  overflow: visible;
+  --swatch-fill: #ffffff;
+  --swatch-shadow-fill: rgba(0, 0, 0, 0.9);
+  --swatch-shadow-offset: 2.6px;
+  --swatch-outline-width: 2px;
+}
+
+/* The swatch wrapper carries the physics transform; these faces are visual-only depth layers. */
+.swatch-shadow-face,
+.swatch-face {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.swatch-shadow-face {
+  background: var(--swatch-shadow-fill);
+  transform: translate(var(--swatch-shadow-offset), var(--swatch-shadow-offset));
+  z-index: 0;
+}
+
+.swatch-face {
+  background: var(--swatch-fill);
+  border: var(--swatch-outline-width) solid var(--swatch-shadow-fill);
+  z-index: 1;
 }
 
 /* Corner overdrive speed lines. Adjust timing/size in the JS config; this section controls fade and glow. */
@@ -141,61 +168,54 @@
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.5s ease;
+  z-index: 2;
 }
 
 .swatch-1 {
   width: 480px;
   height: 420px;
-  background: var(--grape);
   border-radius: 44px;
 }
 
 .swatch-2 {
   width: 520px;
   height: 380px;
-  background: var(--eggplant);
   border-radius: 40px;
 }
 
 .swatch-3 {
   width: 340px;
   height: 280px;
-  background: var(--trumskin);
   border-radius: 36px;
 }
 
 .swatch-4 {
   width: 400px;
   height: 340px;
-  background: var(--mint);
   border-radius: 44px;
 }
 
 .swatch-5 {
   width: 360px;
   height: 300px;
-  background: var(--punch);
   border-radius: 38px;
 }
 
 .swatch-6 {
   width: 260px;
   height: 220px;
-  background: var(--mustard);
   border-radius: 32px;
 }
 
 .swatch-7 {
   width: 280px;
   height: 240px;
-  background: var(--pinky);
   border-radius: 34px;
 }
 
 .swatch-8 {
   width: 220px;
   height: 200px;
-  background: var(--shreks-toe);
   border-radius: 30px;
 }
 
