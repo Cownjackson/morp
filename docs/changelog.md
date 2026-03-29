@@ -6,6 +6,9 @@ Completed work, newest first. Add an entry when a PR merges or a standalone chan
 
 ## 2026-03-29
 
+- **[feature]** Goomba stomp damage animation — morp avatar jumps in a high arc, lands on target with progressive cartoon squish (scaleY→0.35), elastic spring recovery, then bounces back to seat; rAF-driven 4-phase animation (~970ms); render guard prevents DOM wipe mid-animation; animation lock defers round_end
+- **[fix]** Hint thumbnails persist through damage — cleared at role reveal start so they don't linger through damage/round-end phases
+- **[fix]** Damage stall on missing target — backend pre-validates target exists before engine call; cleans up pending morps if target left; widened exception handler catches KeyError
 - **[feature]** Radial vote pointers — replaced line+pointer accusation display with scholastic pointer fingers placed radially around each voter's avatar, aimed at their accused target; 512×512 art at 156px display; pointers linger through full role reveal then fade out; rendered inside `.avatar-wrap` below envelope overlays
 - **[feature]** Hover-to-enlarge hint thumbnails — thumbnails now enlarge on hover (previously click-only); click-to-pin still works outside vote/damage phases; during voting, clicks pass through to register the vote; transition skip on re-render prevents animation replay
 - **[fix]** Boards blocking votes — centerpiece hint cards cleared when voting opens; hint thumbnails no longer intercept vote/damage clicks
