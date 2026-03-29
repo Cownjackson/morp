@@ -6,6 +6,7 @@ Completed work, newest first. Add an entry when a PR merges or a standalone chan
 
 ## 2026-03-29
 
+- **[feature]** Endgame UI alignment — ghost hints now display as held-card thumbnails with click-to-expand (matching normal rounds) instead of speech bubbles; ghost drawing input uses a floating popup instead of inline block; red morp spotlight during damage phase; draw popup auto-closes on hail mary
 - **[feature]** Hail Mary mechanic — morps can attempt an early guess of the target word at any point during the hint phase; correct guess lets them deal damage, wrong guess costs 1 HP; dramatic animation sequence (splash popup → word guess → full role reveal envelopes → damage/round end); disconnect-safe with 12 new backend tests
 
 ---

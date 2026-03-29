@@ -8,7 +8,7 @@ import { initMusic } from './music.js';
 import { initCanvas, clearCanvas, undoStroke, setDrawColor, setDrawSize, toggleEraser, toggleFill, toggleLine } from './drawing.js';
 import { createLobby, joinLobby, setCustomBoards, copyBoardTemplate } from './lobby.js';
 import { startGame, submitHint, submitVotes, submitMorpGuess, submitEndgameGhostHint, submitEndgameGuess, resetToLobby, leaveLobby, copyLobbyCode, sendChat, enterHailMary, cancelHailMary, submitHailMary } from './actions.js';
-import { confirmDamage, openDrawPopup, minimizeDrawPopup } from './rendering.js';
+import { confirmDamage, openDrawPopup, minimizeDrawPopup, openEndgameDrawPopup, minimizeEndgameDrawPopup, hideEndgameDrawPopup } from './rendering.js';
 import { initInteractions, toggleInteractionMenu } from './interactions.js';
 
 // ─── Expose functions for HTML onclick attributes ─────────────────────────────
@@ -34,6 +34,9 @@ window.toggleInteractionMenu = toggleInteractionMenu;
 window.confirmDamage = confirmDamage;
 window.openDrawPopup = openDrawPopup;
 window.minimizeDrawPopup = minimizeDrawPopup;
+window.openEndgameDrawPopup = openEndgameDrawPopup;
+window.minimizeEndgameDrawPopup = minimizeEndgameDrawPopup;
+window.hideEndgameDrawPopup = hideEndgameDrawPopup;
 window.setDrawColor = setDrawColor;
 window.setDrawSize = setDrawSize;
 window.toggleEraser = toggleEraser;
