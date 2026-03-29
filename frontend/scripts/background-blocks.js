@@ -267,8 +267,6 @@
   const logoPaintConfig = {
     shadowDarkness: 0.52,
     shadowOpacity: 0.9,
-    holdDuration: 234,
-    fadeDuration: 468,
     detectionInsetRatio: 0.215,
     alphaThreshold: 108,
     maskSampleDivisions: 8
@@ -1204,7 +1202,6 @@
         maskScale: 1,
         maskWidth: 0,
         maskHeight: 0,
-        lastPaintedAt: -Infinity,
         lastPaintColor: null
       };
     });
@@ -1355,7 +1352,6 @@
     let logoTextElements = [];
     let logoLetters = [];
     let defaultLogoFill = getThemeColorRgb('--punch');
-    let defaultLogoShadow = darkenColor(defaultLogoFill, logoPaintConfig.shadowDarkness);
     const refreshHandles = {
       logoBounds: 0,
       layout: 0,
@@ -1374,19 +1370,131 @@
     function syncThemeStyles() {
       paletteColors = ripplePalette.map((cssVariable) => getThemeColorRgb(cssVariable));
       defaultLogoFill = getThemeColorRgb('--punch');
-      defaultLogoShadow = darkenColor(defaultLogoFill, logoPaintConfig.shadowDarkness);
 
       blocks.forEach((block) => {
-        block.colorRgb = getThemeColorRgb(block.colorVariable);
-        block.element.style.setProperty(
-          '--swatch-fill',
-          rgbaString(block.colorRgb, 1)
-        );
-        block.element.style.setProperty(
-          '--swatch-shadow-fill',
-          rgbaString(getBlockShadowColor(block.colorRgb), blockFaceShadowConfig.opacity)
-        );
+        applyBlockThemeStyles(block);
       });
+    }
+
+    function applyBlockThemeStyles(block) {
+      block.colorRgb = getThemeColorRgb(block.colorVariable);
+      block.element.style.setProperty(
+        '--swatch-fill',
+        rgbaString(block.colorRgb, 1)
+      );
+      block.element.style.setProperty(
+        '--swatch-shadow-fill',
+        rgbaString(getBlockShadowColor(block.colorRgb), blockFaceShadowConfig.opacity)
+      );
+    }
+
+    // Logo paint flow:
+    // 1. Build one set of block hit candidates for this animation frame.
+    // 2. Resolve the strongest overlap per letter.
+    // 3. Persist that color on the letter until a later block replaces it.
+    function createNoLogoPaintHit() {
+      return { score: 0, color: null };
+    }
+
+    function getBlockBounds(hitbox) {
+      const extents = getRotatedExtents(hitbox);
+      return {
+        left: hitbox.centerX - extents.x,
+        right: hitbox.centerX + extents.x,
+        top: hitbox.centerY - extents.y,
+        bottom: hitbox.centerY + extents.y
+      };
+    }
+
+    function getLetterDetectionBounds(letter) {
+      const bounds = letter.bounds;
+      if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
+        return null;
+      }
+
+      const insetX = bounds.width * logoPaintConfig.detectionInsetRatio;
+      const insetY = bounds.height * logoPaintConfig.detectionInsetRatio;
+      return {
+        left: bounds.left + insetX,
+        right: bounds.right - insetX,
+        top: bounds.top + insetY,
+        bottom: bounds.bottom - insetY
+      };
+    }
+
+    function getBoundsOverlap(boundsA, boundsB) {
+      const left = Math.max(boundsA.left, boundsB.left);
+      const right = Math.min(boundsA.right, boundsB.right);
+      const top = Math.max(boundsA.top, boundsB.top);
+      const bottom = Math.min(boundsA.bottom, boundsB.bottom);
+      const width = right - left;
+      const height = bottom - top;
+
+      if (width <= 0 || height <= 0) {
+        return null;
+      }
+
+      return { left, right, top, bottom, width, height };
+    }
+
+    function getLogoPaintCandidates() {
+      return blocks.map((block) => {
+        const hitbox = getHitbox(block, true);
+        return {
+          color: block.colorRgb,
+          hitbox,
+          bounds: getBlockBounds(hitbox)
+        };
+      });
+    }
+
+    function getBestPaintMatchForLetter(letter, paintCandidates) {
+      const detectionBounds = getLetterDetectionBounds(letter);
+      if (!detectionBounds) {
+        return createNoLogoPaintHit();
+      }
+
+      return paintCandidates.reduce((bestMatch, candidate) => {
+        const overlap = getBoundsOverlap(candidate.bounds, detectionBounds);
+        if (!overlap) {
+          return bestMatch;
+        }
+
+        if (!letterHasShapeOverlap(
+          letter,
+          candidate.hitbox,
+          overlap.left,
+          overlap.top,
+          overlap.right,
+          overlap.bottom
+        )) {
+          return bestMatch;
+        }
+
+        const score = overlap.width * overlap.height;
+        if (score <= bestMatch.score) {
+          return bestMatch;
+        }
+
+        return { score, color: candidate.color };
+      }, createNoLogoPaintHit());
+    }
+
+    function updateStoredLogoLetterPaint(letter, paintMatch) {
+      if (paintMatch.color) {
+        letter.lastPaintColor = paintMatch.color;
+      }
+    }
+
+    function applyLogoLetterPaint(letter, color) {
+      const activeColor = color ?? defaultLogoFill;
+      const shadowColor = darkenColor(activeColor, logoPaintConfig.shadowDarkness);
+
+      letter.element.style.setProperty('--logo-fill', rgbaString(activeColor, 1));
+      letter.element.style.setProperty(
+        '--logo-shadow',
+        rgbaString(shadowColor, logoPaintConfig.shadowOpacity)
+      );
     }
 
     const shapeModes = shuffle([
@@ -2061,82 +2169,16 @@
       commitSceneViewportChange(snapshot, frameCount);
     }
 
-    function updateLogoPaint(now) {
+    function updateLogoPaint() {
       if (!logoLetters.length) {
         return;
       }
 
-      const bestByLetter = logoLetters.map(() => ({ score: 0, color: null }));
-
-      blocks.forEach((block) => {
-        const hitbox = getHitbox(block, true);
-        const extents = getRotatedExtents(hitbox);
-        const blockLeft = hitbox.centerX - extents.x;
-        const blockRight = hitbox.centerX + extents.x;
-        const blockTop = hitbox.centerY - extents.y;
-        const blockBottom = hitbox.centerY + extents.y;
-
-        logoLetters.forEach((letter, index) => {
-          const bounds = letter.bounds;
-          if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
-            return;
-          }
-
-          const insetX = bounds.width * logoPaintConfig.detectionInsetRatio;
-          const insetY = bounds.height * logoPaintConfig.detectionInsetRatio;
-          const effectiveLeft = bounds.left + insetX;
-          const effectiveRight = bounds.right - insetX;
-          const effectiveTop = bounds.top + insetY;
-          const effectiveBottom = bounds.bottom - insetY;
-
-          const overlapWidth = Math.min(blockRight, effectiveRight) - Math.max(blockLeft, effectiveLeft);
-          const overlapHeight = Math.min(blockBottom, effectiveBottom) - Math.max(blockTop, effectiveTop);
-
-          if (overlapWidth <= 0 || overlapHeight <= 0) {
-            return;
-          }
-
-          const overlapLeft = Math.max(blockLeft, effectiveLeft);
-          const overlapTop = Math.max(blockTop, effectiveTop);
-          const overlapRight = Math.min(blockRight, effectiveRight);
-          const overlapBottom = Math.min(blockBottom, effectiveBottom);
-
-          if (!letterHasShapeOverlap(letter, hitbox, overlapLeft, overlapTop, overlapRight, overlapBottom)) {
-            return;
-          }
-
-          const score = overlapWidth * overlapHeight;
-          if (score > bestByLetter[index].score) {
-            bestByLetter[index] = { score, color: block.colorRgb };
-          }
-        });
-      });
-
-      logoLetters.forEach((letter, index) => {
-        if (bestByLetter[index].color) {
-          letter.lastPaintColor = bestByLetter[index].color;
-          letter.lastPaintedAt = now;
-        }
-
-        const elapsed = now - letter.lastPaintedAt;
-        const fadeProgress = clamp(
-          (elapsed - logoPaintConfig.holdDuration) / logoPaintConfig.fadeDuration,
-          0,
-          1
-        );
-        const activeColor = letter.lastPaintColor ?? defaultLogoFill;
-        const fillColor = mixColor(activeColor, defaultLogoFill, fadeProgress);
-        const shadowColor = mixColor(
-          darkenColor(activeColor, logoPaintConfig.shadowDarkness),
-          defaultLogoShadow,
-          fadeProgress
-        );
-
-        letter.element.style.setProperty('--logo-fill', rgbaString(fillColor, 1));
-        letter.element.style.setProperty(
-          '--logo-shadow',
-          rgbaString(shadowColor, logoPaintConfig.shadowOpacity)
-        );
+      const paintCandidates = getLogoPaintCandidates();
+      logoLetters.forEach((letter) => {
+        const paintMatch = getBestPaintMatchForLetter(letter, paintCandidates);
+        updateStoredLogoLetterPaint(letter, paintMatch);
+        applyLogoLetterPaint(letter, letter.lastPaintColor);
       });
     }
 
