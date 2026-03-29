@@ -1,7 +1,7 @@
 import { state, send } from './state.js';
 import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
 import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, flyHintToThumbnailWhenReady, resetHintThumbnailAnimations, hideDrawPopup, openEndgameDrawPopup, hideEndgameDrawPopup, playYourTurnSound, showHailMaryPopup } from './rendering.js';
-import { handleInteraction } from './interactions.js';
+import { handleInteraction, playStompAnimation } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
 import { _drawState, clearCanvas, finalizeStroke } from './drawing.js';
@@ -388,6 +388,11 @@ function _processMessage(msg) {
       const cleanupPointers = showVoteArrows(msg.votes || {});
       setTimeout(() => {
         setPhaseLabel('ROLE REVEAL');
+        // Clear hint thumbnails so they don't show during reveal or rest of round
+        // Remove DOM elements directly instead of re-rendering (which would destroy vote pointers)
+        state.hintThumbnails = {};
+        resetHintThumbnailAnimations();
+        document.querySelectorAll('.hint-thumbnail').forEach(el => el.remove());
         playRoleRevealSequence(msg.reveal_order || [], () => {
           cleanupPointers();
           send({ type: 'phase_ready' });
@@ -525,14 +530,21 @@ function _processMessage(msg) {
       break;
     }
 
-    case 'damage_dealt':
+    case 'damage_dealt': {
       if (state.avatarInteraction === 'damage') {
         state.avatarInteraction = null;
         state.damageTarget = null;
         state._morpIdsForDamage = [];
       }
       log(`${playerName(msg.from_id)} → ${playerName(msg.to_id)} (${msg.hp_remaining} HP${msg.eliminated ? ', eliminated' : ''})`, 'warn');
+
+      _startAnimationLock(3000);
+      playStompAnimation(msg.from_id, msg.to_id, () => {
+        renderInGamePlayerRow();
+        _endAnimationLock();
+      });
       break;
+    }
 
     case 'round_end': {
       const isEndgameTransition = !!msg.endgame_transition;
