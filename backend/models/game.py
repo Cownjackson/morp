@@ -50,6 +50,7 @@ class RoundState(BaseModel):
     hints: list[Hint] = Field(default_factory=list)
     votes: dict[str, list[str]] = Field(default_factory=dict)  # voter_id -> [accused_id, ...]
     accused_ids: list[str] = Field(default_factory=list)
+    hail_mary_result: dict | None = None  # {morp_id, guess, correct, target_word}
     phase: GamePhase = GamePhase.HINT
 
     def current_player_id(self) -> str | None:

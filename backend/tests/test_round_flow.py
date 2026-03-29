@@ -514,3 +514,129 @@ def test_endgame_timeout_with_one_correct_guess():
     assert resolution["safe_player_id"] == active[0].id
     assert active[0].hp == hp_before[0]       # winner untouched
     assert active[1].hp == hp_before[1] - 1   # non-guesser damaged
+
+
+# ── Hail Mary ────────────────────────────────────────────────────────────────
+
+def _start_hint_phase(engine, seed=1):
+    """Start game and return (morp_id, safe_ids, round_state)."""
+    engine.start_game(seed=seed)
+    morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
+    safe_ids = [p.id for p in engine.lobby.players.values() if p.role == Role.SAFE]
+    return morp_id, safe_ids, engine.state.round_state
+
+
+def test_hail_mary_correct_guess_waits_for_damage():
+    engine = make_engine(num_players=4)
+    morp_id, safe_ids, rs = _start_hint_phase(engine)
+    result = engine.submit_hail_mary(morp_id, rs.target_word)
+    assert result["correct"] is True
+    assert engine.state.phase == GamePhase.HINT  # still hint, awaiting damage target
+    assert morp_id in engine._pending_damage_morps
+
+
+def test_hail_mary_correct_then_damage_resolves_round():
+    engine = make_engine(num_players=4)
+    morp_id, safe_ids, rs = _start_hint_phase(engine)
+    engine.submit_hail_mary(morp_id, rs.target_word)
+    engine.hail_mary_deal_damage(morp_id, safe_ids[0])
+    assert engine.state.phase == GamePhase.ROUND_END
+    assert engine.lobby.players[safe_ids[0]].hp == 2
+    assert engine.lobby.players[morp_id].hp == 3  # morp takes no damage
+
+
+def test_hail_mary_wrong_guess_damages_morp_and_ends_round():
+    engine = make_engine(num_players=4)
+    morp_id, safe_ids, rs = _start_hint_phase(engine)
+    wrong = next(w for w in rs.board.words if w != rs.target_word)
+    result = engine.submit_hail_mary(morp_id, wrong)
+    assert result["correct"] is False
+    assert engine.state.phase == GamePhase.ROUND_END
+    assert engine.lobby.players[morp_id].hp == 2
+
+
+def test_hail_mary_stores_result_on_round_state():
+    engine = make_engine(num_players=4)
+    morp_id, safe_ids, rs = _start_hint_phase(engine)
+    engine.submit_hail_mary(morp_id, rs.target_word)
+    hm = rs.hail_mary_result
+    assert hm is not None
+    assert hm["morp_id"] == morp_id
+    assert hm["correct"] is True
+    assert hm["target_word"] == rs.target_word
+
+
+def test_hail_mary_only_morp_can_attempt():
+    engine = make_engine(num_players=4)
+    morp_id, safe_ids, rs = _start_hint_phase(engine)
+    with pytest.raises(ValueError, match="[Mm]orp"):
+        engine.submit_hail_mary(safe_ids[0], rs.target_word)
+
+
+def test_hail_mary_requires_hint_phase():
+    engine = make_engine(num_players=4)
+    run_through_hints(engine)
+    assert engine.state.phase == GamePhase.VOTING
+    morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
+    with pytest.raises(ValueError, match="hint"):
+        engine.submit_hail_mary(morp_id, "anything")
+
+
+def test_hail_mary_guess_must_be_board_word():
+    engine = make_engine(num_players=4)
+    morp_id, safe_ids, rs = _start_hint_phase(engine)
+    with pytest.raises(ValueError, match="board"):
+        engine.submit_hail_mary(morp_id, "notaboardword")
+
+
+def test_hail_mary_morp_cannot_damage_self():
+    engine = make_engine(num_players=4)
+    morp_id, safe_ids, rs = _start_hint_phase(engine)
+    engine.submit_hail_mary(morp_id, rs.target_word)
+    with pytest.raises(ValueError, match="yourself"):
+        engine.hail_mary_deal_damage(morp_id, morp_id)
+
+
+def test_hail_mary_damage_requires_correct_guess():
+    engine = make_engine(num_players=4)
+    morp_id, safe_ids, rs = _start_hint_phase(engine)
+    wrong = next(w for w in rs.board.words if w != rs.target_word)
+    engine.submit_hail_mary(morp_id, wrong)
+    with pytest.raises(ValueError):
+        engine.hail_mary_deal_damage(morp_id, safe_ids[0])
+
+
+def test_hail_mary_disconnect_after_correct_resolves_round():
+    engine = make_engine(num_players=4)
+    morp_id, safe_ids, rs = _start_hint_phase(engine)
+    engine.submit_hail_mary(morp_id, rs.target_word)
+    assert engine.state.phase == GamePhase.HINT
+    engine.on_player_disconnect(morp_id)
+    assert engine.state.phase == GamePhase.ROUND_END
+
+
+def test_hail_mary_can_trigger_endgame():
+    """A hail mary kill that brings active players to 2 triggers endgame."""
+    engine = make_engine(num_players=3)
+    morp_id, safe_ids, rs = _start_hint_phase(engine)
+    # Weaken a safe player to 1 HP
+    engine.lobby.players[safe_ids[0]].hp = 1
+    engine.submit_hail_mary(morp_id, rs.target_word)
+    engine.hail_mary_deal_damage(morp_id, safe_ids[0])
+    assert engine.lobby.players[safe_ids[0]].is_ghost
+    assert engine.state.phase == GamePhase.ENDGAME_2P
+
+
+def test_hail_mary_works_mid_hint_phase():
+    """Morp can hail mary after some hints but before all are submitted."""
+    engine = make_engine(num_players=4)
+    engine.start_game(seed=1)
+    rs = engine.state.round_state
+    morp_id = next(p.id for p in engine.lobby.players.values() if p.role == Role.MORP)
+    # Submit one hint first
+    first_pid = rs.turn_order[0]
+    engine.submit_hint(first_pid, "test")
+    assert engine.state.phase == GamePhase.HINT
+    # Morp hail marys
+    result = engine.submit_hail_mary(morp_id, rs.target_word)
+    assert result["correct"] is True

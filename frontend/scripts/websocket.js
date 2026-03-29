@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, flyHintToThumbnailWhenReady, resetHintThumbnailAnimations, hideDrawPopup, playYourTurnSound } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, flyHintToThumbnailWhenReady, resetHintThumbnailAnimations, hideDrawPopup, playYourTurnSound, showHailMaryPopup } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
@@ -136,6 +136,7 @@ const _ANIMATION_LOCK_TIMEOUT_MS = 5000;
 
 const _DEFERRED_TYPES = new Set([
   'lobby_update', 'round_end', 'damage_dealt', 'damage_phase',
+  'hail_mary_damage_phase',
   'endgame_round_end', 'round_start', 'endgame_round_start', 'game_over',
 ]);
 
@@ -257,6 +258,15 @@ function _processMessage(msg) {
         boardArea.style.opacity = '1';
         checkYourTurn();
         showAction('hint');
+        // Show hail mary button for morps during hint phase
+        const hmBlock = document.getElementById('hail-mary-block');
+        if (state.role === 'morp' && !state.isGhost) {
+          hmBlock.classList.remove('hidden');
+          document.getElementById('btn-hail-mary').classList.remove('hidden');
+          document.getElementById('hail-mary-confirm').classList.add('hidden');
+        } else {
+          hmBlock.classList.add('hidden');
+        }
         setPhaseLabel(`ROUND ${msg.round_number} — HINTS`);
         // Show timer for all players; auto-submit only for the active player
         if (state.timersEnabled) {
@@ -434,6 +444,60 @@ function _processMessage(msg) {
         renderBoard();
         setTimeout(_endAnimationLock, 2000);
       }
+      break;
+    }
+
+    case 'hail_mary_result': {
+      clearTimer('hint-timer');
+      document.getElementById('hint-timer').style.display = 'none';
+      state._hailMaryMode = false;
+      // Hide hail mary UI
+      document.getElementById('hail-mary-block')?.classList.add('hidden');
+      hideDrawPopup();
+
+      const resultText = msg.correct
+        ? `✓ ${playerName(msg.morp_id)} guessed correctly! (Hail Mary)`
+        : `✗ ${playerName(msg.morp_id)} guessed wrong! Target: "${msg.target_word}" (Hail Mary)`;
+      log(resultText, msg.correct ? 'ok' : 'warn');
+
+      // Animation sequence: popup → word guess → full role reveal → damage/round-end
+      _startAnimationLock(30000);
+      const revealOrder = msg.reveal_order || [];
+
+      // Step 1: "HAIL MARY" splash
+      showHailMaryPopup(() => {
+        // Step 2: Word guess animation
+        if (msg.guess) {
+          animateWordGuess(msg.guess);
+          resolveWordGuess(msg.correct, () => {
+            state.targetWord = msg.target_word;
+            renderBoard();
+            // Step 3: Full role reveal (safe first, morp last)
+            setPhaseLabel('ROLE REVEAL');
+            playRoleRevealSequence(revealOrder, () => {
+              _endAnimationLock();
+            });
+          });
+        } else {
+          state.targetWord = msg.target_word;
+          renderBoard();
+          setPhaseLabel('ROLE REVEAL');
+          playRoleRevealSequence(revealOrder, () => {
+            _endAnimationLock();
+          });
+        }
+      });
+      break;
+    }
+
+    case 'hail_mary_damage_phase': {
+      const isMorp = msg.morp_id === state.playerId;
+      state._hailMaryDamage = true;
+      document.getElementById('damage-morp-action').classList.toggle('hidden', !isMorp);
+      document.getElementById('damage-waiting').style.display = isMorp ? 'none' : 'block';
+      if (isMorp) enableAvatarDamage([msg.morp_id]);
+      showAction('damage');
+      setPhaseLabel('HAIL MARY — DAMAGE');
       break;
     }
 

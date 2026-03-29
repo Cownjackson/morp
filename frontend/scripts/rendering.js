@@ -410,8 +410,9 @@ export function hideDrawPopup() {
 export function checkYourTurn() {
   const currentPid = state.turnOrder[state.hints.length];
   const isMyTurn   = currentPid === state.playerId;
-  document.getElementById('your-turn-block').classList.toggle('hidden', !isMyTurn);
-  if (isMyTurn) {
+  const inHailMary = !!state._hailMaryMode;
+  document.getElementById('your-turn-block').classList.toggle('hidden', !isMyTurn || inHailMary);
+  if (isMyTurn && !inHailMary) {
     document.getElementById('hint-text-block').classList.toggle('hidden', state.drawingHints);
     if (state.drawingHints) {
       clearCanvas('hint-canvas');
@@ -896,8 +897,10 @@ function _updateDamageUI() {
 
 export function confirmDamage() {
   if (!state.damageTarget) return;
-  send({ type: 'morp_deal_damage', target_id: state.damageTarget });
+  const msgType = state._hailMaryDamage ? 'hail_mary_deal_damage' : 'morp_deal_damage';
+  send({ type: msgType, target_id: state.damageTarget });
   state.avatarInteraction = null;
+  state._hailMaryDamage = false;
   document.getElementById('btn-confirm-damage').disabled = true;
   renderInGamePlayerRow();
 }
@@ -928,6 +931,7 @@ function _updateWordGuessUI() {
   for (const [btnId, labelId] of [
     ['btn-morp-guess', 'morp-guess-selected-word'],
     ['btn-endgame-guess', 'endgame-guess-selected-word'],
+    ['btn-hail-mary-guess', 'hail-mary-selected-word'],
   ]) {
     const btn = document.getElementById(btnId);
     const label = document.getElementById(labelId);
@@ -1197,6 +1201,31 @@ export function showEnvelopeReveal(role, onDismiss) {
     if (phase === 'closed') openEnvelope();
     else if (phase === 'revealed') dismiss();
   });
+}
+
+// ─── Hail Mary popup ─────────────────────────────────────────────────────────
+export function showHailMaryPopup(onDone) {
+  const overlay = document.createElement('div');
+  overlay.className = 'hail-mary-overlay';
+
+  const text = document.createElement('div');
+  text.className = 'hail-mary-text';
+  text.textContent = 'HAIL MARY';
+  overlay.appendChild(text);
+  document.body.appendChild(overlay);
+
+  // Trigger entrance animation
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => overlay.classList.add('active'));
+  });
+
+  setTimeout(() => {
+    overlay.classList.add('hiding');
+    setTimeout(() => {
+      overlay.remove();
+      if (onDone) onDone();
+    }, 500);
+  }, 1800);
 }
 
 // ─── Damage animation placeholder ────────────────────────────────────────────
