@@ -24,6 +24,8 @@ export const state = {
   boardWordSelected: null,   // word string currently selected for morp guess
   _hailMaryMode: false,      // true when morp is in hail mary board selection
   _hailMaryDamage: false,    // true when damage phase is from a hail mary
+  _spotlightPid: null,       // override spotlight to this player (null = use turn order)
+  _spotlightStyle: null,     // 'morp' for red spotlight, null for default gold
 };
 
 export function send(msg) { state.ws.send(JSON.stringify(msg)); }

@@ -79,7 +79,7 @@ function renderPlayers(containerId, { avatarSize = 80 } = {}) {
   const el = document.getElementById(containerId);
   if (!el) return;
   el.innerHTML = '';
-  const currentTurnPid = state.turnOrder[state.hints.length];
+  const currentTurnPid = state._spotlightPid || state.turnOrder[state.hints.length];
 
   const players = Object.values(state.players);
   const N = players.length;
@@ -96,17 +96,6 @@ function renderPlayers(containerId, { avatarSize = 80 } = {}) {
     const x = W * xf;
     const y = H * yf;
 
-    const _p = Math.PI;
-    const _a = Math.atan2(y - H * 0.5, x - W * 0.5);
-    const bubbleDir = _a > -5*_p/8 && _a <= -3*_p/8 ? 'above'
-                    : _a > -3*_p/8 && _a <= -_p/8   ? 'above-right'
-                    : _a > -_p/8   && _a <=  _p/8   ? 'right'
-                    : _a >  _p/8   && _a <=  3*_p/8 ? 'below-right'
-                    : _a >  3*_p/8 && _a <=  5*_p/8 ? 'below'
-                    : _a >  5*_p/8 && _a <=  7*_p/8 ? 'below-left'
-                    : (_a >  7*_p/8 || _a <= -7*_p/8) ? 'left'
-                    : 'above-left';
-
     const wrap = document.createElement('div');
     wrap.className = 'avatar-wrap';
     wrap.dataset.playerId = p.id;
@@ -120,7 +109,10 @@ function renderPlayers(containerId, { avatarSize = 80 } = {}) {
     circle.style.height = avatarSize + 'px';
     if (p.is_ghost)            circle.classList.add('is-ghost');
     if (p.id === state.playerId) circle.classList.add('is-you');
-    if (p.id === currentTurnPid && !p.is_ghost) circle.classList.add('is-active');
+    if (p.id === currentTurnPid && !p.is_ghost) {
+      circle.classList.add('is-active');
+      if (state._spotlightStyle === 'morp') circle.classList.add('is-active-morp');
+    }
     if (p.is_connected === false) circle.classList.add('disconnected');
     if (p.cosmetics) {
       renderMoopInto(circle, p.cosmetics);
@@ -167,32 +159,14 @@ function renderPlayers(containerId, { avatarSize = 80 } = {}) {
 
     wrap.appendChild(circle);
 
-    // Hint thumbnail (hint phase) or speech bubble (endgame ghost hints)
+    // Hint thumbnail (hint phase + endgame ghost hints)
     // Appended after circle so it layers on top (held-card look)
     const thumbnail = state.hintThumbnails[p.id];
-    const bubble    = state.speechBubbles[p.id];
     const hintOnLeft = xf > 0.55 && W <= 1024; // only flip on tablet/mobile
     if (thumbnail !== undefined) {
       const tEl = _buildHintThumbnailEl(thumbnail);
       if (hintOnLeft) tEl.classList.add('hint-left');
       wrap.appendChild(tEl);
-    } else if (bubble !== undefined) {
-      const bel = document.createElement('div');
-      const dirClass = bubbleDir !== 'above' ? ` bubble-${bubbleDir}` : '';
-      if (bubble.skipped) {
-        bel.className = 'speech-bubble skipped' + dirClass;
-        bel.textContent = '(skipped)';
-      } else if (bubble.is_drawing && bubble.drawing_data) {
-        bel.className = 'speech-bubble drawing-bubble' + dirClass;
-        const cv = document.createElement('canvas');
-        cv.width = 360; cv.height = 232;
-        renderStrokesToCanvas(cv, bubble.drawing_data);
-        bel.appendChild(cv);
-      } else {
-        bel.className = 'speech-bubble' + dirClass;
-        bel.textContent = bubble.text;
-      }
-      wrap.appendChild(bel);
     }
 
     wrap.appendChild(nameEl);
@@ -405,6 +379,19 @@ export function minimizeDrawPopup() {
 export function hideDrawPopup() {
   document.getElementById('draw-popup').classList.add('hidden');
   document.getElementById('draw-popup-pill').classList.add('hidden');
+}
+
+export function openEndgameDrawPopup() {
+  document.getElementById('endgame-draw-popup').classList.remove('hidden');
+  document.getElementById('endgame-draw-popup-pill').classList.add('hidden');
+}
+export function minimizeEndgameDrawPopup() {
+  document.getElementById('endgame-draw-popup').classList.add('hidden');
+  document.getElementById('endgame-draw-popup-pill').classList.remove('hidden');
+}
+export function hideEndgameDrawPopup() {
+  document.getElementById('endgame-draw-popup').classList.add('hidden');
+  document.getElementById('endgame-draw-popup-pill').classList.add('hidden');
 }
 
 export function checkYourTurn() {

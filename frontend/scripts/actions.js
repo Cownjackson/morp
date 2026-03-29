@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { showScreen, setPhaseLabel, showLanding, httpBase, log, hideLobbyCodeDisplays, setLobbyCodeCopyButtonState } from './helpers.js';
-import { renderRoleBanner, renderPregameLobby, renderChat, enableBoardWordSelection, disableBoardWordSelection, hideDrawPopup } from './rendering.js';
+import { renderRoleBanner, renderPregameLobby, renderChat, enableBoardWordSelection, disableBoardWordSelection, hideDrawPopup, hideEndgameDrawPopup } from './rendering.js';
 import { _drawState, clearCanvas } from './drawing.js';
 import { _timers, clearTimer } from './timers.js';
 import { _setConnectBusy, markIntentionalClose, clearIntentionalClose, closeWS } from './websocket.js';
@@ -85,7 +85,7 @@ export function submitEndgameGhostHint() {
     const strokes = _drawState['endgame-ghost-canvas']?.strokes ?? [];
     send({ type: 'endgame_submit_ghost_hint', drawing_data: strokes });
     clearCanvas('endgame-ghost-canvas');
-    document.getElementById('endgame-ghost-drawing-block').classList.add('hidden');
+    hideEndgameDrawPopup();
   } else {
     const input = document.getElementById('endgame-ghost-hint-input');
     const text = input.value.trim();
@@ -114,8 +114,11 @@ export function _localResetToLobby() {
     avatarInteraction: null, damageTarget: null, _morpIdsForDamage: [],
     boardSelectionMode: false, boardWordSelected: null,
     _hailMaryMode: false, _hailMaryDamage: false,
+    _spotlightPid: null, _spotlightStyle: null,
   });
   Object.keys(_timers).forEach(clearTimer);
+  hideDrawPopup();
+  hideEndgameDrawPopup();
   renderRoleBanner();
   document.getElementById('board-area').classList.add('hidden');
   showScreen('pregame');

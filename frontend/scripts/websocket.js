@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, flyHintToThumbnailWhenReady, resetHintThumbnailAnimations, hideDrawPopup, playYourTurnSound, showHailMaryPopup } from './rendering.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, flyHintToThumbnailWhenReady, resetHintThumbnailAnimations, hideDrawPopup, openEndgameDrawPopup, hideEndgameDrawPopup, playYourTurnSound, showHailMaryPopup } from './rendering.js';
 import { handleInteraction } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
@@ -236,6 +236,8 @@ function _processMessage(msg) {
       state.endgameTargetWord = null;
       state.avatarInteraction = null;
       state.damageTarget = null;
+      state._spotlightPid = null;
+      state._spotlightStyle = null;
       state._morpIdsForDamage = [];
       state.boardSelectionMode = false;
       state.boardWordSelected = null;
@@ -451,9 +453,13 @@ function _processMessage(msg) {
       clearTimer('hint-timer');
       document.getElementById('hint-timer').style.display = 'none';
       state._hailMaryMode = false;
-      // Hide hail mary UI
+      state._spotlightPid = null;
+      state._spotlightStyle = null;
+      // Hide all hint-phase UI (active drawer's popup, your-turn block, hail mary block)
       document.getElementById('hail-mary-block')?.classList.add('hidden');
+      document.getElementById('your-turn-block')?.classList.add('hidden');
       hideDrawPopup();
+      renderInGamePlayerRow();
 
       const resultText = msg.correct
         ? `✓ ${playerName(msg.morp_id)} guessed correctly! (Hail Mary)`
@@ -493,20 +499,26 @@ function _processMessage(msg) {
     case 'hail_mary_damage_phase': {
       const isMorp = msg.morp_id === state.playerId;
       state._hailMaryDamage = true;
+      state._spotlightPid = msg.morp_id;
+      state._spotlightStyle = 'morp';
       document.getElementById('damage-morp-action').classList.toggle('hidden', !isMorp);
       document.getElementById('damage-waiting').style.display = isMorp ? 'none' : 'block';
       if (isMorp) enableAvatarDamage([msg.morp_id]);
       showAction('damage');
+      renderInGamePlayerRow();
       setPhaseLabel('HAIL MARY — DAMAGE');
       break;
     }
 
     case 'damage_phase': {
       const isMorp = msg.morp_ids.includes(state.playerId);
+      state._spotlightPid = msg.morp_ids[0];
+      state._spotlightStyle = 'morp';
       document.getElementById('damage-morp-action').classList.toggle('hidden', !isMorp);
       document.getElementById('damage-waiting').style.display = isMorp ? 'none' : 'block';
       if (isMorp) enableAvatarDamage(msg.morp_ids);
       showAction('damage');
+      renderInGamePlayerRow();
       setPhaseLabel('DAMAGE');
       break;
     }
@@ -558,6 +570,9 @@ function _processMessage(msg) {
       state.endgameTargetWord = msg.target_word || null;
       state.halfBoard = null;
       state.speechBubbles = {};
+      state.hintThumbnails = {};
+      state._spotlightPid = null;
+      state._spotlightStyle = null;
       state.board      = { board_hint: msg.board_hint, words: msg.words };
       state.targetWord = state.endgameTargetWord;
       renderBoard();
@@ -571,8 +586,10 @@ function _processMessage(msg) {
       if (isGhost) {
         document.getElementById('endgame-ghost-input-block').classList.remove('hidden');
         document.getElementById('endgame-ghost-text-block').classList.toggle('hidden', state.drawingHints);
-        document.getElementById('endgame-ghost-drawing-block').classList.toggle('hidden', !state.drawingHints);
-        if (state.drawingHints) clearCanvas('endgame-ghost-canvas');
+        if (state.drawingHints) {
+          clearCanvas('endgame-ghost-canvas');
+          openEndgameDrawPopup();
+        }
         document.getElementById('endgame-ghost-waiting').style.display = 'none';
         document.getElementById('endgame-ghost-hint-input').disabled   = false;
         playYourTurnSound();
@@ -599,8 +616,9 @@ function _processMessage(msg) {
 
     case 'endgame_hint_received':
       if (msg.text || msg.is_drawing) {
-        state.speechBubbles[msg.player_id] = {
-          text: msg.text || '', skipped: false,
+        state.hintThumbnails[msg.player_id] = {
+          player_id: msg.player_id,
+          text: msg.text || '',
           is_drawing: msg.is_drawing || false, drawing_data: msg.drawing_data || null,
         };
         renderInGamePlayerRow();
@@ -622,6 +640,7 @@ function _processMessage(msg) {
           if (text) send({ type: 'endgame_submit_ghost_hint', text });
         }
       }
+      hideEndgameDrawPopup();
       clearTimer('endgame-hint-timer');
       document.getElementById('endgame-hint-timer').style.display  = 'none';
       document.getElementById('endgame-ghost-section').classList.add('hidden');
