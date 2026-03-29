@@ -6,6 +6,10 @@ Completed work, newest first. Add an entry when a PR merges or a standalone chan
 
 ## 2026-03-29
 
+- **[feature]** Radial vote pointers — replaced line+pointer accusation display with scholastic pointer fingers placed radially around each voter's avatar, aimed at their accused target; 512×512 art at 156px display; pointers linger through full role reveal then fade out; rendered inside `.avatar-wrap` below envelope overlays
+- **[feature]** Hover-to-enlarge hint thumbnails — thumbnails now enlarge on hover (previously click-only); click-to-pin still works outside vote/damage phases; during voting, clicks pass through to register the vote; transition skip on re-render prevents animation replay
+- **[fix]** Boards blocking votes — centerpiece hint cards cleared when voting opens; hint thumbnails no longer intercept vote/damage clicks
+- **[fix]** Hint thumbnail z-index — raised above hat layer so thumbnails aren't hidden behind player accessories
 - **[feature]** Endgame UI alignment — ghost hints now display as held-card thumbnails with click-to-expand (matching normal rounds) instead of speech bubbles; ghost drawing input uses a floating popup instead of inline block; red morp spotlight during damage phase; draw popup auto-closes on hail mary
 - **[feature]** Hail Mary mechanic — morps can attempt an early guess of the target word at any point during the hint phase; correct guess lets them deal damage, wrong guess costs 1 HP; dramatic animation sequence (splash popup → word guess → full role reveal envelopes → damage/round end); disconnect-safe with 12 new backend tests
 
