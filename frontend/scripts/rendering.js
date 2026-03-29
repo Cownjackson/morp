@@ -3,6 +3,7 @@ import { avatarColor, initials, playerName, httpBase, log, clearPregameLobbyMoop
 import { renderMoopInto } from './cosmetics.js';
 import { buildMoopSprite } from './moop-sprite.js';
 import { renderStrokesToCanvas, clearCanvas } from './drawing.js';
+import { isStompAnimating } from './interactions.js';
 
 // ─── Your-turn notification sound ─────────────────────────────────────────────
 export function playYourTurnSound() {
@@ -203,6 +204,7 @@ function renderPlayers(containerId, { avatarSize = 80 } = {}) {
 }
 
 export function renderInGamePlayerRow() {
+  if (isStompAnimating()) return; // Don't wipe DOM mid-stomp
   const el = document.getElementById('game-player-row');
   if (!el) return;
   // If container has no dimensions yet (just un-hidden), defer until after reflow

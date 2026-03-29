@@ -569,6 +569,8 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
             target_id = data.get("target_id")
             if not target_id:
                 raise ValueError("Missing target_id.")
+            if target_id not in engine.lobby.players:
+                raise ValueError("Target player no longer in game.")
             engine.hail_mary_deal_damage(player_id, target_id)
             target = engine.lobby.players[target_id]
             await manager.broadcast(lobby_id, {
@@ -605,12 +607,19 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
             target_id = data.get("target_id")
             if not target_id:
                 raise ValueError("Missing target_id.")
+            if target_id not in engine.lobby.players:
+                # Target left — remove morp from pending so game can proceed
+                engine._pending_damage_morps.discard(player_id)
+                all_done = not engine._pending_damage_morps
+                if all_done:
+                    engine._resolve_round()
+                raise ValueError("Target player no longer in game.")
             all_done = engine.morp_deal_damage(player_id, target_id)
-            target = engine.lobby.players[data["target_id"]]
+            target = engine.lobby.players[target_id]
             await manager.broadcast(lobby_id, {
                 "type": "damage_dealt",
                 "from_id": player_id,
-                "to_id": data["target_id"],
+                "to_id": target_id,
                 "hp_remaining": target.hp,
                 "eliminated": target.is_ghost,
             })
@@ -691,7 +700,7 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
                 "type": "error", "message": f"Unknown message type: {msg_type}"
             })
 
-    except ValueError as e:
+    except (ValueError, KeyError) as e:
         await manager.send(lobby_id, player_id, {"type": "error", "message": str(e)})
 
 
