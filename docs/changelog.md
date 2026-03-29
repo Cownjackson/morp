@@ -4,6 +4,12 @@ Completed work, newest first. Add an entry when a PR merges or a standalone chan
 
 ---
 
+## 2026-03-29
+
+- **[feature]** Hail Mary mechanic — morps can attempt an early guess of the target word at any point during the hint phase; correct guess lets them deal damage, wrong guess costs 1 HP; dramatic animation sequence (splash popup → word guess → full role reveal envelopes → damage/round end); disconnect-safe with 12 new backend tests
+
+---
+
 ## 2026-03-28
 
 - **[feature]** Meow interaction sounds — backend picks a random meow from `music/meows/` and broadcasts it so all players hear the same clip
