@@ -1,10 +1,10 @@
 import { state, send } from './state.js';
 import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, flyHintToThumbnailWhenReady, resetHintThumbnailAnimations, hideDrawPopup } from './rendering.js';
-import { handleInteraction } from './interactions.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, flyHintToThumbnailWhenReady, resetHintThumbnailAnimations, hideDrawPopup, openEndgameDrawPopup, hideEndgameDrawPopup, playYourTurnSound, showHailMaryPopup } from './rendering.js';
+import { handleInteraction, playStompAnimation } from './interactions.js';
 import { _localResetToLobby } from './actions.js';
 import { startTimer, clearTimer } from './timers.js';
-import { _drawState, clearCanvas } from './drawing.js';
+import { _drawState, clearCanvas, finalizeStroke } from './drawing.js';
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 let _wsRetries = 0;
@@ -136,6 +136,7 @@ const _ANIMATION_LOCK_TIMEOUT_MS = 5000;
 
 const _DEFERRED_TYPES = new Set([
   'lobby_update', 'round_end', 'damage_dealt', 'damage_phase',
+  'hail_mary_damage_phase',
   'endgame_round_end', 'round_start', 'endgame_round_start', 'game_over',
 ]);
 
@@ -235,6 +236,8 @@ function _processMessage(msg) {
       state.endgameTargetWord = null;
       state.avatarInteraction = null;
       state.damageTarget = null;
+      state._spotlightPid = null;
+      state._spotlightStyle = null;
       state._morpIdsForDamage = [];
       state.boardSelectionMode = false;
       state.boardWordSelected = null;
@@ -257,6 +260,15 @@ function _processMessage(msg) {
         boardArea.style.opacity = '1';
         checkYourTurn();
         showAction('hint');
+        // Show hail mary button for morps during hint phase
+        const hmBlock = document.getElementById('hail-mary-block');
+        if (state.role === 'morp' && !state.isGhost) {
+          hmBlock.classList.remove('hidden');
+          document.getElementById('btn-hail-mary').classList.remove('hidden');
+          document.getElementById('hail-mary-confirm').classList.add('hidden');
+        } else {
+          hmBlock.classList.add('hidden');
+        }
         setPhaseLabel(`ROUND ${msg.round_number} — HINTS`);
         // Show timer for all players; auto-submit only for the active player
         if (state.timersEnabled) {
@@ -266,6 +278,7 @@ function _processMessage(msg) {
           hintTimerEl.style.display = '';
           const onExpire = isFirst ? () => {
             if (state.drawingHints) {
+              finalizeStroke('hint-canvas');
               const strokes = _drawState['hint-canvas']?.strokes ?? [];
               if (strokes.length > 0) {
                 send({ type: 'submit_hint', drawing_data: strokes });
@@ -317,6 +330,7 @@ function _processMessage(msg) {
           hintTimerEl.style.display = '';
           const onExpire = isMyTurn ? () => {
             if (state.drawingHints) {
+              finalizeStroke('hint-canvas');
               const strokes = _drawState['hint-canvas']?.strokes ?? [];
               if (strokes.length > 0) {
                 send({ type: 'submit_hint', drawing_data: strokes });
@@ -369,15 +383,22 @@ function _processMessage(msg) {
     case 'accusation_result': {
       disableAvatarVoting();
       _startAnimationLock(30000);
-      // Show vote arrows first, then dramatic role reveal
+      // Show vote pointers and role reveal together; pointers linger until reveal ends
       setPhaseLabel('VOTES');
-      showVoteArrows(msg.votes || {}, () => {
+      const cleanupPointers = showVoteArrows(msg.votes || {});
+      setTimeout(() => {
         setPhaseLabel('ROLE REVEAL');
+        // Clear hint thumbnails so they don't show during reveal or rest of round
+        // Remove DOM elements directly instead of re-rendering (which would destroy vote pointers)
+        state.hintThumbnails = {};
+        resetHintThumbnailAnimations();
+        document.querySelectorAll('.hint-thumbnail').forEach(el => el.remove());
         playRoleRevealSequence(msg.reveal_order || [], () => {
+          cleanupPointers();
           send({ type: 'phase_ready' });
           _endAnimationLock();
         });
-      });
+      }, 2000); // hold vote pointers alone for 2s before reveal begins
       break;
     }
 
@@ -435,24 +456,95 @@ function _processMessage(msg) {
       break;
     }
 
+    case 'hail_mary_result': {
+      clearTimer('hint-timer');
+      document.getElementById('hint-timer').style.display = 'none';
+      state._hailMaryMode = false;
+      state._spotlightPid = null;
+      state._spotlightStyle = null;
+      // Hide all hint-phase UI (active drawer's popup, your-turn block, hail mary block)
+      document.getElementById('hail-mary-block')?.classList.add('hidden');
+      document.getElementById('your-turn-block')?.classList.add('hidden');
+      hideDrawPopup();
+      renderInGamePlayerRow();
+
+      const resultText = msg.correct
+        ? `✓ ${playerName(msg.morp_id)} guessed correctly! (Hail Mary)`
+        : `✗ ${playerName(msg.morp_id)} guessed wrong! Target: "${msg.target_word}" (Hail Mary)`;
+      log(resultText, msg.correct ? 'ok' : 'warn');
+
+      // Animation sequence: popup → word guess → full role reveal → damage/round-end
+      _startAnimationLock(30000);
+      const revealOrder = msg.reveal_order || [];
+
+      // Step 1: "HAIL MARY" splash
+      showHailMaryPopup(() => {
+        // Step 2: Word guess animation
+        if (msg.guess) {
+          animateWordGuess(msg.guess);
+          resolveWordGuess(msg.correct, () => {
+            state.targetWord = msg.target_word;
+            renderBoard();
+            // Step 3: Full role reveal (safe first, morp last)
+            setPhaseLabel('ROLE REVEAL');
+            playRoleRevealSequence(revealOrder, () => {
+              _endAnimationLock();
+            });
+          });
+        } else {
+          state.targetWord = msg.target_word;
+          renderBoard();
+          setPhaseLabel('ROLE REVEAL');
+          playRoleRevealSequence(revealOrder, () => {
+            _endAnimationLock();
+          });
+        }
+      });
+      break;
+    }
+
+    case 'hail_mary_damage_phase': {
+      const isMorp = msg.morp_id === state.playerId;
+      state._hailMaryDamage = true;
+      state._spotlightPid = msg.morp_id;
+      state._spotlightStyle = 'morp';
+      document.getElementById('damage-morp-action').classList.toggle('hidden', !isMorp);
+      document.getElementById('damage-waiting').style.display = isMorp ? 'none' : 'block';
+      if (isMorp) enableAvatarDamage([msg.morp_id]);
+      showAction('damage');
+      renderInGamePlayerRow();
+      setPhaseLabel('HAIL MARY — DAMAGE');
+      break;
+    }
+
     case 'damage_phase': {
       const isMorp = msg.morp_ids.includes(state.playerId);
+      state._spotlightPid = msg.morp_ids[0];
+      state._spotlightStyle = 'morp';
       document.getElementById('damage-morp-action').classList.toggle('hidden', !isMorp);
       document.getElementById('damage-waiting').style.display = isMorp ? 'none' : 'block';
       if (isMorp) enableAvatarDamage(msg.morp_ids);
       showAction('damage');
+      renderInGamePlayerRow();
       setPhaseLabel('DAMAGE');
       break;
     }
 
-    case 'damage_dealt':
+    case 'damage_dealt': {
       if (state.avatarInteraction === 'damage') {
         state.avatarInteraction = null;
         state.damageTarget = null;
         state._morpIdsForDamage = [];
       }
       log(`${playerName(msg.from_id)} → ${playerName(msg.to_id)} (${msg.hp_remaining} HP${msg.eliminated ? ', eliminated' : ''})`, 'warn');
+
+      _startAnimationLock(3000);
+      playStompAnimation(msg.from_id, msg.to_id, () => {
+        renderInGamePlayerRow();
+        _endAnimationLock();
+      });
       break;
+    }
 
     case 'round_end': {
       const isEndgameTransition = !!msg.endgame_transition;
@@ -492,6 +584,9 @@ function _processMessage(msg) {
       state.endgameTargetWord = msg.target_word || null;
       state.halfBoard = null;
       state.speechBubbles = {};
+      state.hintThumbnails = {};
+      state._spotlightPid = null;
+      state._spotlightStyle = null;
       state.board      = { board_hint: msg.board_hint, words: msg.words };
       state.targetWord = state.endgameTargetWord;
       renderBoard();
@@ -505,10 +600,13 @@ function _processMessage(msg) {
       if (isGhost) {
         document.getElementById('endgame-ghost-input-block').classList.remove('hidden');
         document.getElementById('endgame-ghost-text-block').classList.toggle('hidden', state.drawingHints);
-        document.getElementById('endgame-ghost-drawing-block').classList.toggle('hidden', !state.drawingHints);
-        if (state.drawingHints) clearCanvas('endgame-ghost-canvas');
+        if (state.drawingHints) {
+          clearCanvas('endgame-ghost-canvas');
+          openEndgameDrawPopup();
+        }
         document.getElementById('endgame-ghost-waiting').style.display = 'none';
         document.getElementById('endgame-ghost-hint-input').disabled   = false;
+        playYourTurnSound();
       } else {
         enableBoardWordSelection();
       }
@@ -532,8 +630,9 @@ function _processMessage(msg) {
 
     case 'endgame_hint_received':
       if (msg.text || msg.is_drawing) {
-        state.speechBubbles[msg.player_id] = {
-          text: msg.text || '', skipped: false,
+        state.hintThumbnails[msg.player_id] = {
+          player_id: msg.player_id,
+          text: msg.text || '',
           is_drawing: msg.is_drawing || false, drawing_data: msg.drawing_data || null,
         };
         renderInGamePlayerRow();
@@ -547,6 +646,7 @@ function _processMessage(msg) {
     case 'endgame_hint_phase_over': {
       if (state.isGhost && !document.getElementById('endgame-ghost-input-block').classList.contains('hidden')) {
         if (state.drawingHints) {
+          finalizeStroke('endgame-ghost-canvas');
           const strokes = _drawState['endgame-ghost-canvas']?.strokes ?? [];
           if (strokes.length > 0) send({ type: 'endgame_submit_ghost_hint', drawing_data: strokes });
         } else {
@@ -554,6 +654,7 @@ function _processMessage(msg) {
           if (text) send({ type: 'endgame_submit_ghost_hint', text });
         }
       }
+      hideEndgameDrawPopup();
       clearTimer('endgame-hint-timer');
       document.getElementById('endgame-hint-timer').style.display  = 'none';
       document.getElementById('endgame-ghost-section').classList.add('hidden');

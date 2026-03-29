@@ -5,10 +5,10 @@ import { getCosmetics, initMoopCustomizer } from './cosmetics.js';
 import { buildMoopSprite } from './moop-sprite.js';
 import { initModals } from './modals.js';
 import { initMusic } from './music.js';
-import { initCanvas, clearCanvas, undoStroke, setDrawColor, setDrawSize, toggleEraser, toggleFill } from './drawing.js';
+import { initCanvas, clearCanvas, undoStroke, setDrawColor, setDrawSize, toggleEraser, toggleFill, toggleLine } from './drawing.js';
 import { createLobby, joinLobby, setCustomBoards, copyBoardTemplate } from './lobby.js';
-import { startGame, submitHint, submitVotes, submitMorpGuess, submitEndgameGhostHint, submitEndgameGuess, resetToLobby, leaveLobby, copyLobbyCode, sendChat } from './actions.js';
-import { confirmDamage, openDrawPopup, minimizeDrawPopup } from './rendering.js';
+import { startGame, submitHint, submitVotes, submitMorpGuess, submitEndgameGhostHint, submitEndgameGuess, resetToLobby, leaveLobby, copyLobbyCode, sendChat, enterHailMary, cancelHailMary, submitHailMary } from './actions.js';
+import { confirmDamage, openDrawPopup, minimizeDrawPopup, openEndgameDrawPopup, minimizeEndgameDrawPopup, hideEndgameDrawPopup } from './rendering.js';
 import { initInteractions, toggleInteractionMenu } from './interactions.js';
 
 // ─── Expose functions for HTML onclick attributes ─────────────────────────────
@@ -21,6 +21,9 @@ window.startGame = startGame;
 window.submitHint = submitHint;
 window.submitVotes = submitVotes;
 window.submitMorpGuess = submitMorpGuess;
+window.enterHailMary = enterHailMary;
+window.cancelHailMary = cancelHailMary;
+window.submitHailMary = submitHailMary;
 window.submitEndgameGhostHint = submitEndgameGhostHint;
 window.submitEndgameGuess = submitEndgameGuess;
 window.resetToLobby = resetToLobby;
@@ -31,10 +34,14 @@ window.toggleInteractionMenu = toggleInteractionMenu;
 window.confirmDamage = confirmDamage;
 window.openDrawPopup = openDrawPopup;
 window.minimizeDrawPopup = minimizeDrawPopup;
+window.openEndgameDrawPopup = openEndgameDrawPopup;
+window.minimizeEndgameDrawPopup = minimizeEndgameDrawPopup;
+window.hideEndgameDrawPopup = hideEndgameDrawPopup;
 window.setDrawColor = setDrawColor;
 window.setDrawSize = setDrawSize;
 window.toggleEraser = toggleEraser;
 window.toggleFill = toggleFill;
+window.toggleLine = toggleLine;
 window.undoStroke = undoStroke;
 window.clearCanvas = clearCanvas;
 

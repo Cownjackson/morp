@@ -216,7 +216,7 @@ function _startCooldown() {
 }
 
 // ─── Handle incoming interaction (server echo) ────────────────────────────────
-export function handleInteraction({ player_id, interaction, target_id }) {
+export function handleInteraction({ player_id, interaction, target_id, sound }) {
   if (target_id) {
     if (interaction === 'sticky_hand') {
       _playStickyHand(player_id, target_id);
@@ -227,6 +227,12 @@ export function handleInteraction({ player_id, interaction, target_id }) {
     }
   } else {
     _playSelfAnim(player_id);
+    _playNoiseOverlay(player_id);
+    if (interaction === 'meow' && sound) {
+      const sfx = new Audio(`/music/meows/${sound}`);
+      sfx.volume = 0.5;
+      sfx.play().catch(() => {});
+    }
   }
 }
 
@@ -600,6 +606,32 @@ function _playSelfAnim(playerId) {
   _applyAvatarClass(playerId, 'ix-self');
 }
 
+// ─── Noise overlay — cycles noise1/noise2 PNGs over avatar ──────────────────
+function _playNoiseOverlay(playerId) {
+  const orbit = document.getElementById('game-player-row');
+  if (!orbit) return;
+  const wrap = orbit.querySelector(`[data-player-id="${playerId}"]`);
+  if (!wrap) return;
+  const avatar = wrap.querySelector('.moop-avatar');
+  if (!avatar) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'ix-noise-overlay';
+  overlay.style.backgroundImage = 'url(/assets/noise/noise1.png)';
+  avatar.appendChild(overlay);
+
+  let frame = 0;
+  const totalFrames = 6; // 3 full cycles of noise1/noise2
+  const interval = setInterval(() => {
+    frame++;
+    overlay.style.backgroundImage = `url(/assets/noise/noise${(frame % 2) + 1}.png)`;
+    if (frame >= totalFrames) {
+      clearInterval(interval);
+      overlay.remove();
+    }
+  }, 120);
+}
+
 function _playHitReaction(playerId) {
   _applyAvatarClass(playerId, 'ix-hit');
 }
@@ -611,6 +643,184 @@ function _applyAvatarClass(playerId, cls) {
   if (!avatar) return;
   avatar.classList.add(cls);
   avatar.addEventListener('animationend', () => avatar.classList.remove(cls), { once: true });
+}
+
+// ─── Stomp damage animation ──────────────────────────────────────────────────
+let _stompAnimating = false;
+
+/** Check if stomp animation is in progress (prevents re-renders from destroying DOM). */
+export function isStompAnimating() { return _stompAnimating; }
+
+/**
+ * Play goomba-stomp damage animation.
+ * Moves fromId's actual .avatar-wrap to toId's position, squishes target, bounces back.
+ */
+export function playStompAnimation(fromId, toId, onDone) {
+  if (fromId === toId) { onDone?.(); return; }
+
+  const orbit = document.getElementById('game-player-row');
+  if (!orbit) { onDone?.(); return; }
+
+  const fromWrap = orbit.querySelector(`[data-player-id="${fromId}"]`);
+  const toWrap   = orbit.querySelector(`[data-player-id="${toId}"]`);
+  if (!fromWrap || !toWrap) { onDone?.(); return; }
+
+  const fromAvatar = fromWrap.querySelector('.moop-avatar');
+  const toAvatar   = toWrap.querySelector('.moop-avatar');
+  if (!fromAvatar) { onDone?.(); return; }
+
+  // Capture original position (container-relative px)
+  const origLeft = parseFloat(fromWrap.style.left);
+  const origTop  = parseFloat(fromWrap.style.top);
+  const targLeft = parseFloat(toWrap.style.left);
+  const targTop  = parseFloat(toWrap.style.top);
+
+  const dx = targLeft - origLeft;
+  const dy = targTop  - origTop;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  // Higher arc so attacker comes down from above the target
+  const arcHeight = Math.max(180, Math.min(320, dist * 0.7));
+  const returnArc = arcHeight * 0.5;
+
+  // Phase durations (ms)
+  const T1 = 100;   // windup
+  const T2 = 300;   // jump arc (longer for higher arc)
+  const T3 = 350;   // stomp: progressive squish down + elastic spring back
+  const T4 = 220;   // bounce-back
+  const P2 = T1;
+  const P3 = T1 + T2;
+  const P4 = T1 + T2 + T3;
+  const END = T1 + T2 + T3 + T4;
+
+  // Squish sub-phase split: how much of T3 is crushing vs springing
+  const CRUSH_FRAC = 0.3;  // first 30% is pressing down
+  const SPRING_FRAC = 0.7; // remaining 70% is elastic recovery
+
+  _stompAnimating = true;
+  fromWrap.style.zIndex = '50';
+
+  const start = performance.now();
+
+  function step(now) {
+    const elapsed = now - start;
+
+    if (elapsed < P2) {
+      // Phase 1: Anticipation squash
+      const t = elapsed / T1;
+      const ease = t * t;
+      fromAvatar.style.transform = `scaleX(${1 + 0.15 * ease}) scaleY(${1 - 0.25 * ease})`;
+      fromAvatar.style.transformOrigin = 'center bottom';
+      requestAnimationFrame(step);
+
+    } else if (elapsed < P3) {
+      // Phase 2: Jump arc — biased so attacker arrives from above
+      const t = (elapsed - P2) / T2;
+      const ease = 1 - Math.pow(1 - t, 2); // ease-out
+
+      // Horizontal: smooth ease to target
+      const px = origLeft + dx * ease;
+      // Vertical: skew the arc peak earlier (t=0.35) so descent is steeper
+      const arcT = Math.sin(Math.pow(t, 0.7) * Math.PI);
+      const py = origTop + dy * ease - arcT * arcHeight;
+
+      fromWrap.style.left = px + 'px';
+      fromWrap.style.top  = py + 'px';
+
+      // Stretch back to normal during flight
+      const sy = 0.75 + 0.25 * t;
+      const sx = 1.15 - 0.15 * t;
+      const tilt = Math.sin(t * Math.PI) * 10;
+      fromAvatar.style.transform = `scaleX(${sx}) scaleY(${sy}) rotate(${tilt}deg)`;
+      requestAnimationFrame(step);
+
+    } else if (elapsed < P4) {
+      // Phase 3: Stomp — progressive cartoon squish then elastic spring
+      const t = (elapsed - P3) / T3;
+
+      fromWrap.style.left = targLeft + 'px';
+      fromWrap.style.top  = targTop + 'px';
+
+      if (t < CRUSH_FRAC) {
+        // Sub-phase A: Crushing down — target progressively pancakes
+        const ct = t / CRUSH_FRAC; // 0 -> 1 within crush
+        const crushEase = 1 - Math.pow(1 - ct, 3); // ease-out for snappy impact
+
+        // Target: squish from 1.0 down to 0.35 scaleY, widen to 1.5 scaleX
+        const tSy = 1 - 0.65 * crushEase;
+        const tSx = 1 + 0.5 * crushEase;
+        if (toAvatar) {
+          toAvatar.style.transform = `scaleX(${tSx}) scaleY(${tSy})`;
+          toAvatar.style.transformOrigin = 'center bottom';
+        }
+
+        // Attacker: pancake slightly on landing
+        const aSy = 1 - 0.2 * crushEase;
+        const aSx = 1 + 0.15 * crushEase;
+        fromAvatar.style.transform = `scaleX(${aSx}) scaleY(${aSy})`;
+        fromAvatar.style.transformOrigin = 'center bottom';
+
+      } else {
+        // Sub-phase B: Elastic spring back — damped sine oscillation
+        const st = (t - CRUSH_FRAC) / SPRING_FRAC; // 0 -> 1 within spring
+
+        // Target: spring from squished (0.35) back to 1.0 with overshoot
+        const spring = Math.exp(-4 * st) * Math.sin(st * Math.PI * 3);
+        const tSy = 1 - 0.65 * (1 - st) * Math.exp(-3 * st) + 0.2 * spring;
+        const tSx = 1 + 0.5 * (1 - st) * Math.exp(-3 * st) - 0.15 * spring;
+        if (toAvatar) {
+          toAvatar.style.transform = `scaleX(${Math.max(0.8, tSx)}) scaleY(${Math.max(0.35, tSy)})`;
+          toAvatar.style.transformOrigin = 'center bottom';
+        }
+
+        // Attacker: recover and bounce slightly above
+        const aSy = 1 - 0.2 * (1 - st) * Math.exp(-3 * st);
+        const aSx = 1 + 0.15 * (1 - st) * Math.exp(-3 * st);
+        fromAvatar.style.transform = `scaleX(${aSx}) scaleY(${aSy})`;
+        fromAvatar.style.transformOrigin = 'center bottom';
+
+        // Bounce attacker upward as target springs back
+        const bounce = Math.abs(spring) * 15;
+        fromWrap.style.top = (targTop - bounce) + 'px';
+      }
+
+      requestAnimationFrame(step);
+
+    } else if (elapsed < END) {
+      // Phase 4: Bounce back to seat
+      const t = (elapsed - P4) / T4;
+      const ease = t < 0.5
+        ? 2 * t * t
+        : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+      const px = targLeft + (origLeft - targLeft) * ease;
+      const py = targTop  + (origTop  - targTop)  * ease;
+      const arc = -Math.sin(t * Math.PI) * returnArc;
+
+      fromWrap.style.left = px + 'px';
+      fromWrap.style.top  = (py + arc) + 'px';
+      fromAvatar.style.transform = '';
+      fromAvatar.style.transformOrigin = '';
+
+      requestAnimationFrame(step);
+
+    } else {
+      // Done — restore everything
+      fromWrap.style.left = origLeft + 'px';
+      fromWrap.style.top  = origTop  + 'px';
+      fromWrap.style.zIndex = '';
+      fromAvatar.style.transform = '';
+      fromAvatar.style.transformOrigin = '';
+      if (toAvatar) {
+        toAvatar.style.transform = '';
+        toAvatar.style.transformOrigin = '';
+      }
+      _stompAnimating = false;
+      onDone?.();
+    }
+  }
+
+  requestAnimationFrame(step);
 }
 
 // ─── Visibility ───────────────────────────────────────────────────────────────

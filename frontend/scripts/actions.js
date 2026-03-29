@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
 import { showScreen, setPhaseLabel, showLanding, httpBase, log, hideLobbyCodeDisplays, setLobbyCodeCopyButtonState } from './helpers.js';
-import { renderRoleBanner, renderPregameLobby, renderChat, disableBoardWordSelection, hideDrawPopup } from './rendering.js';
+import { renderRoleBanner, renderPregameLobby, renderChat, enableBoardWordSelection, disableBoardWordSelection, hideDrawPopup, hideEndgameDrawPopup } from './rendering.js';
 import { _drawState, clearCanvas } from './drawing.js';
 import { _timers, clearTimer } from './timers.js';
 import { _setConnectBusy, markIntentionalClose, clearIntentionalClose, closeWS } from './websocket.js';
@@ -48,12 +48,44 @@ export function submitMorpGuess() {
   // Animation waits for server echo (morp_guess_result) so all players see it in sync
 }
 
+export function enterHailMary() {
+  document.getElementById('btn-hail-mary').classList.add('hidden');
+  document.getElementById('hail-mary-confirm').classList.remove('hidden');
+  document.getElementById('your-turn-block').classList.add('hidden');
+  enableBoardWordSelection();
+  state._hailMaryMode = true;
+}
+
+export function cancelHailMary() {
+  state._hailMaryMode = false;
+  disableBoardWordSelection();
+  document.getElementById('hail-mary-confirm').classList.add('hidden');
+  document.getElementById('btn-hail-mary').classList.remove('hidden');
+  document.getElementById('btn-hail-mary-guess').disabled = true;
+  document.getElementById('hail-mary-selected-word').textContent = '—';
+  // Restore your-turn block if it's your turn
+  const rs = state.turnOrder;
+  const hintCount = state.hints?.length ?? 0;
+  if (rs && rs[hintCount] === state.playerId) {
+    document.getElementById('your-turn-block').classList.remove('hidden');
+  }
+}
+
+export function submitHailMary() {
+  const guess = state.boardWordSelected;
+  if (!guess) return;
+  state._hailMaryMode = false;
+  send({ type: 'submit_hail_mary', guess });
+  disableBoardWordSelection();
+  document.getElementById('btn-hail-mary-guess').disabled = true;
+}
+
 export function submitEndgameGhostHint() {
   if (state.drawingHints) {
     const strokes = _drawState['endgame-ghost-canvas']?.strokes ?? [];
     send({ type: 'endgame_submit_ghost_hint', drawing_data: strokes });
     clearCanvas('endgame-ghost-canvas');
-    document.getElementById('endgame-ghost-drawing-block').classList.add('hidden');
+    hideEndgameDrawPopup();
   } else {
     const input = document.getElementById('endgame-ghost-hint-input');
     const text = input.value.trim();
@@ -81,8 +113,12 @@ export function _localResetToLobby() {
     drawingHints: false, lobbyStarted: false,
     avatarInteraction: null, damageTarget: null, _morpIdsForDamage: [],
     boardSelectionMode: false, boardWordSelected: null,
+    _hailMaryMode: false, _hailMaryDamage: false,
+    _spotlightPid: null, _spotlightStyle: null,
   });
   Object.keys(_timers).forEach(clearTimer);
+  hideDrawPopup();
+  hideEndgameDrawPopup();
   renderRoleBanner();
   document.getElementById('board-area').classList.add('hidden');
   showScreen('pregame');
@@ -138,6 +174,8 @@ function _localReturnToMainMenu() {
     avatarInteraction: null,
     damageTarget: null,
     _morpIdsForDamage: [],
+    _hailMaryMode: false,
+    _hailMaryDamage: false,
   });
   Object.keys(_timers).forEach(clearTimer);
   renderRoleBanner();

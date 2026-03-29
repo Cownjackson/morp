@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Board Editor — Morp Internal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #120820;
+      --surface: #1E0F36;
+      --surface2: #2A1548;
+      --border: #3D1F6B;
+      --accent: #7B3FBE;
+      --accent-hover: #9B5FDE;
+      --text: #E8D5F5;
+      --text-muted: #8B6BA8;
+      --danger: #8B2252;
+      --danger-hover: #B23070;
+      --chip-bg: #3A1F6A;
+      --chip-hover: #4E2A8E;
+      --green: #2E7D52;
+      --green-hover: #3DA06A;
+    }
+
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 52px 1fr;
+      grid-template-columns: 240px 1fr;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      grid-column: 1 / -1;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+    }
+
+    .topbar h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      flex: 1;
+    }
+
+    .topbar h1 span { color: var(--text); }
+
+    .btn {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 16px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .btn-primary { background: var(--accent); color: var(--text); }
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+
+    .btn-danger { background: var(--danger); color: var(--text); }
+    .btn-danger:hover { background: var(--danger-hover); }
+
+    .btn-success { background: var(--green); color: var(--text); }
+    .btn-success:hover { background: var(--green-hover); }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header span {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+
+    .board-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 0;
+    }
+
+    .board-list::-webkit-scrollbar { width: 4px; }
+    .board-list::-webkit-scrollbar-track { background: transparent; }
+    .board-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .board-item {
+      padding: 9px 14px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.1s;
+    }
+
+    .board-item:hover { background: var(--surface2); }
+
+    .board-item.active {
+      background: var(--surface2);
+      border-left-color: var(--accent);
+    }
+
+    .board-item-name {
+      flex: 1;
+      font-size: 0.88rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .board-item-count {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    /* ── Main panel ── */
+    .main {
+      overflow-y: auto;
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .main::-webkit-scrollbar { width: 5px; }
+    .main::-webkit-scrollbar-track { background: transparent; }
+    .main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .empty-state {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin: auto;
+      text-align: center;
+    }
+
+    /* ── Board editor ── */
+    .editor-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .hint-input {
+      flex: 1;
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 600;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid var(--border);
+      color: var(--text);
+      padding: 4px 2px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .hint-input:focus { border-bottom-color: var(--accent); }
+
+    .word-count-badge {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border-radius: 20px;
+      padding: 3px 10px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .word-count-badge.over { color: #e07070; }
+
+    /* ── Word chips ── */
+    .words-area {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .word-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--chip-bg);
+      border-radius: 6px;
+      padding: 5px 10px 5px 10px;
+      font-size: 0.88rem;
+      cursor: default;
+      border: 1px solid transparent;
+      transition: background 0.1s, border-color 0.1s;
+    }
+
+    .word-chip:hover { background: var(--chip-hover); border-color: var(--border); }
+
+    .word-chip-text {
+      outline: none;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-family: 'Fredoka', sans-serif;
+      font-size: 0.88rem;
+      min-width: 20px;
+      max-width: 200px;
+      cursor: text;
+    }
+
+    .word-chip-remove {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+      line-height: 1;
+      padding: 0 0 0 2px;
+      transition: color 0.1s;
+    }
+
+    .word-chip-remove:hover { color: #e07070; }
+
+    /* ── Add word ── */
+    .add-word-form {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .add-word-input {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 0.9rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 6px 12px;
+      width: 200px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .add-word-input:focus { border-color: var(--accent); }
+
+    .add-word-input::placeholder { color: var(--text-muted); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      background: var(--green);
+      color: var(--text);
+      font-family: 'Fredoka', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 10px 24px;
+      border-radius: 10px;
+      transition: transform 0.2s ease;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    #toast.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <h1>Morp — <span>Board Editor</span></h1>
+    <label class="btn btn-ghost" style="cursor:pointer">
+      Load JSON
+      <input type="file" id="load-input" accept=".json" style="display:none">
+    </label>
+    <button class="btn btn-success" id="export-btn">Export JSON</button>
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span id="board-count-label">0 boards</span>
+      <button class="btn btn-primary" id="add-board-btn" style="padding:4px 12px;font-size:0.8rem">+ Add</button>
+    </div>
+    <div class="board-list" id="board-list"></div>
+  </div>
+
+  <div class="main" id="main">
+    <div class="empty-state">Select a board to edit</div>
+  </div>
+
+  <div id="toast">Exported!</div>
+
+  <script>
+    const DEFAULT_BOARDS = [
+      {"board_hint":"Emotions","words":["joy","anger","fear","sadness","surprise","disgust","love","boredom","anxiety","excitement","pride","guilt","shame","envy","nostalgia","awe","frustration","confusion","relief","hope","loneliness","jealousy","embarrassment","gratitude","curiosity"]},
+      {"board_hint":"Popular TV shows","words":["Breaking Bad","Game of Thrones","Friends","The Office","Stranger Things","The Simpsons","South Park","Seinfeld","The Wire","The Sopranos","Grey's Anatomy","Lost","Dexter","Sherlock","Black Mirror","Parks and Recreation","Better Call Saul","The Crown","Succession","Ted Lasso","House","Arrested Development","It's Always Sunny","How I Met Your Mother","Westworld"]},
+      {"board_hint":"Popular websites & apps","words":["YouTube","Instagram","Twitter","TikTok","Reddit","Netflix","Spotify","Amazon","Google","Facebook","Pinterest","Snapchat","LinkedIn","Discord","Twitch","WhatsApp","Duolingo","Airbnb","Wikipedia","eBay","PayPal","Zoom","GitHub","Venmo","Shazam"]},
+      {"board_hint":"Olympic sports","words":["Archery","Diving","Fencing","Gymnastics","Hurdles","Javelin","Judo","Kayaking","Marathon","Pole vault","Rowing","Skateboarding","Surfing","Swimming","Weightlifting","Wrestling","Curling","Discus","Shot put","Boxing","Volleyball","High jump","Bobsled","Hammer throw","Triathlon"]},
+      {"board_hint":"Things at a carnival","words":["Ferris wheel","Roller coaster","Cotton candy","Popcorn","Clown","Juggler","Ring toss","Bumper cars","Carousel","Funnel cake","Balloon animal","Dunk tank","Haunted house","Fortune teller","Ticket booth","Hammer game","Lemonade stand","Corn dog","Tilt-a-whirl","Face paint","Fireworks","Giant teddy bear","Stilts","Magician","Balloon dart"]},
+      {"board_hint":"Popular video games","words":["Minecraft","Fortnite","League of Legends","Grand Theft Auto","Call of Duty","Among Us","Overwatch","The Sims","Animal Crossing","Stardew Valley","Pokémon","Mario Kart","Tetris","Roblox","FIFA","Halo","Skyrim","Apex Legends","Valorant","Elden Ring","Zelda","Fall Guys","Rocket League","Candy Crush","Clash of Clans"]},
+      {"board_hint":"Camping essentials","words":["Tent","Campfire","Sleeping bag","Lantern","Marshmallow","Hiking boots","Compass","Canteen","Axe","S'mores","Hammock","Flashlight","Bear","Map","Firewood","Bug spray","Cooler","Fishing rod","Binoculars","Trail mix","Whistle","Pine tree","Camp chair","Dutch oven","Bear spray"]},
+      {"board_hint":"Outer space","words":["Astronaut","Rocket","Black hole","Nebula","Comet","Meteor","Satellite","Crater","Galaxy","Asteroid","Moon","Mars","Jupiter","Telescope","Spacewalk","Solar flare","Supernova","Aurora","Space station","Rover","Alien","Wormhole","Saturn","Shooting star","Space shuttle"]},
+      {"board_hint":"Fast food favorites","words":["Burger","Fries","Nuggets","Milkshake","Hot dog","Taco","Burrito","Nachos","Onion rings","Corn dog","Soft drink","Ketchup","Mustard","Pickle","Bacon","Drive-through","Happy meal","Straw","Paper bag","Slushie","Pizza slice","Sub sandwich","Wrap","Churro","Waffle fries"]},
+      {"board_hint":"90s nostalgia","words":["Tamagotchi","Game Boy","Walkman","Pager","Floppy disk","VHS tape","Beanie Baby","Skip-It","Slap bracelet","Bop It","Pogs","Blockbuster","Discman","Rollerblades","Furby","Troll doll","Easy-Bake Oven","Power Rangers","N64","Spice Girls","Dial-up modem","Butterfly clips","Scrunchie","Polaroid camera","Lunchable"]},
+      {"board_hint":"Jobs & professions","words":["Doctor","Firefighter","Pilot","Chef","Lawyer","Teacher","Astronaut","Detective","Lifeguard","Plumber","Electrician","Dentist","Nurse","Carpenter","Architect","Veterinarian","Librarian","Barista","Surgeon","Farmer","Scientist","Journalist","Police officer","Therapist","Accountant"]},
+      {"board_hint":"Gym & fitness","words":["Treadmill","Barbell","Dumbbell","Squat rack","Bench press","Pull-up bar","Rowing machine","Elliptical","Yoga mat","Kettlebell","Jump rope","Punching bag","Resistance band","Medicine ball","Foam roller","Locker","Mirror","Protein shake","Chalk","Weight plate","Spin bike","Cable machine","Spotter","Water bottle","Push-up"]},
+      {"board_hint":"Popular anime","words":["Naruto","Dragon Ball Z","One Piece","Attack on Titan","Demon Slayer","My Hero Academia","Death Note","Fullmetal Alchemist","Bleach","Hunter x Hunter","Tokyo Ghoul","Jujutsu Kaisen","One Punch Man","Fairy Tail","Sword Art Online","Spy x Family","Chainsaw Man","Mob Psycho 100","Re:Zero","Cowboy Bebop","Steins Gate","Neon Genesis Evangelion","Vinland Saga","Blue Exorcist","Overlord"]},
+      {"board_hint":"Popular movies","words":["Avatar","Titanic","Avengers: Endgame","Jurassic Park","Star Wars","The Dark Knight","Inception","Interstellar","The Godfather","Pulp Fiction","Forrest Gump","The Matrix","Fight Club","The Shawshank Redemption","The Lion King","Spider-Man","Jaws","E.T.","Home Alone","Back to the Future","Toy Story","Finding Nemo","Up","Parasite","Get Out"]},
+      {"board_hint":"Outdoor activities","words":["Hiking","Rock climbing","Cycling","Skiing","Snowboarding","Fishing","Bird watching","Picnic","Kite flying","Frisbee","Tennis","Golf","Jogging","Yoga","Gardening","Barbecue","Zip-lining","Mountain biking","Paddleboarding","Horseback riding","Bungee jumping","Paragliding","Whitewater rafting","Stargazing","Snorkeling"]}
+    ];
+
+    let boards = DEFAULT_BOARDS.map(b => ({ board_hint: b.board_hint, words: [...b.words] }));
+    let activeIndex = null;
+
+    // ── Sidebar ──────────────────────────────────────────────
+
+    function renderSidebar() {
+      const list = document.getElementById('board-list');
+      document.getElementById('board-count-label').textContent =
+        `${boards.length} board${boards.length !== 1 ? 's' : ''}`;
+
+      list.innerHTML = '';
+      boards.forEach((b, i) => {
+        const el = document.createElement('div');
+        el.className = 'board-item' + (i === activeIndex ? ' active' : '');
+        el.innerHTML = `
+          <span class="board-item-name">${b.board_hint || '(untitled)'}</span>
+          <span class="board-item-count">${b.words.length}</span>
+        `;
+        el.addEventListener('click', () => selectBoard(i));
+        list.appendChild(el);
+      });
+    }
+
+    function selectBoard(i) {
+      activeIndex = i;
+      renderSidebar();
+      renderEditor();
+    }
+
+    // ── Editor ───────────────────────────────────────────────
+
+    function renderEditor() {
+      const main = document.getElementById('main');
+      if (activeIndex === null) {
+        main.innerHTML = '<div class="empty-state">Select a board to edit</div>';
+        return;
+      }
+
+      const board = boards[activeIndex];
+      const over = board.words.length > 100;
+
+      main.innerHTML = `
+        <div class="editor-header">
+          <input class="hint-input" id="hint-input" type="text"
+            value="${escapeAttr(board.board_hint)}"
+            placeholder="Board theme…" autocomplete="off">
+          <span class="word-count-badge ${over ? 'over' : ''}" id="word-count">
+            ${board.words.length} / 100 words
+          </span>
+          <button class="btn btn-danger" id="delete-board-btn">Delete board</button>
+        </div>
+
+        <div class="words-area" id="words-area"></div>
+
+        <div class="add-word-form">
+          <input class="add-word-input" id="add-word-input"
+            type="text" placeholder="Add a word…" autocomplete="off">
+          <button class="btn btn-primary" id="add-word-btn">Add</button>
+        </div>
+      `;
+
+      renderWordChips();
+
+      document.getElementById('hint-input').addEventListener('input', e => {
+        boards[activeIndex].board_hint = e.target.value;
+        // update sidebar name without full re-render
+        const items = document.querySelectorAll('.board-item');
+        if (items[activeIndex]) {
+          items[activeIndex].querySelector('.board-item-name').textContent =
+            e.target.value || '(untitled)';
+        }
+      });
+
+      document.getElementById('delete-board-btn').addEventListener('click', () => {
+        if (!confirm(`Delete "${board.board_hint}"?`)) return;
+        boards.splice(activeIndex, 1);
+        activeIndex = boards.length ? Math.min(activeIndex, boards.length - 1) : null;
+        renderSidebar();
+        renderEditor();
+      });
+
+      const addInput = document.getElementById('add-word-input');
+      const doAdd = () => {
+        const val = addInput.value.trim();
+        if (!val) return;
+        boards[activeIndex].words.push(val);
+        addInput.value = '';
+        renderWordChips();
+        updateWordCount();
+        updateSidebarCount();
+        addInput.focus();
+      };
+
+      document.getElementById('add-word-btn').addEventListener('click', doAdd);
+      addInput.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
+    }
+
+    function renderWordChips() {
+      const area = document.getElementById('words-area');
+      if (!area) return;
+      const board = boards[activeIndex];
+      area.innerHTML = '';
+
+      board.words.forEach((word, wi) => {
+        const chip = document.createElement('div');
+        chip.className = 'word-chip';
+
+        const text = document.createElement('input');
+        text.className = 'word-chip-text';
+        text.value = word;
+        text.size = Math.max(word.length, 3);
+        text.addEventListener('input', e => {
+          board.words[wi] = e.target.value;
+          text.size = Math.max(e.target.value.length, 3);
+        });
+        text.addEventListener('keydown', e => {
+          if (e.key === 'Enter') e.target.blur();
+        });
+
+        const rm = document.createElement('button');
+        rm.className = 'word-chip-remove';
+        rm.textContent = '×';
+        rm.title = 'Remove';
+        rm.addEventListener('click', () => {
+          board.words.splice(wi, 1);
+          renderWordChips();
+          updateWordCount();
+          updateSidebarCount();
+        });
+
+        chip.appendChild(text);
+        chip.appendChild(rm);
+        area.appendChild(chip);
+      });
+    }
+
+    function updateWordCount() {
+      const badge = document.getElementById('word-count');
+      if (!badge) return;
+      const n = boards[activeIndex].words.length;
+      badge.textContent = `${n} / 100 words`;
+      badge.classList.toggle('over', n > 100);
+    }
+
+    function updateSidebarCount() {
+      const items = document.querySelectorAll('.board-item');
+      if (items[activeIndex]) {
+        items[activeIndex].querySelector('.board-item-count').textContent =
+          boards[activeIndex].words.length;
+      }
+    }
+
+    // ── Add board ────────────────────────────────────────────
+
+    document.getElementById('add-board-btn').addEventListener('click', () => {
+      boards.push({ board_hint: 'New board', words: [] });
+      const i = boards.length - 1;
+      renderSidebar();
+      selectBoard(i);
+      setTimeout(() => document.getElementById('hint-input')?.select(), 50);
+    });
+
+    // ── Load JSON ────────────────────────────────────────────
+
+    document.getElementById('load-input').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          if (!Array.isArray(data)) throw new Error('Expected a JSON array');
+          boards = data.map(b => ({ board_hint: String(b.board_hint || ''), words: (b.words || []).map(String) }));
+          activeIndex = boards.length ? 0 : null;
+          renderSidebar();
+          renderEditor();
+        } catch (err) {
+          alert('Invalid JSON: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
+    // ── Export JSON ──────────────────────────────────────────
+
+    document.getElementById('export-btn').addEventListener('click', () => {
+      const json = JSON.stringify(boards, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'default_boards.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('Exported!');
+    });
+
+    // ── Toast ────────────────────────────────────────────────
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────
+
+    function escapeAttr(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;');
+    }
+
+    // ── Init ─────────────────────────────────────────────────
+
+    renderSidebar();
+  </script>
+</body>
+</html>

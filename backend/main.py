@@ -1,6 +1,7 @@
 import asyncio
 import os
 import pathlib
+import random
 import secrets
 import signal
 import string
@@ -48,6 +49,10 @@ _interaction_times: dict[str, float] = {}   # "lobby_id:player_id" -> last inter
 _phase_gates: dict[str, asyncio.Event] = {}  # lobby_id -> event for animation-gated transitions
 
 _INTERACTION_COOLDOWN = 1.5
+
+# Discover meow sound files at startup
+_MEOW_DIR = pathlib.Path(__file__).parent.parent / "frontend" / "music" / "meows"
+_MEOW_FILES = sorted(p.name for p in _MEOW_DIR.glob("*.mp3")) if _MEOW_DIR.is_dir() else []
 
 _TIMER_SECONDS = 30  # duration for morp-guess and endgame-guess timers
 _TIMER_GRACE_SECONDS = 2  # extra buffer before server auto-submits, gives client time to submit first
@@ -536,6 +541,48 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
                         "hint_timer_duration": engine.lobby.config.hint_timer_duration,
                     })
 
+        elif msg_type == "submit_hail_mary":
+            _cancel_timer(lobby_id)
+            guess = data.get("guess", "")
+            result = engine.submit_hail_mary(player_id, guess)
+            reveal_order = build_reveal_order(
+                [{"id": p.id, "role": p.role.value if p.role else None, "is_ghost": p.is_ghost}
+                 for p in engine.lobby.players.values()],
+                [],  # no accused — all safe revealed first, morp last
+            )
+            await manager.broadcast(lobby_id, {
+                "type": "hail_mary_result",
+                "reveal_order": reveal_order,
+                **result,
+            })
+            await manager.broadcast(lobby_id, _lobby_update(engine))
+            if result["correct"]:
+                # Morp picks a damage target
+                await manager.broadcast(lobby_id, {
+                    "type": "hail_mary_damage_phase",
+                    "morp_id": player_id,
+                })
+            else:
+                await _check_round_end(lobby_id, engine)
+
+        elif msg_type == "hail_mary_deal_damage":
+            target_id = data.get("target_id")
+            if not target_id:
+                raise ValueError("Missing target_id.")
+            if target_id not in engine.lobby.players:
+                raise ValueError("Target player no longer in game.")
+            engine.hail_mary_deal_damage(player_id, target_id)
+            target = engine.lobby.players[target_id]
+            await manager.broadcast(lobby_id, {
+                "type": "damage_dealt",
+                "from_id": player_id,
+                "to_id": target_id,
+                "hp_remaining": target.hp,
+                "eliminated": target.is_ghost,
+            })
+            await manager.broadcast(lobby_id, _lobby_update(engine))
+            await _check_round_end(lobby_id, engine)
+
         elif msg_type == "submit_votes":
             engine.submit_votes(player_id, data.get("accused_ids", []))
             if engine.state.phase == GamePhase.ACCUSATION:
@@ -560,12 +607,19 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
             target_id = data.get("target_id")
             if not target_id:
                 raise ValueError("Missing target_id.")
+            if target_id not in engine.lobby.players:
+                # Target left — remove morp from pending so game can proceed
+                engine._pending_damage_morps.discard(player_id)
+                all_done = not engine._pending_damage_morps
+                if all_done:
+                    engine._resolve_round()
+                raise ValueError("Target player no longer in game.")
             all_done = engine.morp_deal_damage(player_id, target_id)
-            target = engine.lobby.players[data["target_id"]]
+            target = engine.lobby.players[target_id]
             await manager.broadcast(lobby_id, {
                 "type": "damage_dealt",
                 "from_id": player_id,
-                "to_id": data["target_id"],
+                "to_id": target_id,
                 "hp_remaining": target.hp,
                 "eliminated": target.is_ghost,
             })
@@ -586,12 +640,15 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
                 if not target or not target.is_connected or target.is_ghost:
                     raise ValueError("Target is not available.")
             _interaction_times[_key] = time.time()
-            await manager.broadcast(lobby_id, {
+            broadcast_msg: dict = {
                 "type": "interaction",
                 "player_id": player_id,
                 "interaction": interaction,
                 "target_id": target_id,
-            })
+            }
+            if interaction == "meow" and _MEOW_FILES:
+                broadcast_msg["sound"] = random.choice(_MEOW_FILES)
+            await manager.broadcast(lobby_id, broadcast_msg)
 
         elif msg_type == "chat":
             text = data.get("text", "").strip()[:150]
@@ -643,7 +700,7 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
                 "type": "error", "message": f"Unknown message type: {msg_type}"
             })
 
-    except ValueError as e:
+    except (ValueError, KeyError) as e:
         await manager.send(lobby_id, player_id, {"type": "error", "message": str(e)})
 
 
