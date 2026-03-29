@@ -273,6 +273,14 @@
     alphaThreshold: 108,
     maskSampleDivisions: 8
   };
+  const blockFaceShadowConfig = {
+    opacity: 0.9,
+    offsetPx: 2.6,
+    colorLiftRatio: 0.2,
+    outlineRatio: 0.005,
+    minOutlinePx: 1,
+    maxOutlinePx: 3
+  };
 
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
@@ -1154,6 +1162,14 @@
     };
   }
 
+  function getBlockShadowColor(color) {
+    return mixColor(
+      darkenColor(color, logoPaintConfig.shadowDarkness),
+      color,
+      blockFaceShadowConfig.colorLiftRatio
+    );
+  }
+
   function createLogoLetterObjects(logoTextElement) {
     if (!logoTextElement) {
       return [];
@@ -1362,6 +1378,14 @@
 
       blocks.forEach((block) => {
         block.colorRgb = getThemeColorRgb(block.colorVariable);
+        block.element.style.setProperty(
+          '--swatch-fill',
+          rgbaString(block.colorRgb, 1)
+        );
+        block.element.style.setProperty(
+          '--swatch-shadow-fill',
+          rgbaString(getBlockShadowColor(block.colorRgb), blockFaceShadowConfig.opacity)
+        );
       });
     }
 
@@ -1375,8 +1399,15 @@
       const { width, height } = generateBlockSize(shapeModes.pop());
       const baseRadius = config.baseRadius;
 
+      element.innerHTML = '';
       element.style.width = `${width}px`;
       element.style.height = `${height}px`;
+
+      const shadowFace = document.createElement('div');
+      shadowFace.className = 'swatch-shadow-face';
+
+      const face = document.createElement('div');
+      face.className = 'swatch-face';
 
       const dvdImg = document.createElement('img');
       dvdImg.src = 'assets/dvd_logo.png';
@@ -1384,7 +1415,8 @@
       dvdImg.setAttribute('aria-hidden', 'true');
       dvdImg.setAttribute('draggable', 'false');
       dvdImg.style.opacity = '0';
-      element.appendChild(dvdImg);
+      face.appendChild(dvdImg);
+      element.append(shadowFace, face);
 
       return {
         element,
@@ -1421,6 +1453,22 @@
         dvdTimeout: null
       };
     });
+
+    function applyBlockVisualLayout(block, shortestSide) {
+      block.element.style.width = `${block.width}px`;
+      block.element.style.height = `${block.height}px`;
+      block.element.style.borderRadius = `${block.radius}px`;
+      block.element.style.setProperty('--swatch-shadow-offset', `${blockFaceShadowConfig.offsetPx}px`);
+      block.element.style.setProperty(
+        '--swatch-outline-width',
+        `${clamp(
+          Math.round(shortestSide * blockFaceShadowConfig.outlineRatio),
+          blockFaceShadowConfig.minOutlinePx,
+          blockFaceShadowConfig.maxOutlinePx
+        )}px`
+      );
+    }
+
     const cornerTriggerBoxes = [
       { id: 'top-left' },
       { id: 'top-right' },
@@ -2128,9 +2176,7 @@
           scaledRadius,
           Math.max(8, shortestSide * sizeRanges.radiusShortSideClamp)
         );
-        block.element.style.width = `${block.width}px`;
-        block.element.style.height = `${block.height}px`;
-        block.element.style.borderRadius = `${block.radius}px`;
+        applyBlockVisualLayout(block, shortestSide);
         block.vx = Math.sign(block.vx || block.baseVx) * Math.abs(block.baseVx * viewport.speedScale);
         block.vy = Math.sign(block.vy || block.baseVy) * Math.abs(block.baseVy * viewport.speedScale);
       });
