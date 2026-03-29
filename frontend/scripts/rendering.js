@@ -160,6 +160,11 @@ function renderPlayers(containerId, { avatarSize = 80 } = {}) {
       wrap.appendChild(kickBtn);
     }
 
+    // Splatter overlay for vote/damage selection
+    const splatter = document.createElement('div');
+    splatter.className = 'splatter-overlay';
+    circle.appendChild(splatter);
+
     wrap.appendChild(circle);
 
     // Hint thumbnail (hint phase) or speech bubble (endgame ghost hints)

@@ -652,8 +652,27 @@ body.is-landing .card-row {
 .moop-avatar .layer-acc   { z-index: 5; }
 .moop-avatar .layer-hat   { z-index: 6; }
 .moop-avatar.is-ghost     { opacity: 0.3; filter: grayscale(1); }
-.moop-avatar.is-you       { border-color: #FFCE18 !important; box-shadow: 0 0 8px rgba(255,206,24,0.25); }
-.moop-avatar.is-active    { box-shadow: 0 0 14px rgba(135,220,171,0.55); border-color: #87DCAB !important; }
+.moop-avatar.is-active {
+  filter: brightness(1.2);
+}
+.moop-avatar.is-active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 180%;
+  height: 180%;
+  transform: translateX(-50%) translateY(10%);
+  background: linear-gradient(to bottom, rgba(255,210,80,0.35) 0%, rgba(255,225,120,0.12) 50%, rgba(255,220,80,0) 100%);
+  clip-path: polygon(43% 0%, 57% 0%, 82% 100%, 18% 100%);
+  pointer-events: none;
+  z-index: -1;
+  animation: spotlight-beam 2.5s ease-in-out infinite;
+}
+@keyframes spotlight-beam {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
 .moop-avatar.disconnected { opacity: 0.2; }
 
 @media (max-width: 560px) {
@@ -1806,35 +1825,28 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
 .toggle-row { display: flex; gap: 8px; align-items: center; justify-content: center; }
 .toggle-row label { cursor: pointer; color: #907880; font-size: 0.88em; }
 
-/* ── Avatar voting ── */
-.avatar-wrap.voteable .moop-avatar {
-  outline: 3px solid transparent;
-  outline-offset: 3px;
-  transition: outline-color 0.15s ease, box-shadow 0.15s ease;
-}
-.avatar-wrap.voteable:hover .moop-avatar {
-  outline-color: rgba(135, 220, 171, 0.45);
-  box-shadow: 0 0 12px rgba(135, 220, 171, 0.2);
-}
-.avatar-wrap.vote-selected .moop-avatar {
-  outline-color: var(--mint) !important;
-  box-shadow: 0 0 16px rgba(135, 220, 171, 0.4) !important;
+/* ── Splatter selection overlay (vote + damage) ── */
+.splatter-overlay {
+  position: absolute;
+  inset: -15%;
+  width: 130%;
+  height: 130%;
+  background: url('/assets/splatter.png') center / contain no-repeat;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 3;
 }
 
+/* ── Avatar voting ── */
+.avatar-wrap.voteable { cursor: pointer; }
+.avatar-wrap.voteable:hover .splatter-overlay { opacity: 0.4; }
+.avatar-wrap.vote-selected .splatter-overlay { opacity: 0.75; }
+
 /* ── Avatar damage targeting ── */
-.avatar-wrap.damageable .moop-avatar {
-  outline: 3px solid transparent;
-  outline-offset: 3px;
-  transition: outline-color 0.15s ease, box-shadow 0.15s ease;
-}
-.avatar-wrap.damageable:hover .moop-avatar {
-  outline-color: rgba(178, 16, 48, 0.55);
-  box-shadow: 0 0 12px rgba(178, 16, 48, 0.25);
-}
-.avatar-wrap.damage-selected .moop-avatar {
-  outline-color: var(--punch) !important;
-  box-shadow: 0 0 16px rgba(178, 16, 48, 0.45) !important;
-}
+.avatar-wrap.damageable { cursor: pointer; }
+.avatar-wrap.damageable:hover .splatter-overlay { opacity: 0.4; }
+.avatar-wrap.damage-selected .splatter-overlay { opacity: 0.75; }
 
 /* timers */
 .big-timer { font-size: 1.6em; font-weight: bold; color: #D1912A; }
@@ -2052,8 +2064,10 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
   user-select: none; cursor: default;
 }
 .avatar-circle.is-ghost     { opacity: 0.3; filter: grayscale(1); }
-.avatar-circle.is-you       { border-color: #FFCE18 !important; box-shadow: 0 0 8px rgba(255,206,24,0.25); }
-.avatar-circle.is-active    { box-shadow: 0 0 14px rgba(135,220,171,0.55); border-color: #87DCAB !important; }
+.avatar-circle.is-active {
+  filter: brightness(1.15);
+  box-shadow: 0 8px 20px -4px rgba(255,248,220,0.3);
+}
 .avatar-circle.disconnected { opacity: 0.2; }
 
 .host-crown {
