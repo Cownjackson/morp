@@ -163,6 +163,17 @@
       },
       {
         classMetric: 2300,
+        blockScaleMultiplier: 1.0,
+        playerScaleMultiplier: 1.02,
+        speedScaleMultiplier: 1.02,
+        radiusScaleMultiplier: 1.03,
+        spreadScale: 1.08,
+        impulseRadiusMultiplier: 1.08,
+        impulseStrengthMultiplier: 1.04,
+        rippleRadiusMultiplier: 1.05
+      },
+      {
+        classMetric: 2800,
         blockScaleMultiplier: 1.15,
         playerScaleMultiplier: 1.02,
         speedScaleMultiplier: 1.02,
