@@ -158,6 +158,52 @@ class GameEngine:
         if rs.all_hints_submitted():
             self.state.phase = GamePhase.VOTING
 
+    # ── Hail Mary (morp early guess during hint phase) ─────────────────────
+
+    def submit_hail_mary(self, morp_id: str, guess: str) -> dict:
+        """Morp attempts an early guess during the hint phase.
+
+        Returns {correct, target_word, guess, morp_id}.
+        If wrong: morp takes damage, round resolves immediately.
+        If correct: round pauses for damage target selection.
+        """
+        rs = self.state.round_state
+        if rs is None or self.state.phase != GamePhase.HINT:
+            raise ValueError("Not in hint phase.")
+        player = self.lobby.players.get(morp_id)
+        if not player or player.role != Role.MORP:
+            raise ValueError("Only a morp can hail mary.")
+        if guess and guess.strip().lower() not in [w.strip().lower() for w in rs.board.words]:
+            raise ValueError("Guess must be a word on the board.")
+        correct = guess.strip().lower() == rs.target_word.strip().lower()
+        result = {
+            "morp_id": morp_id,
+            "guess": guess,
+            "correct": correct,
+            "target_word": rs.target_word,
+        }
+        rs.hail_mary_result = result
+        if not correct:
+            player.take_damage()
+            self._resolve_round()
+        else:
+            # Correct — wait for morp to pick damage target
+            self._pending_damage_morps = [morp_id]
+        return result
+
+    def hail_mary_deal_damage(self, morp_id: str, target_id: str) -> None:
+        """Morp deals damage after a successful hail mary guess."""
+        rs = self.state.round_state
+        if rs is None or rs.hail_mary_result is None or not rs.hail_mary_result.get("correct"):
+            raise ValueError("No successful hail mary pending.")
+        if morp_id not in self._pending_damage_morps:
+            raise ValueError("You are not authorized to deal damage.")
+        if morp_id == target_id:
+            raise ValueError("Cannot deal damage to yourself.")
+        self._pending_damage_morps.remove(morp_id)
+        self.lobby.players[target_id].take_damage()
+        self._resolve_round()
+
     # ── Voting ────────────────────────────────────────────────────────────────
 
     def submit_votes(self, voter_id: str, accused_ids: list[str]) -> None:
@@ -439,7 +485,13 @@ class GameEngine:
         self._reassign_host_if_needed()
         phase = self.state.phase
         if phase == GamePhase.HINT:
-            self._skip_disconnected_hints()
+            # Check if there's a pending hail mary damage (morp guessed correctly, awaiting target)
+            if self._pending_damage_morps and player_id in self._pending_damage_morps:
+                self._pending_damage_morps.remove(player_id)
+                if not self._pending_damage_morps:
+                    self._resolve_round()
+            else:
+                self._skip_disconnected_hints()
         elif phase == GamePhase.VOTING:
             self._check_voting_complete()
         elif phase == GamePhase.ACCUSATION:

@@ -541,6 +541,46 @@ async def _handle_message(lobby_id: str, player_id: str, data: dict, engine: Gam
                         "hint_timer_duration": engine.lobby.config.hint_timer_duration,
                     })
 
+        elif msg_type == "submit_hail_mary":
+            _cancel_timer(lobby_id)
+            guess = data.get("guess", "")
+            result = engine.submit_hail_mary(player_id, guess)
+            reveal_order = build_reveal_order(
+                [{"id": p.id, "role": p.role.value if p.role else None, "is_ghost": p.is_ghost}
+                 for p in engine.lobby.players.values()],
+                [],  # no accused — all safe revealed first, morp last
+            )
+            await manager.broadcast(lobby_id, {
+                "type": "hail_mary_result",
+                "reveal_order": reveal_order,
+                **result,
+            })
+            await manager.broadcast(lobby_id, _lobby_update(engine))
+            if result["correct"]:
+                # Morp picks a damage target
+                await manager.broadcast(lobby_id, {
+                    "type": "hail_mary_damage_phase",
+                    "morp_id": player_id,
+                })
+            else:
+                await _check_round_end(lobby_id, engine)
+
+        elif msg_type == "hail_mary_deal_damage":
+            target_id = data.get("target_id")
+            if not target_id:
+                raise ValueError("Missing target_id.")
+            engine.hail_mary_deal_damage(player_id, target_id)
+            target = engine.lobby.players[target_id]
+            await manager.broadcast(lobby_id, {
+                "type": "damage_dealt",
+                "from_id": player_id,
+                "to_id": target_id,
+                "hp_remaining": target.hp,
+                "eliminated": target.is_ghost,
+            })
+            await manager.broadcast(lobby_id, _lobby_update(engine))
+            await _check_round_end(lobby_id, engine)
+
         elif msg_type == "submit_votes":
             engine.submit_votes(player_id, data.get("accused_ids", []))
             if engine.state.phase == GamePhase.ACCUSATION:

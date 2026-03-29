@@ -7,7 +7,7 @@ import { initModals } from './modals.js';
 import { initMusic } from './music.js';
 import { initCanvas, clearCanvas, undoStroke, setDrawColor, setDrawSize, toggleEraser, toggleFill, toggleLine } from './drawing.js';
 import { createLobby, joinLobby, setCustomBoards, copyBoardTemplate } from './lobby.js';
-import { startGame, submitHint, submitVotes, submitMorpGuess, submitEndgameGhostHint, submitEndgameGuess, resetToLobby, leaveLobby, copyLobbyCode, sendChat } from './actions.js';
+import { startGame, submitHint, submitVotes, submitMorpGuess, submitEndgameGhostHint, submitEndgameGuess, resetToLobby, leaveLobby, copyLobbyCode, sendChat, enterHailMary, cancelHailMary, submitHailMary } from './actions.js';
 import { confirmDamage, openDrawPopup, minimizeDrawPopup } from './rendering.js';
 import { initInteractions, toggleInteractionMenu } from './interactions.js';
 
@@ -21,6 +21,9 @@ window.startGame = startGame;
 window.submitHint = submitHint;
 window.submitVotes = submitVotes;
 window.submitMorpGuess = submitMorpGuess;
+window.enterHailMary = enterHailMary;
+window.cancelHailMary = cancelHailMary;
+window.submitHailMary = submitHailMary;
 window.submitEndgameGhostHint = submitEndgameGhostHint;
 window.submitEndgameGuess = submitEndgameGuess;
 window.resetToLobby = resetToLobby;

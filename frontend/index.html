@@ -357,6 +357,15 @@
         </div>
         <!-- Drawing mode (popup opens automatically) -->
       </div>
+      <!-- Hail Mary (morp only, always visible during hint phase) -->
+      <div id="hail-mary-block" class="hidden">
+        <button id="btn-hail-mary" class="hail-mary-btn" onclick="enterHailMary()">HAIL MARY</button>
+        <div id="hail-mary-confirm" class="hidden" style="margin-top:6px">
+          <p style="color:#FEAED2;font-size:0.88em;margin-bottom:6px">click a word on the board to guess</p>
+          <button id="btn-hail-mary-guess" onclick="submitHailMary()" disabled>Guess: <span id="hail-mary-selected-word">—</span></button>
+          <button onclick="cancelHailMary()" style="margin-left:8px">Cancel</button>
+        </div>
+      </div>
     </div>
 
     <!-- VOTING -->

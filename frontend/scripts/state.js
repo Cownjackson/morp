@@ -22,6 +22,8 @@ export const state = {
   _morpIdsForDamage: [],     // morp ids during damage phase
   boardSelectionMode: false, // true when morp can click board words to guess
   boardWordSelected: null,   // word string currently selected for morp guess
+  _hailMaryMode: false,      // true when morp is in hail mary board selection
+  _hailMaryDamage: false,    // true when damage phase is from a hail mary
 };
 
 export function send(msg) { state.ws.send(JSON.stringify(msg)); }
