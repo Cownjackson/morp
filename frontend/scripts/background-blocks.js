@@ -41,46 +41,46 @@
       jiggleResponseMultiplier: 1.18,
       activationJiggleImpactMultiplier: 0.95
     }),
-    speedLines: Object.freeze({
-      spawnIntervalMs: 54,
-      lifetimeMs: 520,
-      lineCount: 3,
-      thickness: Object.freeze({
-        minPx: 4,
-        maxPx: 18,
-        blockRatio: 0.085
-      }),
-      length: Object.freeze({
-        minPx: 32,
-        maxPx: 350,
-        blockRatio: 0.62,
-        speedFactor: 0.04,
-        multiplier: 1.56
-      }),
-      spread: Object.freeze({
-        minPx: 12,
-        maxPx: 44,
-        blockRatio: 0.16
-      }),
-      stagger: Object.freeze({
-        minPx: 8,
-        maxPx: 30,
-        blockRatio: 0.09
-      }),
-      sourceInset: Object.freeze({
-        minPx: 12,
-        blockRatio: 0.18
-      }),
-      segments: Object.freeze({
-        densityMultiplier: 1.3,
-        diameterRatio: 1.08,
-        tailFadeStrength: 0.72
-      }),
-      color: Object.freeze({
-        coreOpacity: 0.82,
-        glowOpacity: 0.4
-      })
-    })
+    // speedLines: Object.freeze({
+    //   spawnIntervalMs: 54,
+    //   lifetimeMs: 520,
+    //   lineCount: 3,
+    //   thickness: Object.freeze({
+    //     minPx: 4,
+    //     maxPx: 18,
+    //     blockRatio: 0.085
+    //   }),
+    //   length: Object.freeze({
+    //     minPx: 32,
+    //     maxPx: 350,
+    //     blockRatio: 0.62,
+    //     speedFactor: 0.04,
+    //     multiplier: 1.56
+    //   }),
+    //   spread: Object.freeze({
+    //     minPx: 12,
+    //     maxPx: 44,
+    //     blockRatio: 0.16
+    //   }),
+    //   stagger: Object.freeze({
+    //     minPx: 8,
+    //     maxPx: 30,
+    //     blockRatio: 0.09
+    //   }),
+    //   sourceInset: Object.freeze({
+    //     minPx: 12,
+    //     blockRatio: 0.18
+    //   }),
+    //   segments: Object.freeze({
+    //     densityMultiplier: 1.3,
+    //     diameterRatio: 1.08,
+    //     tailFadeStrength: 0.72
+    //   }),
+    //   color: Object.freeze({
+    //     coreOpacity: 0.82,
+    //     glowOpacity: 0.4
+    //   })
+    // })
   });
   const hitboxScale = 0.95;
   const playerHitboxScale = 0.8;
@@ -309,56 +309,56 @@
     };
   }
 
-  function scaleCornerSpeedLineDimension(blockSize, dimensionConfig) {
-    return clamp(
-      blockSize * dimensionConfig.blockRatio,
-      dimensionConfig.minPx,
-      dimensionConfig.maxPx
-    );
-  }
+  // function scaleCornerSpeedLineDimension(blockSize, dimensionConfig) {
+  //   return clamp(
+  //     blockSize * dimensionConfig.blockRatio,
+  //     dimensionConfig.minPx,
+  //     dimensionConfig.maxPx
+  //   );
+  // }
 
-  function getCornerSpeedLineMetrics(block) {
-    const speedLineConfig = cornerOverdriveConfig.speedLines;
-    const lengthConfig = speedLineConfig.length;
-    const blockSize = Math.min(block.width, block.height);
-    const speed = Math.hypot(block.vx, block.vy);
-    const lineThickness = scaleCornerSpeedLineDimension(blockSize, speedLineConfig.thickness);
-    const lineLength = clamp(
-      (
-        blockSize * lengthConfig.blockRatio
-        + speed * lengthConfig.speedFactor
-      ) * lengthConfig.multiplier,
-      lengthConfig.minPx,
-      lengthConfig.maxPx
-    );
+  // function getCornerSpeedLineMetrics(block) {
+  //   const speedLineConfig = cornerOverdriveConfig.speedLines;
+  //   const lengthConfig = speedLineConfig.length;
+  //   const blockSize = Math.min(block.width, block.height);
+  //   const speed = Math.hypot(block.vx, block.vy);
+  //   const lineThickness = scaleCornerSpeedLineDimension(blockSize, speedLineConfig.thickness);
+  //   const lineLength = clamp(
+  //     (
+  //       blockSize * lengthConfig.blockRatio
+  //       + speed * lengthConfig.speedFactor
+  //     ) * lengthConfig.multiplier,
+  //     lengthConfig.minPx,
+  //     lengthConfig.maxPx
+  //   );
 
-    return {
-      speed,
-      lineThickness,
-      lineLength,
-      lineSpread: scaleCornerSpeedLineDimension(blockSize, speedLineConfig.spread),
-      lineStagger: scaleCornerSpeedLineDimension(blockSize, speedLineConfig.stagger),
-      sourceInset: Math.max(
-        blockSize * speedLineConfig.sourceInset.blockRatio,
-        speedLineConfig.sourceInset.minPx
-      )
-    };
-  }
+  //   return {
+  //     speed,
+  //     lineThickness,
+  //     lineLength,
+  //     lineSpread: scaleCornerSpeedLineDimension(blockSize, speedLineConfig.spread),
+  //     lineStagger: scaleCornerSpeedLineDimension(blockSize, speedLineConfig.stagger),
+  //     sourceInset: Math.max(
+  //       blockSize * speedLineConfig.sourceInset.blockRatio,
+  //       speedLineConfig.sourceInset.minPx
+  //     )
+  //   };
+  // }
 
-  function getCornerSpeedLineSegmentCount(lineLength, lineThickness) {
-    const segmentConfig = cornerOverdriveConfig.speedLines.segments;
-    const segmentDiameter = lineThickness * segmentConfig.diameterRatio;
+  // function getCornerSpeedLineSegmentCount(lineLength, lineThickness) {
+  //   const segmentConfig = cornerOverdriveConfig.speedLines.segments;
+  //   const segmentDiameter = lineThickness * segmentConfig.diameterRatio;
 
-    return {
-      segmentDiameter,
-      segmentCount: Math.max(
-        4,
-        Math.round(
-          (lineLength / Math.max(segmentDiameter, 1)) * segmentConfig.densityMultiplier
-        )
-      )
-    };
-  }
+  //   return {
+  //     segmentDiameter,
+  //     segmentCount: Math.max(
+  //       4,
+  //       Math.round(
+  //         (lineLength / Math.max(segmentDiameter, 1)) * segmentConfig.densityMultiplier
+  //       )
+  //     )
+  //   };
+  // }
 
   function getCornerTriggerNormal(triggerId) {
     switch (triggerId) {
@@ -1300,12 +1300,12 @@
       }
     });
 
-    let speedLineLayer = container.querySelector('.background-speed-line-layer');
-    if (!speedLineLayer) {
-      speedLineLayer = document.createElement('div');
-      speedLineLayer.className = 'background-speed-line-layer';
-      container.insertBefore(speedLineLayer, container.firstChild);
-    }
+    // let speedLineLayer = container.querySelector('.background-speed-line-layer');
+    // if (!speedLineLayer) {
+    //   speedLineLayer = document.createElement('div');
+    //   speedLineLayer.className = 'background-speed-line-layer';
+    //   container.insertBefore(speedLineLayer, container.firstChild);
+    // }
 
     let rippleLayer = container.querySelector('.background-ripple-layer');
     if (!rippleLayer) {
@@ -1405,7 +1405,7 @@
         activeCornerTriggerIds: new Set(),
         cornerOverdriveUntil: 0,
         cornerOverdriveTargetSpeed: 0,
-        cornerSpeedLinesLastAt: 0,
+        // cornerSpeedLinesLastAt: 0,
         dvdImg,
         dvdTimeout: null
       };
@@ -1436,94 +1436,94 @@
     const playerEntities = [];
     const playerEntitiesById = new Map();
 
-    function spawnCornerSpeedLines(block, now = performance.now()) {
-      if (!isCornerOverdriveActive(block, now)) {
-        return;
-      }
+    // function spawnCornerSpeedLines(block, now = performance.now()) {
+    //   if (!isCornerOverdriveActive(block, now)) {
+    //     return;
+    //   }
 
-      const speedLineConfig = cornerOverdriveConfig.speedLines;
-      const lifetime = Math.min(
-        speedLineConfig.lifetimeMs,
-        block.cornerOverdriveUntil - now
-      );
-      if (lifetime < 110) {
-        return;
-      }
+    //   const speedLineConfig = cornerOverdriveConfig.speedLines;
+    //   const lifetime = Math.min(
+    //     speedLineConfig.lifetimeMs,
+    //     block.cornerOverdriveUntil - now
+    //   );
+    //   if (lifetime < 110) {
+    //     return;
+    //   }
 
-      const {
-        speed,
-        lineThickness,
-        lineLength,
-        lineSpread,
-        lineStagger,
-        sourceInset
-      } = getCornerSpeedLineMetrics(block);
-      const dirX = speed > 0 ? block.vx / speed : 0;
-      const dirY = speed > 0 ? block.vy / speed : 0;
-      const centerX = block.x + block.width / 2;
-      const centerY = block.y + block.height / 2;
-      const anchorX = centerX - dirX * sourceInset;
-      const anchorY = centerY - dirY * sourceInset;
-      const group = document.createElement('div');
-      const angle = Math.atan2(dirY, dirX) * (180 / Math.PI);
+    //   const {
+    //     speed,
+    //     lineThickness,
+    //     lineLength,
+    //     lineSpread,
+    //     lineStagger,
+    //     sourceInset
+    //   } = getCornerSpeedLineMetrics(block);
+    //   const dirX = speed > 0 ? block.vx / speed : 0;
+    //   const dirY = speed > 0 ? block.vy / speed : 0;
+    //   const centerX = block.x + block.width / 2;
+    //   const centerY = block.y + block.height / 2;
+    //   const anchorX = centerX - dirX * sourceInset;
+    //   const anchorY = centerY - dirY * sourceInset;
+    //   const group = document.createElement('div');
+    //   const angle = Math.atan2(dirY, dirX) * (180 / Math.PI);
 
-      group.className = 'background-speed-line-group';
-      group.style.setProperty(
-        '--background-speed-line-transform',
-        `translate(${anchorX}px, ${anchorY}px) rotate(${angle}deg)`
-      );
-      group.style.setProperty('--background-speed-line-lifetime', `${lifetime}ms`);
-      group.style.setProperty(
-        '--background-speed-line-core',
-        rgbaString(block.colorRgb, speedLineConfig.color.coreOpacity)
-      );
-      group.style.setProperty(
-        '--background-speed-line-glow',
-        rgbaString(block.colorRgb, speedLineConfig.color.glowOpacity)
-      );
+    //   group.className = 'background-speed-line-group';
+    //   group.style.setProperty(
+    //     '--background-speed-line-transform',
+    //     `translate(${anchorX}px, ${anchorY}px) rotate(${angle}deg)`
+    //   );
+    //   group.style.setProperty('--background-speed-line-lifetime', `${lifetime}ms`);
+    //   group.style.setProperty(
+    //     '--background-speed-line-core',
+    //     rgbaString(block.colorRgb, speedLineConfig.color.coreOpacity)
+    //   );
+    //   group.style.setProperty(
+    //     '--background-speed-line-glow',
+    //     rgbaString(block.colorRgb, speedLineConfig.color.glowOpacity)
+    //   );
 
-      for (let index = 0; index < speedLineConfig.lineCount; index += 1) {
-        const line = document.createElement('div');
-        const yOffset =
-          (index - ((speedLineConfig.lineCount - 1) / 2)) * lineSpread;
-        const xOffset = -index * lineStagger;
-        const individualLength = Math.max(
-          speedLineConfig.length.minPx * 0.72,
-          lineLength - index * lineStagger
-        );
+    //   for (let index = 0; index < speedLineConfig.lineCount; index += 1) {
+    //     const line = document.createElement('div');
+    //     const yOffset =
+    //       (index - ((speedLineConfig.lineCount - 1) / 2)) * lineSpread;
+    //     const xOffset = -index * lineStagger;
+    //     const individualLength = Math.max(
+    //       speedLineConfig.length.minPx * 0.72,
+    //       lineLength - index * lineStagger
+    //     );
 
-        line.className = 'background-speed-line';
-        line.style.width = `${individualLength}px`;
-        line.style.height = `${lineThickness}px`;
-        line.style.left = `${xOffset - individualLength}px`;
-        line.style.top = `${yOffset - (lineThickness * 0.5)}px`;
+    //     line.className = 'background-speed-line';
+    //     line.style.width = `${individualLength}px`;
+    //     line.style.height = `${lineThickness}px`;
+    //     line.style.left = `${xOffset - individualLength}px`;
+    //     line.style.top = `${yOffset - (lineThickness * 0.5)}px`;
 
-        const { segmentDiameter, segmentCount } = getCornerSpeedLineSegmentCount(
-          individualLength,
-          lineThickness
-        );
-        const segmentTravel = Math.max(individualLength - segmentDiameter, 0);
+    //     const { segmentDiameter, segmentCount } = getCornerSpeedLineSegmentCount(
+    //       individualLength,
+    //       lineThickness
+    //     );
+    //     const segmentTravel = Math.max(individualLength - segmentDiameter, 0);
 
-        for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
-          const segment = document.createElement('div');
-          const progress = segmentCount === 1 ? 0 : segmentIndex / (segmentCount - 1);
-          const fadeAmount = 1 - progress * speedLineConfig.segments.tailFadeStrength;
+    //     for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
+    //       const segment = document.createElement('div');
+    //       const progress = segmentCount === 1 ? 0 : segmentIndex / (segmentCount - 1);
+    //       const fadeAmount = 1 - progress * speedLineConfig.segments.tailFadeStrength;
 
-          segment.className = 'background-speed-line-segment';
-          segment.style.width = `${segmentDiameter}px`;
-          segment.style.height = `${segmentDiameter}px`;
-          segment.style.left = `${progress * segmentTravel}px`;
-          segment.style.top = `${(lineThickness - segmentDiameter) * 0.5}px`;
-          segment.style.opacity = fadeAmount.toFixed(3);
-          line.appendChild(segment);
-        }
+    //       segment.className = 'background-speed-line-segment';
+    //       segment.style.width = `${segmentDiameter}px`;
+    //       segment.style.height = `${segmentDiameter}px`;
+    //       segment.style.left = `${progress * segmentTravel}px`;
+    //       segment.style.top = `${(lineThickness - segmentDiameter) * 0.5}px`;
+    //       segment.style.opacity = fadeAmount.toFixed(3);
+    //       line.appendChild(segment);
+    //     }
 
-        group.appendChild(line);
-      }
+    //     group.appendChild(line);
+    //   }
 
-      speedLineLayer.appendChild(group);
-      group.addEventListener('animationend', () => group.remove(), { once: true });
-    }
+    //   speedLineLayer.appendChild(group);
+    //   group.addEventListener('animationend', () => group.remove(), { once: true });
+    // }
 
     function applyCornerOverdriveVelocity(block, now = performance.now()) {
       const directionX = block.vx || block.baseVx;
@@ -1537,7 +1537,7 @@
     }
 
     function updateCornerOverdriveEffects(now) {
-      const speedLineConfig = cornerOverdriveConfig.speedLines;
+      // const speedLineConfig = cornerOverdriveConfig.speedLines;
       blocks.forEach((block) => {
         if (!isCornerOverdriveActive(block, now)) {
           block.cornerOverdriveTargetSpeed = 0;
@@ -1546,10 +1546,10 @@
 
         applyCornerOverdriveVelocity(block, now);
 
-        if (now - block.cornerSpeedLinesLastAt >= speedLineConfig.spawnIntervalMs) {
-          spawnCornerSpeedLines(block, now);
-          block.cornerSpeedLinesLastAt = now;
-        }
+        // if (now - block.cornerSpeedLinesLastAt >= speedLineConfig.spawnIntervalMs) {
+        //   spawnCornerSpeedLines(block, now);
+        //   block.cornerSpeedLinesLastAt = now;
+        // }
       });
     }
 
@@ -1567,7 +1567,7 @@
 
       block.cornerOverdriveUntil = now + cornerOverdriveConfig.timing.durationMs;
       block.cornerOverdriveTargetSpeed = targetSpeed;
-      block.cornerSpeedLinesLastAt = now - cornerOverdriveConfig.speedLines.spawnIntervalMs;
+      // block.cornerSpeedLinesLastAt = now - cornerOverdriveConfig.speedLines.spawnIntervalMs;
       block.vx = (direction.x / directionLength) * targetSpeed;
       block.vy = (direction.y / directionLength) * targetSpeed;
 
@@ -1578,7 +1578,7 @@
         normalY,
         targetSpeed * cornerOverdriveConfig.bounce.activationJiggleImpactMultiplier
       );
-      spawnCornerSpeedLines(block, now);
+      // spawnCornerSpeedLines(block, now);
     }
 
     const prototypePlayerEntity = createPlayerEntity(container, getPrototypePlayerPayload());
