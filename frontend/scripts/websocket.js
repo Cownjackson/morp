@@ -383,15 +383,17 @@ function _processMessage(msg) {
     case 'accusation_result': {
       disableAvatarVoting();
       _startAnimationLock(30000);
-      // Show vote arrows first, then dramatic role reveal
+      // Show vote pointers and role reveal together; pointers linger until reveal ends
       setPhaseLabel('VOTES');
-      showVoteArrows(msg.votes || {}, () => {
+      const cleanupPointers = showVoteArrows(msg.votes || {});
+      setTimeout(() => {
         setPhaseLabel('ROLE REVEAL');
         playRoleRevealSequence(msg.reveal_order || [], () => {
+          cleanupPointers();
           send({ type: 'phase_ready' });
           _endAnimationLock();
         });
-      });
+      }, 2000); // hold vote pointers alone for 2s before reveal begins
       break;
     }
 

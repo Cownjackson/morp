@@ -1227,10 +1227,11 @@ body.is-landing #landing-meta-panel {
   max-width: 60px;
   cursor: pointer;
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, z-index 0s;
-  z-index: 5;
+  z-index: 8;  /* above hat layer (6) */
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   pointer-events: auto;
 }
+.hint-thumbnail:hover,
 .hint-thumbnail.expanded {
   transform: scale(calc(var(--hint-scale, 1) * 3)) rotate(0deg);
   border-color: rgba(254, 174, 210, 0.55);
@@ -1263,8 +1264,8 @@ body.is-landing #landing-meta-panel {
   left: 5%;
   transform: scale(var(--hint-scale, 1)) rotate(-8deg);
   transform-origin: center center;
-  animation-name: hint-thumb-pop-left !important;
 }
+.hint-thumbnail.hint-left:hover,
 .hint-thumbnail.hint-left.expanded {
   transform: scale(calc(var(--hint-scale, 1) * 3)) rotate(0deg);
 }
@@ -1274,31 +1275,15 @@ body.is-landing #landing-meta-panel {
 }
 
 /* ── Vote arrows ── */
-.vote-arrow-line {
-  position: absolute;
-  height: 12px;
-  background: #1a1a1a;
-  transform-origin: left center;
-  pointer-events: none;
-  border-radius: 2px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-.vote-arrow-line.visible {
-  opacity: 1;
-}
-.vote-arrow-line.fading {
-  opacity: 0;
-}
-
 .vote-arrow-pointer {
   position: absolute;
-  width: 28px;
+  width: 156px;
   height: auto;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.3s ease;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+  z-index: 10;  /* below .avatar-envelope (30) so envelopes cover pointers */
 }
 .vote-arrow-pointer.visible {
   opacity: 1;
