@@ -21,14 +21,14 @@ export function initModals() {
   // Changelog modal
   bindModal({
     overlayId: 'changelog-overlay',
-    openButtonIds: ['changelog-btn', 'pregame-changelog-btn', 'changelog-btn-footer'],
+    openButtonIds: ['pregame-changelog-btn', 'changelog-btn-footer'],
     closeButtonId: 'changelog-close'
   });
 
   // Help modal
   bindModal({
     overlayId: 'help-overlay',
-    openButtonIds: ['help-btn', 'pregame-help-btn', 'help-btn-footer'],
+    openButtonIds: ['pregame-help-btn', 'help-btn-footer'],
     closeButtonId: 'help-close'
   });
 

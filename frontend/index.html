@@ -69,14 +69,6 @@
   <div class="swatch swatch-8"></div>
 </div>
 
-<header class="landing-mode">
-  <h1>MORP</h1>
-  <span id="lobby-code-display" class="hidden"></span>
-  <span id="phase-label"></span>
-  <button id="changelog-btn" class="header-btn" title="What's new">★</button>
-  <button id="help-btn" class="header-btn" title="How to play">?</button>
-</header>
-
 <!-- Changelog modal -->
 <div id="changelog-overlay" class="modal-overlay">
   <div id="changelog-modal" class="modal-box">
@@ -160,8 +152,6 @@
     <div id="pregame-players-list" class="pregame-players-list"></div>
   </div>
 </div>
-
-<div id="role-banner"></div>
 
 <div class="landing-main-cluster" id="landing-main-cluster">
   <!-- Landing logo -->
@@ -328,140 +318,173 @@
 
 </div>
 
-<!-- Main game layout (shown once a round starts) -->
-<div id="game-layout" class="stage-layout hidden">
-
-  <!-- Board (hidden until a round starts) -->
-  <div id="board-area" class="hidden">
-    <div id="board-header">
-      <span id="board-theme-tag"></span>
-    </div>
-    <div id="board-grid"></div>
-    <div id="half-board-note">You are morp and went first: highlighted words are your partial view.</div>
-  </div>
-
-  <!-- Action area — one section visible at a time -->
-  <div id="action-area">
-
-    <!-- HINT PHASE -->
-    <div id="act-hint" class="action-section hidden">
-      <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px">
-        <div id="turn-indicator" style="font-size:0.88em"></div>
-        <span id="hint-timer" class="big-timer" style="display:none">60</span>
-      </div>
-      <div id="your-turn-block" class="hidden">
-        <!-- Text mode -->
-        <div id="hint-text-block" class="row">
-          <input type="text" id="hint-input" placeholder="Your hint…" style="width:260px" maxlength="30">
-          <button onclick="submitHint()">Submit</button>
+<div id="game-screen-stack">
+  <!-- Main game layout (shown once a round starts) -->
+  <div id="game-layout" class="stage-layout hidden">
+    <div id="game-top-controls-section" class="game-stack-section">
+      <div class="game-top-controls-row pregame-lobby-code-row">
+        <div class="game-lobby-controls pregame-lobby-code-row">
+          <span id="lobby-code-display" class="pregame-lobby-code-chip hidden"></span>
+          <button
+            type="button"
+            id="ingame-lobby-code-copy"
+            class="pregame-lobby-code-copy hidden"
+            onclick="copyLobbyCode()"
+            title="Copy lobby code"
+            aria-label="Copy lobby code"
+          >
+            Copy
+          </button>
         </div>
-        <!-- Drawing mode (popup opens automatically) -->
+        <div id="ingame-interaction-slot" class="game-interaction-slot"></div>
       </div>
-      <!-- Hail Mary (morp only, always visible during hint phase) -->
-      <div id="hail-mary-block" class="hidden">
-        <button id="btn-hail-mary" class="hail-mary-btn" onclick="enterHailMary()">HAIL MARY</button>
-        <div id="hail-mary-confirm" class="hidden" style="margin-top:6px">
-          <p style="color:#FEAED2;font-size:0.88em;margin-bottom:6px">click a word on the board to guess</p>
-          <button id="btn-hail-mary-guess" onclick="submitHailMary()" disabled>Guess: <span id="hail-mary-selected-word">—</span></button>
-          <button onclick="cancelHailMary()" style="margin-left:8px">Cancel</button>
+    </div>
+
+    <div id="game-role-section" class="game-stack-section">
+      <div id="role-banner"></div>
+    </div>
+
+    <div id="game-board-section" class="game-stack-section">
+      <!-- Board (hidden until a round starts) -->
+      <div id="board-area" class="hidden">
+        <div id="board-header">
+          <span id="board-theme-tag"></span>
         </div>
+        <div id="board-grid"></div>
+        <div id="half-board-note">You are morp and went first: highlighted words are your partial view.</div>
       </div>
     </div>
 
-    <!-- VOTING -->
-    <div id="act-vote" class="action-section hidden">
-      <h3>click players to accuse</h3>
-      <span id="vote-count-label" style="display:none;color:#D1912A;font-size:0.88em;margin-bottom:8px"></span>
-      <button id="btn-submit-votes" onclick="submitVotes()" disabled>Submit Vote</button>
-      <span id="vote-waiting" style="display:none;margin-left:12px;color:#453060;font-size:0.88em">Votes submitted — waiting…</span>
-    </div>
+    <div id="game-action-section" class="game-stack-section">
+      <!-- Action area — one section visible at a time -->
+      <div id="action-area">
 
-    <!-- MORP GUESS -->
-    <div id="act-morp-guess" class="action-section hidden">
-      <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:10px">
-        <h3 style="margin:0">Morp Must Guess!</h3>
-        <span id="guess-timer" class="big-timer">30</span>
-      </div>
-      <div id="morp-guess-input-block">
-        <p style="color:#FEAED2;font-size:0.88em;margin-bottom:8px">click a word on the board to guess</p>
-        <button id="btn-morp-guess" onclick="submitMorpGuess()" disabled>Guess: <span id="morp-guess-selected-word">—</span></button>
-      </div>
-      <div id="guess-result" style="margin-top:8px;font-size:1.05em"></div>
-    </div>
-
-    <!-- DAMAGE PHASE -->
-    <div id="act-damage" class="action-section hidden">
-      <h3>Damage Phase</h3>
-      <div id="damage-morp-action" class="hidden">
-        <p style="color:#FEAED2;font-size:0.88em;margin-bottom:8px">click a player to deal damage</p>
-        <button id="btn-confirm-damage" onclick="confirmDamage()" disabled class="danger">
-          Deal damage to <span id="damage-target-label" style="display:none"></span>
-        </button>
-      </div>
-      <p id="damage-waiting" style="display:none;color:#453060;font-size:0.88em">Waiting for morp to deal damage…</p>
-    </div>
-
-    <!-- ENDGAME (merged panel — shown to all roles) -->
-    <div id="act-endgame" class="action-section hidden">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <h3 style="margin:0">2-Player Endgame</h3>
-        <span id="endgame-phase-label" style="color:#D1912A;font-size:0.8em"></span>
-        <span id="endgame-hint-timer"  class="big-timer" style="display:none">30</span>
-        <span id="endgame-guess-timer" class="big-timer" style="display:none">30</span>
-      </div>
-
-      <!-- Ghost hint section (only shown to ghosts during hint phase) -->
-      <div id="endgame-ghost-section" class="hidden">
-        <p style="color:#806878;font-size:0.85em;margin-bottom:6px">You are a ghost — submit a hint for the finalists:</p>
-        <div id="endgame-ghost-input-block">
-          <!-- Text mode -->
-          <div id="endgame-ghost-text-block" class="row">
-            <input type="text" id="endgame-ghost-hint-input" placeholder="Your hint…" style="width:260px" maxlength="30">
-            <button onclick="submitEndgameGhostHint()">Submit</button>
+        <!-- HINT PHASE -->
+        <div id="act-hint" class="action-section hidden">
+          <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px">
+            <div id="turn-indicator" style="font-size:0.88em"></div>
+            <span id="hint-timer" class="big-timer" style="display:none">60</span>
           </div>
-          <!-- Drawing mode: uses floating #endgame-draw-popup -->
+          <div id="your-turn-block" class="hidden">
+            <!-- Text mode -->
+            <div id="hint-text-block" class="row">
+              <input type="text" id="hint-input" placeholder="Your hint…" style="width:260px" maxlength="30">
+              <button onclick="submitHint()">Submit</button>
+            </div>
+            <!-- Drawing mode (popup opens automatically) -->
+          </div>
+          <!-- Hail Mary (morp only, always visible during hint phase) -->
+          <div id="hail-mary-block" class="hidden">
+            <button id="btn-hail-mary" class="hail-mary-btn" onclick="enterHailMary()">HAIL MARY</button>
+            <div id="hail-mary-confirm" class="hidden" style="margin-top:6px">
+              <p style="color:#FEAED2;font-size:0.88em;margin-bottom:6px">click a word on the board to guess</p>
+              <button id="btn-hail-mary-guess" onclick="submitHailMary()" disabled>Guess: <span id="hail-mary-selected-word">—</span></button>
+              <button onclick="cancelHailMary()" style="margin-left:8px">Cancel</button>
+            </div>
+          </div>
         </div>
-        <p id="endgame-ghost-waiting" style="display:none;color:#453060;font-size:0.88em">Hint submitted — waiting for guess phase…</p>
-      </div>
 
-      <!-- Finalist guess section (only shown to finalists) -->
-      <div id="endgame-finalist-section" class="hidden">
-        <div id="endgame-guess-input-block">
-          <p style="color:#FEAED2;font-size:0.88em;margin-bottom:8px">click a word on the board to guess</p>
-          <button id="btn-endgame-guess" onclick="submitEndgameGuess()" disabled>Guess: <span id="endgame-guess-selected-word">—</span></button>
+        <!-- VOTING -->
+        <div id="act-vote" class="action-section hidden">
+          <h3>click players to accuse</h3>
+          <span id="vote-count-label" style="display:none;color:#D1912A;font-size:0.88em;margin-bottom:8px"></span>
+          <button id="btn-submit-votes" onclick="submitVotes()" disabled>Submit Vote</button>
+          <span id="vote-waiting" style="display:none;margin-left:12px;color:#453060;font-size:0.88em">Votes submitted — waiting…</span>
         </div>
+
+        <!-- MORP GUESS -->
+        <div id="act-morp-guess" class="action-section hidden">
+          <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:10px">
+            <h3 style="margin:0">Morp Must Guess!</h3>
+            <span id="guess-timer" class="big-timer">30</span>
+          </div>
+          <div id="morp-guess-input-block">
+            <p style="color:#FEAED2;font-size:0.88em;margin-bottom:8px">click a word on the board to guess</p>
+            <button id="btn-morp-guess" onclick="submitMorpGuess()" disabled>Guess: <span id="morp-guess-selected-word">—</span></button>
+          </div>
+          <div id="guess-result" style="margin-top:8px;font-size:1.05em"></div>
+        </div>
+
+        <!-- DAMAGE PHASE -->
+        <div id="act-damage" class="action-section hidden">
+          <h3>Damage Phase</h3>
+          <div id="damage-morp-action" class="hidden">
+            <p style="color:#FEAED2;font-size:0.88em;margin-bottom:8px">click a player to deal damage</p>
+            <button id="btn-confirm-damage" onclick="confirmDamage()" disabled class="danger">
+              Deal damage to <span id="damage-target-label" style="display:none"></span>
+            </button>
+          </div>
+          <p id="damage-waiting" style="display:none;color:#453060;font-size:0.88em">Waiting for morp to deal damage…</p>
+        </div>
+
+        <!-- ENDGAME (merged panel — shown to all roles) -->
+        <div id="act-endgame" class="action-section hidden">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <h3 style="margin:0">2-Player Endgame</h3>
+            <span id="endgame-phase-label" style="color:#D1912A;font-size:0.8em"></span>
+            <span id="endgame-hint-timer"  class="big-timer" style="display:none">30</span>
+            <span id="endgame-guess-timer" class="big-timer" style="display:none">30</span>
+          </div>
+
+          <!-- Ghost hint section (only shown to ghosts during hint phase) -->
+          <div id="endgame-ghost-section" class="hidden">
+            <p style="color:#806878;font-size:0.85em;margin-bottom:6px">You are a ghost — submit a hint for the finalists:</p>
+            <div id="endgame-ghost-input-block">
+              <!-- Text mode -->
+              <div id="endgame-ghost-text-block" class="row">
+                <input type="text" id="endgame-ghost-hint-input" placeholder="Your hint…" style="width:260px" maxlength="30">
+                <button onclick="submitEndgameGhostHint()">Submit</button>
+              </div>
+              <!-- Drawing mode: uses floating #endgame-draw-popup -->
+            </div>
+            <p id="endgame-ghost-waiting" style="display:none;color:#453060;font-size:0.88em">Hint submitted — waiting for guess phase…</p>
+          </div>
+
+          <!-- Finalist guess section (only shown to finalists) -->
+          <div id="endgame-finalist-section" class="hidden">
+            <div id="endgame-guess-input-block">
+              <p style="color:#FEAED2;font-size:0.88em;margin-bottom:8px">click a word on the board to guess</p>
+              <button id="btn-endgame-guess" onclick="submitEndgameGuess()" disabled>Guess: <span id="endgame-guess-selected-word">—</span></button>
+            </div>
+          </div>
+
+          <!-- Result shown to all -->
+          <div id="endgame-guess-result" style="margin-top:6px"></div>
+        </div>
+
+        <!-- ROUND END / ENDGAME ROUND END -->
+        <div id="act-round-end" class="action-section hidden">
+          <div id="round-end-content"></div>
+        </div>
+
+        <!-- GAME OVER -->
+        <div id="act-game-over" class="action-section hidden">
+          <h3 id="game-over-title">Game Over!</h3>
+          <div id="game-over-content" style="margin:10px 0;font-size:1.05em"></div>
+          <button onclick="resetToLobby()" style="margin-top:6px">Back to Lobby</button>
+        </div>
+
+      </div><!-- /action-area -->
+    </div>
+
+    <div id="game-player-section" class="game-stack-section">
+      <div class="game-player-card">
+        <!-- Player avatar row -->
+        <div id="game-player-row" class="player-orbit"></div>
       </div>
-
-      <!-- Result shown to all -->
-      <div id="endgame-guess-result" style="margin-top:6px"></div>
     </div>
 
-    <!-- ROUND END / ENDGAME ROUND END -->
-    <div id="act-round-end" class="action-section hidden">
-      <div id="round-end-content"></div>
+  </div><!-- /game-layout -->
+
+  <div id="game-chat-section" class="game-stack-section">
+    <!-- Shared chat (visible across pregame and ingame screens) -->
+    <div id="chat-wrap" class="chat-panel hidden">
+      <div id="chat-messages" class="chat-messages"></div>
+      <div id="chat-input-row" class="chat-input-row">
+        <input type="text" id="chat-input" class="chat-input" placeholder="Chat…" maxlength="150" autocomplete="off">
+        <button id="btn-chat-send" class="chat-send-btn" onclick="sendChat()">Send</button>
+      </div>
     </div>
-
-    <!-- GAME OVER -->
-    <div id="act-game-over" class="action-section hidden">
-      <h3 id="game-over-title">Game Over!</h3>
-      <div id="game-over-content" style="margin:10px 0;font-size:1.05em"></div>
-      <button onclick="resetToLobby()" style="margin-top:6px">Back to Lobby</button>
-    </div>
-
-  </div><!-- /action-area -->
-
-  <!-- Player avatar row -->
-  <div id="game-player-row" class="player-orbit"></div>
-
-
-</div><!-- /game-layout -->
-
-<!-- Shared chat (visible across pregame and ingame screens) -->
-<div id="chat-wrap" class="chat-panel hidden">
-  <div id="chat-messages" class="chat-messages"></div>
-  <div id="chat-input-row" class="chat-input-row">
-    <input type="text" id="chat-input" class="chat-input" placeholder="Chat…" maxlength="150" autocomplete="off">
-    <button id="btn-chat-send" class="chat-send-btn" onclick="sendChat()">Send</button>
   </div>
 </div>
 

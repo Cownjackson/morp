@@ -195,6 +195,9 @@ export async function copyLobbyCode() {
 
   const lobbyCode = state.lobbyId.trim();
   if (!lobbyCode) return;
+  const copyButtons = ['pregame-lobby-code-copy', 'ingame-lobby-code-copy']
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
 
   const fallbackCopy = () => {
     const input = document.createElement('textarea');
@@ -220,8 +223,7 @@ export async function copyLobbyCode() {
       fallbackCopy();
     }
 
-    const button = document.getElementById('pregame-lobby-code-copy');
-    if (!button) return;
+    if (!copyButtons.length) return;
     resetLobbyCodeCopyButton();
     setLobbyCodeCopyButtonState(true);
     _copyLobbyCodeResetTimeout = window.setTimeout(() => {

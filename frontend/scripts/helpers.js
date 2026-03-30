@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { AVATAR_COLORS, ACTIONS } from './constants.js';
-import { showInteractionTrigger } from './interactions.js';
+import { showInteractionTrigger, mountInteractionTrigger } from './interactions.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const _colorMap = {};
@@ -20,31 +20,40 @@ export function playerName(id) {
 }
 
 export function setPhaseLabel(text) {
-  document.getElementById('phase-label').textContent = text;
+  document.getElementById('phase-label')?.textContent = text;
 }
 
 export function setEndgamePhaseLabel(text) {
   document.getElementById('endgame-phase-label').textContent = text;
 }
 
+function getLobbyCodeCopyButtons() {
+  return ['pregame-lobby-code-copy', 'ingame-lobby-code-copy']
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
+}
+
 export function setLobbyCodeCopyButtonState(copied = false) {
-  const button = document.getElementById('pregame-lobby-code-copy');
-  if (!button) return;
   const text = copied ? 'Copied' : 'Copy';
   const label = copied ? 'Lobby code copied' : 'Copy lobby code';
-  button.textContent = text;
-  button.title = label;
-  button.setAttribute('aria-label', label);
+  getLobbyCodeCopyButtons().forEach(button => {
+    button.textContent = text;
+    button.title = label;
+    button.setAttribute('aria-label', label);
+  });
 }
 
 export function showLobbyCodeDisplays(lobbyId) {
   const lobbyCodeText = `Lobby Code: ${lobbyId}`;
-  const headerCodeEl = document.getElementById('lobby-code-display');
+  const ingameCodeEl = document.getElementById('lobby-code-display');
   const pregameCodeEl = document.getElementById('pregame-lobby-code-display');
   const pregameCopyEl = document.getElementById('pregame-lobby-code-copy');
+  const ingameCopyEl = document.getElementById('ingame-lobby-code-copy');
 
-  headerCodeEl.textContent = lobbyCodeText;
-  headerCodeEl.classList.remove('hidden');
+  if (ingameCodeEl) {
+    ingameCodeEl.textContent = lobbyCodeText;
+    ingameCodeEl.classList.remove('hidden');
+  }
 
   if (pregameCodeEl) {
     pregameCodeEl.textContent = lobbyCodeText;
@@ -55,12 +64,18 @@ export function showLobbyCodeDisplays(lobbyId) {
     setLobbyCodeCopyButtonState(false);
     pregameCopyEl.classList.remove('hidden');
   }
+
+  if (ingameCopyEl) {
+    setLobbyCodeCopyButtonState(false);
+    ingameCopyEl.classList.remove('hidden');
+  }
 }
 
 export function hideLobbyCodeDisplays() {
   document.getElementById('lobby-code-display')?.classList.add('hidden');
   document.getElementById('pregame-lobby-code-display')?.classList.add('hidden');
   document.getElementById('pregame-lobby-code-copy')?.classList.add('hidden');
+  document.getElementById('ingame-lobby-code-copy')?.classList.add('hidden');
 }
 
 export function showAction(name) {
@@ -120,8 +135,11 @@ export function showScreen(name) {
   document.getElementById('pregame-layout').classList.toggle('hidden', name !== 'pregame');
   document.getElementById('game-layout').classList.toggle('hidden', name !== 'ingame');
   syncScreenClasses(name);
+  if (state.lobbyId) showLobbyCodeDisplays(state.lobbyId);
+  else hideLobbyCodeDisplays();
   refreshBackgroundLogoPaint({ delayed: true });
   if (name !== 'pregame') clearPregameLobbyMoops();
+  if (name === 'ingame') mountInteractionTrigger();
   showInteractionTrigger(name === 'ingame');
 }
 
@@ -146,7 +164,6 @@ export function showLanding(show) {
   state.screen = show ? 'landing' : state.screen;
   document.getElementById('landing-main-cluster').classList[method]('hidden');
   document.getElementById('landing-footer').classList[method]('hidden');
-  document.querySelector('header').classList[show ? 'add' : 'remove']('landing-mode');
   document.body.classList[show ? 'add' : 'remove']('is-landing');
   syncScreenClasses(show ? 'landing' : state.screen);
   refreshBackgroundLogoPaint({ delayed: true });
