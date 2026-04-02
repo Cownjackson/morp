@@ -20,7 +20,10 @@ export function playerName(id) {
 }
 
 export function setPhaseLabel(text) {
-  document.getElementById('phase-label')?.textContent = text;
+  const phaseLabel = document.getElementById('phase-label');
+  if (phaseLabel) {
+    phaseLabel.textContent = text;
+  }
 }
 
 export function setEndgamePhaseLabel(text) {
