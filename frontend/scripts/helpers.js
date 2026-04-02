@@ -82,6 +82,8 @@ export function hideLobbyCodeDisplays() {
 }
 
 export function showAction(name) {
+  const actionArea = document.getElementById('action-area');
+  if (actionArea) actionArea.dataset.activeAction = name;
   ACTIONS.forEach(a => document.getElementById(`act-${a}`)?.classList.toggle('hidden', a !== name));
 }
 
