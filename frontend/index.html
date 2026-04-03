@@ -321,25 +321,6 @@
 <div id="game-screen-stack">
   <!-- Main game layout (shown once a round starts) -->
   <div id="game-layout" class="stage-layout hidden">
-    <div id="game-top-controls-section" class="game-stack-section">
-      <div class="game-top-controls-row pregame-lobby-code-row">
-        <div class="game-lobby-controls pregame-lobby-code-row">
-          <span id="lobby-code-display" class="pregame-lobby-code-chip hidden"></span>
-          <button
-            type="button"
-            id="ingame-lobby-code-copy"
-            class="pregame-lobby-code-copy hidden"
-            onclick="copyLobbyCode()"
-            title="Copy lobby code"
-            aria-label="Copy lobby code"
-          >
-            Copy
-          </button>
-        </div>
-        <div id="ingame-interaction-slot" class="game-interaction-slot"></div>
-      </div>
-    </div>
-
     <div id="game-role-section" class="game-stack-section">
       <div id="role-banner"></div>
     </div>
@@ -347,8 +328,26 @@
     <div id="game-drawing-section" class="game-stack-section hidden">
       <div id="draw-popup" class="draw-popup hidden">
         <div class="draw-popup-header">
-          <span class="draw-popup-title">✏️ Drawing Hint</span>
-          <button class="draw-popup-min-btn" onclick="minimizeDrawPopup()" title="Minimize">−</button>
+          <div class="draw-popup-header-main">
+            <span class="draw-popup-title">✏️ Drawing Hint</span>
+            <div class="game-lobby-controls pregame-lobby-code-row">
+              <span id="lobby-code-display" class="pregame-lobby-code-chip hidden"></span>
+              <button
+                type="button"
+                id="ingame-lobby-code-copy"
+                class="pregame-lobby-code-copy hidden"
+                onclick="copyLobbyCode()"
+                title="Copy lobby code"
+                aria-label="Copy lobby code"
+              >
+                Copy
+              </button>
+            </div>
+            <div id="ingame-interaction-slot" class="game-interaction-slot"></div>
+          </div>
+          <div class="draw-popup-header-controls">
+            <button class="draw-popup-min-btn" onclick="minimizeDrawPopup()" title="Minimize">−</button>
+          </div>
         </div>
         <div id="hint-drawing-block" class="draw-popup-body">
           <div class="draw-panel">

@@ -2197,6 +2197,46 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
   right: auto;
   z-index: auto;
 }
+#draw-popup .draw-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+}
+#draw-popup .draw-popup-header-main {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  min-width: 0;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+}
+#draw-popup .draw-popup-header-controls {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+#draw-popup .game-lobby-controls {
+  justify-content: flex-start;
+}
+#draw-popup #lobby-code-display {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#draw-popup .game-interaction-slot {
+  min-height: 36px;
+  min-width: 36px;
+}
+#draw-popup .draw-popup-min-btn {
+  margin: 0;
+}
 #draw-popup .draw-popup-body {
   padding-bottom: 10px;
 }
@@ -2248,6 +2288,12 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
 @media (max-width: 680px) {
   .draw-popup { bottom: 0; right: 0; width: 100%; max-width: 100%; border-radius: 12px 12px 0 0; }
   .draw-popup-pill { bottom: 16px; right: 16px; }
+  #draw-popup .draw-popup-header {
+    align-items: flex-start;
+  }
+  #draw-popup #lobby-code-display {
+    max-width: none;
+  }
 }
 
 .avatar-circle {
