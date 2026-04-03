@@ -389,7 +389,6 @@ function _syncDrawHintSection({ isMyTurn = false, currentPid = null, inHailMary 
 
   if (!shouldShowSection) {
     drawPopup.classList.add('hidden');
-    document.getElementById('draw-popup-pill')?.classList.add('hidden');
     syncRoleBannerPosition(false);
     return;
   }
@@ -411,7 +410,6 @@ function _syncDrawHintSection({ isMyTurn = false, currentPid = null, inHailMary 
     submitBtn.disabled = !canSubmit;
     submitBtn.classList.toggle('hidden', !canSubmit);
   }
-  document.getElementById('draw-popup-pill')?.classList.add('hidden');
 }
 
 function _setHintIndicator(text, color = '') {
@@ -423,21 +421,8 @@ function _setHintIndicator(text, color = '') {
   }
 }
 
-export function openDrawPopup() {
-  _syncDrawHintSection({ isMyTurn: true, inHailMary: !!state._hailMaryMode });
-  document.getElementById('draw-popup').classList.remove('hidden');
-  document.getElementById('draw-popup-pill').classList.add('hidden');
-  syncRoleBannerPosition(true);
-}
-export function minimizeDrawPopup() {
-  _syncDrawHintSection({ isMyTurn: true, inHailMary: !!state._hailMaryMode });
-  document.getElementById('draw-popup').classList.add('hidden');
-  document.getElementById('draw-popup-pill').classList.remove('hidden');
-  syncRoleBannerPosition(false);
-}
 export function hideDrawPopup() {
   document.getElementById('draw-popup').classList.add('hidden');
-  document.getElementById('draw-popup-pill').classList.add('hidden');
   syncRoleBannerPosition(false);
 }
 

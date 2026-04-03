@@ -105,7 +105,6 @@ export function showAction(name) {
   document.getElementById('game-action-section')?.classList.toggle('hidden', showDrawSection);
   if (!showDrawSection) {
     document.getElementById('draw-popup')?.classList.add('hidden');
-    document.getElementById('draw-popup-pill')?.classList.add('hidden');
     syncRoleBannerPosition(false);
   }
 }

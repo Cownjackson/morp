@@ -2198,12 +2198,6 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
   max-height: none;
   border-radius: 24px;
 }
-#draw-popup-pill {
-  position: relative;
-  bottom: auto;
-  right: auto;
-  z-index: auto;
-}
 #draw-popup .draw-popup-header {
   display: flex;
   align-items: center;
@@ -2240,9 +2234,6 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
 #draw-popup .game-interaction-slot {
   min-height: 36px;
   min-width: 36px;
-}
-#draw-popup .draw-popup-min-btn {
-  margin: 0;
 }
 #draw-popup .draw-popup-body {
   padding-bottom: 10px;
