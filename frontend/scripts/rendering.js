@@ -1,5 +1,5 @@
 import { state, send } from './state.js?v=draw-hint-footer-3';
-import { avatarColor, initials, playerName, httpBase, log, clearPregameLobbyMoops, syncPregameLobbyMoops, refreshBackgroundLogoPaint } from './helpers.js?v=draw-hint-footer-3';
+import { avatarColor, initials, playerName, httpBase, log, clearPregameLobbyMoops, syncPregameLobbyMoops, refreshBackgroundLogoPaint, syncRoleBannerPosition } from './helpers.js?v=draw-hint-footer-3';
 import { renderMoopInto } from './cosmetics.js?v=draw-hint-footer-3';
 import { buildMoopSprite } from './moop-sprite.js?v=draw-hint-footer-3';
 import { renderStrokesToCanvas, clearCanvas } from './drawing.js?v=draw-hint-footer-3';
@@ -390,10 +390,12 @@ function _syncDrawHintSection({ isMyTurn = false, currentPid = null, inHailMary 
   if (!shouldShowSection) {
     drawPopup.classList.add('hidden');
     document.getElementById('draw-popup-pill')?.classList.add('hidden');
+    syncRoleBannerPosition(false);
     return;
   }
 
   drawPopup.classList.remove('hidden');
+  syncRoleBannerPosition(true);
   drawPopup.classList.toggle('is-readonly', !isMyTurn || inHailMary);
   if (overlay) {
     const shouldShowOverlay = !isMyTurn;
@@ -425,15 +427,18 @@ export function openDrawPopup() {
   _syncDrawHintSection({ isMyTurn: true, inHailMary: !!state._hailMaryMode });
   document.getElementById('draw-popup').classList.remove('hidden');
   document.getElementById('draw-popup-pill').classList.add('hidden');
+  syncRoleBannerPosition(true);
 }
 export function minimizeDrawPopup() {
   _syncDrawHintSection({ isMyTurn: true, inHailMary: !!state._hailMaryMode });
   document.getElementById('draw-popup').classList.add('hidden');
   document.getElementById('draw-popup-pill').classList.remove('hidden');
+  syncRoleBannerPosition(false);
 }
 export function hideDrawPopup() {
   document.getElementById('draw-popup').classList.add('hidden');
   document.getElementById('draw-popup-pill').classList.add('hidden');
+  syncRoleBannerPosition(false);
 }
 
 export function openEndgameDrawPopup() {

@@ -81,6 +81,20 @@ export function hideLobbyCodeDisplays() {
   document.getElementById('ingame-lobby-code-copy')?.classList.add('hidden');
 }
 
+export function syncRoleBannerPosition(inDrawPopup = false) {
+  const roleBanner = document.getElementById('role-banner');
+  const roleSection = document.getElementById('game-role-section');
+  const drawRoleSlot = document.getElementById('draw-role-banner-slot');
+  if (!roleBanner || !roleSection) return;
+
+  const targetParent = inDrawPopup && drawRoleSlot ? drawRoleSlot : roleSection;
+  if (roleBanner.parentElement !== targetParent) {
+    targetParent.appendChild(roleBanner);
+  }
+
+  roleSection.classList.toggle('hidden', targetParent !== roleSection);
+}
+
 export function showAction(name) {
   const actionArea = document.getElementById('action-area');
   if (actionArea) actionArea.dataset.activeAction = name;
@@ -92,6 +106,7 @@ export function showAction(name) {
   if (!showDrawSection) {
     document.getElementById('draw-popup')?.classList.add('hidden');
     document.getElementById('draw-popup-pill')?.classList.add('hidden');
+    syncRoleBannerPosition(false);
   }
 }
 

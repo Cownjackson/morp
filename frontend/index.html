@@ -408,13 +408,16 @@
                 <button class="tool-btn" onclick="clearCanvas('hint-canvas')">Clear</button>
               </div>
             </div>
-            <div class="draw-canvas-wrap">
-              <canvas id="hint-canvas" width="560" height="360"
-                style="background:#fff;border:1px solid #3A2848;border-radius:4px;cursor:crosshair;touch-action:none;display:block;width:100%">
-              </canvas>
-              <div id="draw-canvas-overlay" class="draw-canvas-overlay hidden">
-                <p id="draw-canvas-overlay-text">Waiting for another player to finish drawing...</p>
+            <div class="draw-canvas-column">
+              <div class="draw-canvas-wrap">
+                <canvas id="hint-canvas" width="560" height="360"
+                  style="background:#fff;border:1px solid #3A2848;border-radius:4px;cursor:crosshair;touch-action:none;display:block;width:100%">
+                </canvas>
+                <div id="draw-canvas-overlay" class="draw-canvas-overlay hidden">
+                  <p id="draw-canvas-overlay-text">Waiting for another player to finish drawing...</p>
+                </div>
               </div>
+              <div id="draw-role-banner-slot"></div>
             </div>
           </div>
           <div class="draw-popup-footer">
