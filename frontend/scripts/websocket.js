@@ -1,10 +1,10 @@
-import { state, send } from './state.js';
-import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, flyHintToThumbnailWhenReady, resetHintThumbnailAnimations, hideDrawPopup, openEndgameDrawPopup, hideEndgameDrawPopup, playYourTurnSound, showHailMaryPopup } from './rendering.js';
-import { handleInteraction, playStompAnimation } from './interactions.js';
-import { _localResetToLobby } from './actions.js';
-import { startTimer, clearTimer } from './timers.js';
-import { _drawState, clearCanvas, finalizeStroke } from './drawing.js';
+import { state, send } from './state.js?v=draw-hint-footer-3';
+import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js?v=draw-hint-footer-3';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, flyHintToThumbnailWhenReady, resetHintThumbnailAnimations, hideDrawPopup, openEndgameDrawPopup, hideEndgameDrawPopup, playYourTurnSound, showHailMaryPopup } from './rendering.js?v=draw-hint-footer-3';
+import { handleInteraction, playStompAnimation } from './interactions.js?v=draw-hint-footer-3';
+import { _localResetToLobby } from './actions.js?v=draw-hint-footer-3';
+import { startTimer, clearTimer } from './timers.js?v=draw-hint-footer-3';
+import { _drawState, clearCanvas, finalizeStroke } from './drawing.js?v=draw-hint-footer-3';
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 let _wsRetries = 0;
@@ -32,6 +32,26 @@ export function closeWS() {
   if (ws && ws.readyState < WebSocket.CLOSING) {
     ws.close(4000, 'Leaving lobby');
   }
+}
+
+function _setHintTimerVisible(visible) {
+  for (const id of ['hint-timer', 'draw-hint-timer']) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = visible ? '' : 'none';
+  }
+}
+
+function _setHailMaryBlocksHidden(hidden) {
+  for (const id of ['hail-mary-block', 'draw-hail-mary-block']) {
+    document.getElementById(id)?.classList.toggle('hidden', hidden);
+  }
+}
+
+function _resetHailMaryUi() {
+  document.getElementById('btn-hail-mary')?.classList.remove('hidden');
+  document.getElementById('hail-mary-confirm')?.classList.add('hidden');
+  document.getElementById('draw-btn-hail-mary')?.classList.remove('hidden');
+  document.getElementById('draw-hail-mary-confirm')?.classList.add('hidden');
 }
 
 export function connectWS(lobbyId, playerId, name, isRetry) {
@@ -258,24 +278,20 @@ function _processMessage(msg) {
       showEnvelopeReveal(state.role, () => {
         renderRoleBanner();
         boardArea.style.opacity = '1';
-        checkYourTurn();
         showAction('hint');
         // Show hail mary button for morps during hint phase
-        const hmBlock = document.getElementById('hail-mary-block');
         if (state.role === 'morp' && !state.isGhost) {
-          hmBlock.classList.remove('hidden');
-          document.getElementById('btn-hail-mary').classList.remove('hidden');
-          document.getElementById('hail-mary-confirm').classList.add('hidden');
+          _setHailMaryBlocksHidden(false);
+          _resetHailMaryUi();
         } else {
-          hmBlock.classList.add('hidden');
+          _setHailMaryBlocksHidden(true);
         }
         setPhaseLabel(`ROUND ${msg.round_number} — HINTS`);
         // Show timer for all players; auto-submit only for the active player
         if (state.timersEnabled) {
           const isFirst = state.turnOrder[0] === state.playerId;
           if (isFirst) send({ type: 'hint_turn_ready' });
-          const hintTimerEl = document.getElementById('hint-timer');
-          hintTimerEl.style.display = '';
+          _setHintTimerVisible(true);
           const onExpire = isFirst ? () => {
             if (state.drawingHints) {
               finalizeStroke('hint-canvas');
@@ -291,8 +307,9 @@ function _processMessage(msg) {
               if (text) send({ type: 'submit_hint', text });
             }
           } : null;
-          startTimer('hint-timer', Date.now() / 1000 + state.hintTimerDuration, onExpire);
+          startTimer('hint-timer', Date.now() / 1000 + state.hintTimerDuration, onExpire, ['draw-hint-timer']);
         }
+        checkYourTurn();
       });
       break;
     }
@@ -303,7 +320,7 @@ function _processMessage(msg) {
       log(msg.is_drawing ? `Drawing hint from ${playerName(msg.player_id)}` : `Hint from ${playerName(msg.player_id)}: "${msg.text || '(skipped)'}"`, '');
       // Always clear the hint timer when a hint is received (someone submitted)
       clearTimer('hint-timer');
-      document.getElementById('hint-timer').style.display = 'none';
+      _setHintTimerVisible(false);
       if (msg.display_duration) {
         // Live hint — animate to centerpiece, hold, then signal backend
         // hintThumbnails set later by flyHintToThumbnail so thumbnail only appears after animation
@@ -326,8 +343,7 @@ function _processMessage(msg) {
         checkYourTurn();
         if (state.timersEnabled) {
           if (isMyTurn) send({ type: 'hint_turn_ready' });
-          const hintTimerEl = document.getElementById('hint-timer');
-          hintTimerEl.style.display = '';
+          _setHintTimerVisible(true);
           const onExpire = isMyTurn ? () => {
             if (state.drawingHints) {
               finalizeStroke('hint-canvas');
@@ -343,7 +359,7 @@ function _processMessage(msg) {
               if (text) send({ type: 'submit_hint', text });
             }
           } : null;
-          startTimer('hint-timer', Date.now() / 1000 + state.hintTimerDuration, onExpire);
+          startTimer('hint-timer', Date.now() / 1000 + state.hintTimerDuration, onExpire, ['draw-hint-timer']);
         }
       });
       break;
@@ -351,7 +367,7 @@ function _processMessage(msg) {
 
     case 'voting_open': {
       clearTimer('hint-timer');
-      document.getElementById('hint-timer').style.display = 'none';
+      _setHintTimerVisible(false);
       state.hints         = msg.hints;
       state.numVotes      = msg.num_votes;
       state.selectedVotes = [];
@@ -458,12 +474,12 @@ function _processMessage(msg) {
 
     case 'hail_mary_result': {
       clearTimer('hint-timer');
-      document.getElementById('hint-timer').style.display = 'none';
+      _setHintTimerVisible(false);
       state._hailMaryMode = false;
       state._spotlightPid = null;
       state._spotlightStyle = null;
       // Hide all hint-phase UI (active drawer's popup, your-turn block, hail mary block)
-      document.getElementById('hail-mary-block')?.classList.add('hidden');
+      _setHailMaryBlocksHidden(true);
       document.getElementById('your-turn-block')?.classList.add('hidden');
       hideDrawPopup();
       renderInGamePlayerRow();
@@ -741,7 +757,7 @@ function _processMessage(msg) {
 
     case 'game_over':
       clearTimer('hint-timer'); clearTimer('guess-timer'); clearTimer('endgame-hint-timer'); clearTimer('endgame-guess-timer');
-      document.getElementById('hint-timer').style.display = 'none';
+      _setHintTimerVisible(false);
       document.getElementById('game-over-title').textContent = 'Game Over!';
       document.getElementById('game-over-content').innerHTML = msg.winner_id
         ? `Winner: <strong style="color:#FFCE18">${msg.winner_name}</strong>`

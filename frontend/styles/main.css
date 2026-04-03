@@ -938,6 +938,10 @@ body.is-landing #landing-meta-panel {
 #game-role-section {
   margin-bottom: 14px;
 }
+#game-drawing-section {
+  flex-direction: column;
+  gap: 10px;
+}
 
 /* ── Board ── */
 #board-area {
@@ -2053,8 +2057,29 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
 .draw-sizes { display: flex; gap: 3px; }
 .draw-tools { display: flex; flex-direction: column; gap: 3px; }
 .draw-canvas-wrap {
+  position: relative;
   flex: 1; min-width: 0;
   display: flex; flex-direction: column; align-items: stretch;
+}
+.draw-canvas-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+  background: rgba(20, 10, 24, 0.88);
+  border: 1px solid rgba(58, 40, 72, 0.7);
+  border-radius: 4px;
+  color: #D1912A;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1rem;
+  line-height: 1.4;
+  z-index: 2;
+}
+.draw-canvas-overlay p {
+  margin: 0;
 }
 .draw-sep { display: none; } /* legacy — hidden */
 .color-swatch {
@@ -2156,6 +2181,70 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
   transition: background 0.15s, transform 0.15s;
 }
 .draw-popup-pill:hover { background: #3A1858; transform: translateY(-2px); }
+#draw-popup {
+  position: relative;
+  bottom: auto;
+  right: auto;
+  z-index: auto;
+  width: min(100%, 760px);
+  max-width: 100%;
+  max-height: none;
+  border-radius: 24px;
+}
+#draw-popup-pill {
+  position: relative;
+  bottom: auto;
+  right: auto;
+  z-index: auto;
+}
+#draw-popup .draw-popup-body {
+  padding-bottom: 10px;
+}
+#draw-popup .draw-popup-footer {
+  padding: 14px 10px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-top: 1px solid #2E1848;
+}
+#draw-popup .draw-popup-actions,
+#draw-popup #draw-hail-mary-block,
+#draw-popup #draw-hail-mary-confirm,
+#draw-popup .draw-popup-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  text-align: center;
+}
+#draw-popup .draw-popup-status {
+  color: #C09AB8;
+}
+#draw-popup #draw-submit-btn {
+  align-self: center;
+  min-width: 180px;
+}
+#draw-popup #draw-turn-indicator {
+  min-height: 1.2em;
+  font-size: 0.9em;
+}
+#draw-popup.is-readonly #hint-toolbar,
+#draw-popup.is-readonly .draw-canvas-wrap {
+  opacity: 0.52;
+}
+#draw-popup.is-readonly #hint-toolbar {
+  pointer-events: none;
+}
+#draw-popup.is-readonly #hint-canvas {
+  cursor: not-allowed;
+}
+#draw-popup.is-readonly #draw-submit-btn {
+  opacity: 0.6;
+}
 @media (max-width: 680px) {
   .draw-popup { bottom: 0; right: 0; width: 100%; max-width: 100%; border-radius: 12px 12px 0 0; }
   .draw-popup-pill { bottom: 16px; right: 16px; }

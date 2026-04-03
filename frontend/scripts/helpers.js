@@ -1,6 +1,6 @@
-import { state } from './state.js';
-import { AVATAR_COLORS, ACTIONS } from './constants.js';
-import { showInteractionTrigger, mountInteractionTrigger } from './interactions.js';
+import { state } from './state.js?v=draw-hint-footer-3';
+import { AVATAR_COLORS, ACTIONS } from './constants.js?v=draw-hint-footer-3';
+import { showInteractionTrigger, mountInteractionTrigger } from './interactions.js?v=draw-hint-footer-3';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const _colorMap = {};
@@ -85,6 +85,14 @@ export function showAction(name) {
   const actionArea = document.getElementById('action-area');
   if (actionArea) actionArea.dataset.activeAction = name;
   ACTIONS.forEach(a => document.getElementById(`act-${a}`)?.classList.toggle('hidden', a !== name));
+  const drawSection = document.getElementById('game-drawing-section');
+  const showDrawSection = name === 'hint' && !!state.drawingHints;
+  if (drawSection) drawSection.classList.toggle('hidden', !showDrawSection);
+  document.getElementById('game-action-section')?.classList.toggle('hidden', showDrawSection);
+  if (!showDrawSection) {
+    document.getElementById('draw-popup')?.classList.add('hidden');
+    document.getElementById('draw-popup-pill')?.classList.add('hidden');
+  }
 }
 
 function _callBackgroundMoopApi(functionName, ...args) {

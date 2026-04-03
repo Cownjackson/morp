@@ -1,9 +1,9 @@
-import { state, send } from './state.js';
-import { avatarColor, initials, playerName, httpBase, log, clearPregameLobbyMoops, syncPregameLobbyMoops, refreshBackgroundLogoPaint } from './helpers.js';
-import { renderMoopInto } from './cosmetics.js';
-import { buildMoopSprite } from './moop-sprite.js';
-import { renderStrokesToCanvas, clearCanvas } from './drawing.js';
-import { isStompAnimating } from './interactions.js';
+import { state, send } from './state.js?v=draw-hint-footer-3';
+import { avatarColor, initials, playerName, httpBase, log, clearPregameLobbyMoops, syncPregameLobbyMoops, refreshBackgroundLogoPaint } from './helpers.js?v=draw-hint-footer-3';
+import { renderMoopInto } from './cosmetics.js?v=draw-hint-footer-3';
+import { buildMoopSprite } from './moop-sprite.js?v=draw-hint-footer-3';
+import { renderStrokesToCanvas, clearCanvas } from './drawing.js?v=draw-hint-footer-3';
+import { isStompAnimating } from './interactions.js?v=draw-hint-footer-3';
 
 // ─── Your-turn notification sound ─────────────────────────────────────────────
 export function playYourTurnSound() {
@@ -376,11 +376,58 @@ export function renderChat() {
 // ─── Hint phase ───────────────────────────────────────────────────────────────
 export function resetHintThumbnailAnimations() { _animatedThumbnails.clear(); }
 
+function _syncDrawHintSection({ isMyTurn = false, currentPid = null, inHailMary = false } = {}) {
+  const drawSection = document.getElementById('game-drawing-section');
+  const drawPopup = document.getElementById('draw-popup');
+  const submitBtn = document.getElementById('draw-submit-btn');
+  const overlay = document.getElementById('draw-canvas-overlay');
+  const overlayText = document.getElementById('draw-canvas-overlay-text');
+  if (!drawSection || !drawPopup) return;
+
+  const shouldShowSection = !!state.drawingHints;
+  drawSection.classList.toggle('hidden', !shouldShowSection);
+
+  if (!shouldShowSection) {
+    drawPopup.classList.add('hidden');
+    document.getElementById('draw-popup-pill')?.classList.add('hidden');
+    return;
+  }
+
+  drawPopup.classList.remove('hidden');
+  drawPopup.classList.toggle('is-readonly', !isMyTurn || inHailMary);
+  if (overlay) {
+    const shouldShowOverlay = !isMyTurn;
+    overlay.classList.toggle('hidden', !shouldShowOverlay);
+    if (overlayText) {
+      overlayText.textContent = currentPid
+        ? `Waiting for ${playerName(currentPid)} to finish drawing...`
+        : 'Waiting for another player to finish drawing...';
+    }
+  }
+  if (submitBtn) {
+    const canSubmit = isMyTurn && !inHailMary;
+    submitBtn.disabled = !canSubmit;
+    submitBtn.classList.toggle('hidden', !canSubmit);
+  }
+  document.getElementById('draw-popup-pill')?.classList.add('hidden');
+}
+
+function _setHintIndicator(text, color = '') {
+  for (const id of ['turn-indicator', 'draw-turn-indicator']) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.textContent = text;
+    el.style.color = color;
+  }
+}
+
 export function openDrawPopup() {
+  _syncDrawHintSection({ isMyTurn: true, inHailMary: !!state._hailMaryMode });
   document.getElementById('draw-popup').classList.remove('hidden');
   document.getElementById('draw-popup-pill').classList.add('hidden');
 }
 export function minimizeDrawPopup() {
+  _syncDrawHintSection({ isMyTurn: true, inHailMary: !!state._hailMaryMode });
   document.getElementById('draw-popup').classList.add('hidden');
   document.getElementById('draw-popup-pill').classList.remove('hidden');
 }
@@ -407,23 +454,22 @@ export function checkYourTurn() {
   const isMyTurn   = currentPid === state.playerId;
   const inHailMary = !!state._hailMaryMode;
   document.getElementById('your-turn-block').classList.toggle('hidden', !isMyTurn || inHailMary);
+  _syncDrawHintSection({ isMyTurn, currentPid, inHailMary });
   if (isMyTurn && !inHailMary) {
     document.getElementById('hint-text-block').classList.toggle('hidden', state.drawingHints);
     if (state.drawingHints) {
       clearCanvas('hint-canvas');
-      openDrawPopup();
     }
     playYourTurnSound();
   } else {
-    hideDrawPopup();
+    document.getElementById('hint-text-block').classList.toggle('hidden', state.drawingHints);
   }
-  const indicator = document.getElementById('turn-indicator');
   if (!currentPid) {
-    indicator.textContent = ''; indicator.style.color = '';
+    _setHintIndicator('', '');
   } else if (isMyTurn) {
-    indicator.textContent = 'Your turn!'; indicator.style.color = '#87DCAB';
+    _setHintIndicator('Your turn!', '#87DCAB');
   } else {
-    indicator.textContent = `Waiting for ${playerName(currentPid)}…`; indicator.style.color = '#D1912A';
+    _setHintIndicator(`Waiting for ${playerName(currentPid)}...`, '#D1912A');
   }
   renderInGamePlayerRow();
 }
@@ -941,6 +987,7 @@ function _updateWordGuessUI() {
     ['btn-morp-guess', 'morp-guess-selected-word'],
     ['btn-endgame-guess', 'endgame-guess-selected-word'],
     ['btn-hail-mary-guess', 'hail-mary-selected-word'],
+    ['draw-btn-hail-mary-guess', 'draw-hail-mary-selected-word'],
   ]) {
     const btn = document.getElementById(btnId);
     const label = document.getElementById(labelId);

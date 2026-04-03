@@ -1,15 +1,15 @@
 // ─── Entry point ──────────────────────────────────────────────────────────────
-import { showLanding } from './helpers.js';
-import { toggleLog } from './helpers.js';
-import { getCosmetics, initMoopCustomizer } from './cosmetics.js';
-import { buildMoopSprite } from './moop-sprite.js';
-import { initModals } from './modals.js';
-import { initMusic } from './music.js';
-import { initCanvas, clearCanvas, undoStroke, setDrawColor, setDrawSize, toggleEraser, toggleFill, toggleLine } from './drawing.js';
-import { createLobby, joinLobby, setCustomBoards, copyBoardTemplate } from './lobby.js';
-import { startGame, submitHint, submitVotes, submitMorpGuess, submitEndgameGhostHint, submitEndgameGuess, resetToLobby, leaveLobby, copyLobbyCode, sendChat, enterHailMary, cancelHailMary, submitHailMary } from './actions.js';
-import { confirmDamage, openDrawPopup, minimizeDrawPopup, openEndgameDrawPopup, minimizeEndgameDrawPopup, hideEndgameDrawPopup } from './rendering.js';
-import { initInteractions, toggleInteractionMenu } from './interactions.js';
+import { showLanding } from './helpers.js?v=draw-hint-footer-3';
+import { toggleLog } from './helpers.js?v=draw-hint-footer-3';
+import { getCosmetics, initMoopCustomizer } from './cosmetics.js?v=draw-hint-footer-3';
+import { buildMoopSprite } from './moop-sprite.js?v=draw-hint-footer-3';
+import { initModals } from './modals.js?v=draw-hint-footer-3';
+import { initMusic } from './music.js?v=draw-hint-footer-3';
+import { initCanvas, clearCanvas, undoStroke, setDrawColor, setDrawSize, toggleEraser, toggleFill, toggleLine } from './drawing.js?v=draw-hint-footer-3';
+import { createLobby, joinLobby, setCustomBoards, copyBoardTemplate } from './lobby.js?v=draw-hint-footer-3';
+import { startGame, submitHint, submitVotes, submitMorpGuess, submitEndgameGhostHint, submitEndgameGuess, resetToLobby, leaveLobby, copyLobbyCode, sendChat, enterHailMary, cancelHailMary, submitHailMary } from './actions.js?v=draw-hint-footer-3';
+import { confirmDamage, openDrawPopup, minimizeDrawPopup, openEndgameDrawPopup, minimizeEndgameDrawPopup, hideEndgameDrawPopup } from './rendering.js?v=draw-hint-footer-3';
+import { initInteractions, toggleInteractionMenu } from './interactions.js?v=draw-hint-footer-3';
 
 // ─── Expose functions for HTML onclick attributes ─────────────────────────────
 window.createLobby = createLobby;
