@@ -2253,7 +2253,7 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
 #draw-role-banner-slot #role-banner {
   width: 100%;
   max-width: none;
-  margin: 0 0 20px;
+  margin: 0 0 10px;
 }
 #draw-popup .draw-popup-footer {
   padding: 14px 10px 14px;
