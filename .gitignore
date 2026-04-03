@@ -3,3 +3,4 @@
 *.pyc
 /scripts/node_modules
 /scripts/.env
+/frontend/testing/screenshots
