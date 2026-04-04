@@ -1,9 +1,9 @@
-import { state, send } from './state.js?v=draw-hint-footer-3';
-import { avatarColor, initials, playerName, httpBase, log, clearPregameLobbyMoops, syncPregameLobbyMoops, refreshBackgroundLogoPaint, syncRoleBannerPosition } from './helpers.js?v=draw-hint-footer-3';
-import { renderMoopInto } from './cosmetics.js?v=draw-hint-footer-3';
-import { buildMoopSprite } from './moop-sprite.js?v=draw-hint-footer-3';
-import { renderStrokesToCanvas, clearCanvas } from './drawing.js?v=draw-hint-footer-3';
-import { isStompAnimating } from './interactions.js?v=draw-hint-footer-3';
+import { state, send } from './state.js';
+import { avatarColor, initials, playerName, httpBase, log, clearPregameLobbyMoops, syncPregameLobbyMoops, refreshBackgroundLogoPaint, syncRoleBannerPosition, syncHailMaryPosition } from './helpers.js';
+import { renderMoopInto } from './cosmetics.js';
+import { buildMoopSprite } from './moop-sprite.js';
+import { renderStrokesToCanvas, clearCanvas } from './drawing.js';
+import { isStompAnimating } from './interactions.js';
 
 // ─── Your-turn notification sound ─────────────────────────────────────────────
 export function playYourTurnSound() {
@@ -390,11 +390,13 @@ function _syncDrawHintSection({ isMyTurn = false, currentPid = null, inHailMary 
   if (!shouldShowSection) {
     drawPopup.classList.add('hidden');
     syncRoleBannerPosition(false);
+    syncHailMaryPosition(false);
     return;
   }
 
   drawPopup.classList.remove('hidden');
   syncRoleBannerPosition(true);
+  syncHailMaryPosition(true);
   drawPopup.classList.toggle('is-readonly', !isMyTurn || inHailMary);
   if (overlay) {
     const shouldShowOverlay = !isMyTurn;
@@ -424,6 +426,23 @@ function _setHintIndicator(text, color = '') {
 export function hideDrawPopup() {
   document.getElementById('draw-popup').classList.add('hidden');
   syncRoleBannerPosition(false);
+}
+
+export function syncHailMaryDrawState() {
+  const drawPopup = document.getElementById('draw-popup');
+  const submitBtn = document.getElementById('draw-submit-btn');
+  if (!drawPopup || !state.drawingHints) return;
+
+  const inHailMary = !!state._hailMaryMode;
+  const currentPid = state.turnOrder[state.hints?.length ?? 0];
+  const isMyTurn = currentPid === state.playerId;
+
+  drawPopup.classList.toggle('is-readonly', !isMyTurn || inHailMary);
+  if (submitBtn) {
+    const canSubmit = isMyTurn && !inHailMary;
+    submitBtn.disabled = !canSubmit;
+    submitBtn.classList.toggle('hidden', !canSubmit);
+  }
 }
 
 export function openEndgameDrawPopup() {
@@ -977,7 +996,6 @@ function _updateWordGuessUI() {
     ['btn-morp-guess', 'morp-guess-selected-word'],
     ['btn-endgame-guess', 'endgame-guess-selected-word'],
     ['btn-hail-mary-guess', 'hail-mary-selected-word'],
-    ['draw-btn-hail-mary-guess', 'draw-hail-mary-selected-word'],
   ]) {
     const btn = document.getElementById(btnId);
     const label = document.getElementById(labelId);

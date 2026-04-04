@@ -1,10 +1,10 @@
-import { state, send } from './state.js?v=draw-hint-footer-3';
-import { hideLobbyCodeDisplays, log, playerName, setPhaseLabel, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js?v=draw-hint-footer-3';
-import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, flyHintToThumbnailWhenReady, resetHintThumbnailAnimations, hideDrawPopup, openEndgameDrawPopup, hideEndgameDrawPopup, playYourTurnSound, showHailMaryPopup } from './rendering.js?v=draw-hint-footer-3';
-import { handleInteraction, playStompAnimation } from './interactions.js?v=draw-hint-footer-3';
-import { _localResetToLobby } from './actions.js?v=draw-hint-footer-3';
-import { startTimer, clearTimer } from './timers.js?v=draw-hint-footer-3';
-import { _drawState, clearCanvas, finalizeStroke } from './drawing.js?v=draw-hint-footer-3';
+import { state, send } from './state.js';
+import { hideLobbyCodeDisplays, log, playerName, setEndgamePhaseLabel, showAction, showLanding, showLobbyCodeDisplays, showScreen } from './helpers.js';
+import { renderRoleBanner, renderBoard, renderPregameLobby, renderInGamePlayerRow, enableAvatarVoting, disableAvatarVoting, enableAvatarDamage, checkYourTurn, renderChat, enableBoardWordSelection, disableBoardWordSelection, animateWordGuess, resolveWordGuess, animateEndgameReveal, showEnvelopeReveal, playRoleRevealSequence, showVoteArrows, showHintAtCenterpiece, flyHintToThumbnail, flyHintToThumbnailWhenReady, resetHintThumbnailAnimations, hideDrawPopup, openEndgameDrawPopup, hideEndgameDrawPopup, playYourTurnSound, showHailMaryPopup } from './rendering.js';
+import { handleInteraction, playStompAnimation } from './interactions.js';
+import { _localResetToLobby } from './actions.js';
+import { startTimer, clearTimer } from './timers.js';
+import { _drawState, clearCanvas, finalizeStroke } from './drawing.js';
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 let _wsRetries = 0;
@@ -42,16 +42,12 @@ function _setHintTimerVisible(visible) {
 }
 
 function _setHailMaryBlocksHidden(hidden) {
-  for (const id of ['hail-mary-block', 'draw-hail-mary-block']) {
-    document.getElementById(id)?.classList.toggle('hidden', hidden);
-  }
+  document.getElementById('hail-mary-block')?.classList.toggle('hidden', hidden);
 }
 
 function _resetHailMaryUi() {
   document.getElementById('btn-hail-mary')?.classList.remove('hidden');
   document.getElementById('hail-mary-confirm')?.classList.add('hidden');
-  document.getElementById('draw-btn-hail-mary')?.classList.remove('hidden');
-  document.getElementById('draw-hail-mary-confirm')?.classList.add('hidden');
 }
 
 export function connectWS(lobbyId, playerId, name, isRetry) {
@@ -225,7 +221,6 @@ function _processMessage(msg) {
       } else {
         renderPregameLobby();
       }
-      setPhaseLabel(msg.started ? 'IN GAME' : 'WAITING');
       if (state.isGhost && state.role !== 'ghost') {
         state.role = 'ghost';
         renderRoleBanner();
@@ -271,7 +266,6 @@ function _processMessage(msg) {
       boardArea.style.opacity = '0';
       boardArea.style.transition = 'opacity 0.8s ease';
 
-      setPhaseLabel(`ROUND ${msg.round_number}`);
       log(`Round ${msg.round_number} — "${msg.board_hint}"`, 'ok');
 
       // Show envelope role reveal, then fade in board and start hint phase
@@ -286,7 +280,6 @@ function _processMessage(msg) {
         } else {
           _setHailMaryBlocksHidden(true);
         }
-        setPhaseLabel(`ROUND ${msg.round_number} — HINTS`);
         // Show timer for all players; auto-submit only for the active player
         if (state.timersEnabled) {
           const isFirst = state.turnOrder[0] === state.playerId;
@@ -386,7 +379,6 @@ function _processMessage(msg) {
         } else {
           renderInGamePlayerRow();
         }
-        setPhaseLabel('VOTING');
         log('Voting open!', 'ok');
       };
       // Close draw popup (last hinter may still have it open)
@@ -400,10 +392,8 @@ function _processMessage(msg) {
       disableAvatarVoting();
       _startAnimationLock(30000);
       // Show vote pointers and role reveal together; pointers linger until reveal ends
-      setPhaseLabel('VOTES');
       const cleanupPointers = showVoteArrows(msg.votes || {});
       setTimeout(() => {
-        setPhaseLabel('ROLE REVEAL');
         // Clear hint thumbnails so they don't show during reveal or rest of round
         // Remove DOM elements directly instead of re-rendering (which would destroy vote pointers)
         state.hintThumbnails = {};
@@ -439,7 +429,6 @@ function _processMessage(msg) {
         document.getElementById('guess-timer').textContent = '∞';
       }
       showAction('morp-guess');
-      setPhaseLabel('MORP GUESS');
       log('Morp is guessing!', 'warn');
       break;
     }
@@ -502,7 +491,6 @@ function _processMessage(msg) {
             state.targetWord = msg.target_word;
             renderBoard();
             // Step 3: Full role reveal (safe first, morp last)
-            setPhaseLabel('ROLE REVEAL');
             playRoleRevealSequence(revealOrder, () => {
               _endAnimationLock();
             });
@@ -510,7 +498,6 @@ function _processMessage(msg) {
         } else {
           state.targetWord = msg.target_word;
           renderBoard();
-          setPhaseLabel('ROLE REVEAL');
           playRoleRevealSequence(revealOrder, () => {
             _endAnimationLock();
           });
@@ -529,7 +516,6 @@ function _processMessage(msg) {
       if (isMorp) enableAvatarDamage([msg.morp_id]);
       showAction('damage');
       renderInGamePlayerRow();
-      setPhaseLabel('HAIL MARY — DAMAGE');
       break;
     }
 
@@ -542,7 +528,6 @@ function _processMessage(msg) {
       if (isMorp) enableAvatarDamage(msg.morp_ids);
       showAction('damage');
       renderInGamePlayerRow();
-      setPhaseLabel('DAMAGE');
       break;
     }
 
@@ -564,7 +549,6 @@ function _processMessage(msg) {
 
     case 'round_end': {
       const isEndgameTransition = !!msg.endgame_transition;
-      setPhaseLabel(isEndgameTransition ? 'SUDDEN DEATH' : 'ROUND OVER');
       const rc = document.getElementById('round-end-content');
       rc.innerHTML = '';
       if (isEndgameTransition) {
@@ -763,7 +747,6 @@ function _processMessage(msg) {
         ? `Winner: <strong style="color:#FFCE18">${msg.winner_name}</strong>`
         : '<em style="color:#705060">Draw!</em>';
       showAction('game-over');
-      setPhaseLabel('GAME OVER');
       log(`Game over! Winner: ${msg.winner_name || 'nobody'}`, 'ok');
       break;
 

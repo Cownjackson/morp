@@ -1015,3 +1015,25 @@ def test_accusation_result_roles_revealed_contains_string_values(client):
         for pid, role in accusation["roles_revealed"].items():
             assert isinstance(role, str), f"role for {pid} was {role!r}, expected a string"
             assert role in ("safe", "morp", "unknown")
+
+
+# ─── Cache middleware tests ──────────────────────────────────────────────────
+
+class TestCacheMiddleware:
+    """Verify the disable_frontend_cache middleware sets correct headers."""
+
+    def test_root_gets_cache_headers(self, client):
+        resp = client.get("/")
+        assert resp.headers["Cache-Control"] == "no-store, no-cache, must-revalidate, max-age=0"
+        assert resp.headers["Pragma"] == "no-cache"
+        assert resp.headers["Expires"] == "0"
+
+    @pytest.mark.parametrize("path_prefix", ["/scripts/", "/styles/", "/assets/", "/music/", "/cosmetics/"])
+    def test_frontend_asset_paths_get_cache_headers(self, client, path_prefix):
+        resp = client.get(f"{path_prefix}nonexistent.js")
+        assert "Cache-Control" in resp.headers
+        assert "no-store" in resp.headers["Cache-Control"]
+
+    def test_api_route_no_cache_headers(self, client):
+        resp = client.post("/lobby/create", json={"player_name": "tester"})
+        assert "no-store" not in resp.headers.get("Cache-Control", "")

@@ -421,14 +421,7 @@
           <div class="draw-popup-footer">
             <div class="draw-popup-actions">
               <button id="draw-submit-btn" onclick="submitHint()">Submit Drawing</button>
-              <div id="draw-hail-mary-block" class="hidden">
-                <button id="draw-btn-hail-mary" class="hail-mary-btn" onclick="enterHailMary()">HAIL MARY</button>
-                <div id="draw-hail-mary-confirm" class="hidden">
-                  <p style="color:#FEAED2;font-size:0.88em;margin-bottom:6px">click a word on the board to guess</p>
-                  <button id="draw-btn-hail-mary-guess" onclick="submitHailMary()" disabled>Guess: <span id="draw-hail-mary-selected-word">—</span></button>
-                  <button onclick="cancelHailMary()" style="margin-left:8px">Cancel</button>
-                </div>
-              </div>
+              <div id="draw-hail-mary-slot"></div>
             </div>
             <div class="draw-popup-status">
               <div id="draw-turn-indicator"></div>
@@ -661,6 +654,6 @@
 </div>
 <button id="endgame-draw-popup-pill" class="draw-popup-pill hidden" onclick="openEndgameDrawPopup()">👻 Draw</button>
 
-  <script type="module" src="scripts/app.js?v=draw-hint-footer-3"></script>
+<script type="module" src="scripts/app.js?v=draw-hint-footer-3"></script>
 </body>
 </html>

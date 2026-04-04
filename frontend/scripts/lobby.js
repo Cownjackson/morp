@@ -1,7 +1,7 @@
-import { state } from './state.js?v=draw-hint-footer-3';
-import { log, httpBase, _checkProtocol } from './helpers.js?v=draw-hint-footer-3';
-import { getCosmetics } from './cosmetics.js?v=draw-hint-footer-3';
-import { connectWS, _setConnectBusy } from './websocket.js?v=draw-hint-footer-3';
+import { state } from './state.js';
+import { log, httpBase, _checkProtocol } from './helpers.js';
+import { getCosmetics } from './cosmetics.js';
+import { connectWS, _setConnectBusy } from './websocket.js';
 
 // ─── Lobby ────────────────────────────────────────────────────────────────────
 let _connecting = false;

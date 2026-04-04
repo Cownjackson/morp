@@ -2,7 +2,7 @@ import {
   COSMETIC_CATEGORIES,
   getCosmeticItem,
   normalizeEquippedCosmetics
-} from './constants.js?v=draw-hint-footer-3';
+} from './constants.js';
 
 const DEFAULT_CANVAS_SIZE = 256;
 const imageCache = new Map();

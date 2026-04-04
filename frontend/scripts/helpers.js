@@ -1,6 +1,6 @@
-import { state } from './state.js?v=draw-hint-footer-3';
-import { AVATAR_COLORS, ACTIONS } from './constants.js?v=draw-hint-footer-3';
-import { showInteractionTrigger, mountInteractionTrigger } from './interactions.js?v=draw-hint-footer-3';
+import { state } from './state.js';
+import { AVATAR_COLORS, ACTIONS } from './constants.js';
+import { showInteractionTrigger, mountInteractionTrigger } from './interactions.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const _colorMap = {};
@@ -17,13 +17,6 @@ export function initials(name) {
 
 export function playerName(id) {
   return state.players[id]?.name || id?.slice(0, 8) || '?';
-}
-
-export function setPhaseLabel(text) {
-  const phaseLabel = document.getElementById('phase-label');
-  if (phaseLabel) {
-    phaseLabel.textContent = text;
-  }
 }
 
 export function setEndgamePhaseLabel(text) {
@@ -93,6 +86,18 @@ export function syncRoleBannerPosition(inDrawPopup = false) {
   }
 
   roleSection.classList.toggle('hidden', targetParent !== roleSection);
+}
+
+export function syncHailMaryPosition(inDrawPopup = false) {
+  const hailMaryBlock = document.getElementById('hail-mary-block');
+  const actHint = document.getElementById('act-hint');
+  const drawSlot = document.getElementById('draw-hail-mary-slot');
+  if (!hailMaryBlock) return;
+
+  const targetParent = inDrawPopup && drawSlot ? drawSlot : actHint;
+  if (targetParent && hailMaryBlock.parentElement !== targetParent) {
+    targetParent.appendChild(hailMaryBlock);
+  }
 }
 
 export function showAction(name) {

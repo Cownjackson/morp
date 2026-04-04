@@ -2256,8 +2256,8 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
   border-top: 1px solid #2E1848;
 }
 #draw-popup .draw-popup-actions,
-#draw-popup #draw-hail-mary-block,
-#draw-popup #draw-hail-mary-confirm,
+#draw-popup #hail-mary-block,
+#draw-popup #hail-mary-confirm,
 #draw-popup .draw-popup-status {
   display: flex;
   flex-direction: column;

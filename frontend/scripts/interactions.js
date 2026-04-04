@@ -1,4 +1,4 @@
-import { state, send } from './state.js?v=draw-hint-footer-3';
+import { state, send } from './state.js';
 
 // ─── Spit overlay ───────────────────────────────────────────────────────────
 // Blue tint applied to YOUR screen when hit by spitballs.

@@ -4,8 +4,8 @@ import {
   getCosmeticCategory,
   normalizeEquippedCosmetics,
   toCosmeticsPayload
-} from './constants.js?v=draw-hint-footer-3';
-import { getMoopLayerFiles } from './moop-sprite.js?v=draw-hint-footer-3';
+} from './constants.js';
+import { getMoopLayerFiles } from './moop-sprite.js';
 
 const FIRST_CATEGORY_ID = COSMETIC_CATEGORIES[0]?.id ?? null;
 const equipped = normalizeEquippedCosmetics(loadStoredCosmetics());

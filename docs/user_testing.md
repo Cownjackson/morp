@@ -162,4 +162,5 @@ Mark each as ✅ Pass / ❌ Fail / ⚠️ Partial, and note any unexpected behav
 
 - Record the device and browser used for each run (desktop Chrome, mobile Safari, etc.)
 - Note any console errors (`F12` → Console tab on desktop)
+  - **Long-term tracking:** After PR #47 (cache-busting cleanup + hail mary dedup), monitor for errors mentioning `setPhaseLabel` (removed) or `draw-hail-mary-*` IDs (deduplicated). If any appear, they indicate missed references during refactoring. Document in #47 if found.
 - If the server crashes, paste the uvicorn terminal output
