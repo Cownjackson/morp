@@ -41,6 +41,13 @@ body {
   padding: 0 14px 14px;
   position: relative;
 }
+body.screen-ingame {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 18px clamp(18px, 4vw, 40px) 24px;
+  align-items: center;
+}
 body.is-landing {
   align-items: center;
   justify-content: flex-start;
@@ -68,43 +75,12 @@ body.is-landing .landing-main-cluster > * {
 
 .hidden { display: none !important; }
 
-
-/* ── Header ── */
-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 0 12px;
-  border-bottom: 2px solid rgba(106, 48, 16, 0.4);
-  flex-shrink: 0;
-  position: relative;
-  z-index: 10;
-}
-body.screen-pregame header { display: none; }
-header.landing-mode { display: none; }
-header h1 {
-  color: var(--punch); font-family: 'Fredoka', sans-serif;
-  font-weight: 700; font-size: 1.5em; letter-spacing: 2px;
-}
 #lobby-code-display,
 .pregame-lobby-code-chip {
   color: var(--mint); font-weight: 600; font-size: 0.9em;
   background: rgba(26, 10, 18, 0.6); padding: 4px 12px;
   border-radius: 10px; border: 1px solid rgba(90, 40, 72, 0.5);
 }
-#phase-label {
-  margin-left: auto; color: var(--mustard);
-  font-size: 0.8em; font-weight: 500; letter-spacing: 0.5px; text-align: right;
-}
-.header-btn {
-  background: none; border: 1px solid rgba(58, 40, 72, 0.6); color: #8A6878;
-  border-radius: 10px; width: 30px; height: 30px;
-  font-size: 0.8em; cursor: pointer; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  transition: border-color 0.15s, color 0.15s;
-  padding: 0; margin: 0;
-}
-.header-btn:hover { border-color: var(--pinky); color: var(--pinky); transform: none; }
 
 /* ── Volume control ── */
 #volume-wrap {
@@ -270,11 +246,15 @@ header h1 {
 /* ── Role banner ── */
 #role-banner {
   display: none;
-  padding: 10px 18px; border-radius: 14px;
+  padding: 12px 18px; border-radius: 18px;
   font-size: 1em; font-weight: 600; letter-spacing: 1px;
-  margin: 10px 0 4px; flex-shrink: 0;
+  margin: 0; flex-shrink: 0;
   text-align: center;
   position: relative; z-index: 10;
+  width: min(100%, 560px);
+  box-shadow: 0 18px 36px rgba(0,0,0,0.18);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 #role-banner.safe  { background: rgba(8, 30, 20, 0.7); border: 2px solid #2A6A5A; color: var(--mint); }
 #role-banner.morp  { background: rgba(32, 8, 20, 0.7); border: 2px solid #7A1050; color: var(--pinky); }
@@ -888,15 +868,32 @@ body.is-landing #landing-meta-panel {
   position: relative;
   z-index: 10;
 }
-/* In-game layout overrides — grid fills viewport without scrolling */
+#game-screen-stack {
+  width: 100%;
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  max-width: 1380px;
+  margin: 0 auto;
+}
+.game-stack-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 #game-layout.stage-layout {
-  display: grid;
-  grid-template-rows: auto auto 1fr;
-  grid-template-columns: 1fr;
-  height: calc(100dvh - 74px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
   overflow: visible;
-  gap: 6px;
-  padding: 6px 0 0;
+  gap: 16px;
+  padding: 0;
+  flex: 0 0 auto;
 }
 #pregame-layout {
   justify-content: center;
@@ -904,21 +901,72 @@ body.is-landing #landing-meta-panel {
   padding-top: 0;
   pointer-events: none;
 }
+.game-top-controls-row {
+  width: fit-content;
+  max-width: min(100%, 760px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow: visible;
+}
+.game-lobby-controls {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+.game-interaction-slot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0;
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+}
+#game-role-section {
+  margin-bottom: 14px;
+}
+#game-drawing-section {
+  flex-direction: column;
+  gap: 10px;
+}
 
 /* ── Board ── */
 #board-area {
-  background: #100815; border: 2px solid #553010;
-  border-radius: 8px; padding: clamp(6px, 1.5vw, 12px);
-  width: min(100%, 600px);
-  justify-self: center;
+  width: min(100%, 760px);
+  max-width: 100%;
+  padding: clamp(10px, 1.8vw, 16px);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(24, 11, 31, 0.94), rgba(12, 6, 18, 0.92));
+  border: 1px solid rgba(209, 145, 42, 0.28);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 #board-header {
-  display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 8px;
 }
 #board-theme-tag {
   background: #0A1A18; border: 1px solid #1A4A3A;
   color: #87DCAB; font-size: 0.78em; padding: 2px 8px;
   border-radius: 12px; letter-spacing: 0.5px;
+  text-align: center;
 }
 #half-board-note {
   color: #907878; font-size: 0.76em; margin-top: 6px; display: none;
@@ -1358,7 +1406,52 @@ body.is-landing #landing-meta-panel {
 }
 
 /* ── Action area ── */
-#action-area,
+#action-area {
+  width: min(100%, 700px);
+  max-width: 100%;
+  min-height: 70px;
+  text-align: center;
+  padding: clamp(12px, 2vw, 18px);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(24, 11, 31, 0.94), rgba(12, 6, 18, 0.92));
+  border: 1px solid rgba(209, 145, 42, 0.28);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+#action-area[data-active-action="hint"] {
+  width: fit-content;
+  min-width: min(100%, 320px);
+}
+.hint-phase-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+#act-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+#turn-indicator {
+  font-size: 0.88em;
+  text-align: center;
+}
+#your-turn-block,
+#hail-mary-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+#hail-mary-confirm {
+  margin-top: 6px;
+  text-align: center;
+}
 .action-area-card {
   background: #100815; border: 2px solid #553010;
   border-radius: 8px; padding: clamp(8px, 1.5vw, 14px) clamp(10px, 2vw, 16px);
@@ -1914,6 +2007,22 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
   overflow: visible;
   margin: 0;
 }
+#game-player-row.player-orbit {
+  height: clamp(300px, 40vw, 380px);
+  min-height: 300px;
+}
+.game-player-card {
+  width: min(100%, 820px);
+  max-width: 100%;
+  padding: 18px clamp(12px, 2vw, 20px);
+  border-radius: 28px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow: visible;
+}
 
 .avatar-wrap {
   display: flex; flex-direction: column;
@@ -1948,8 +2057,36 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
 .draw-sizes { display: flex; gap: 3px; }
 .draw-tools { display: flex; flex-direction: column; gap: 3px; }
 .draw-canvas-wrap {
+  position: relative;
   flex: 1; min-width: 0;
   display: flex; flex-direction: column; align-items: stretch;
+}
+.draw-canvas-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.draw-canvas-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+  background: rgba(20, 10, 24, 0.88);
+  border: 1px solid rgba(58, 40, 72, 0.7);
+  border-radius: 4px;
+  color: #D1912A;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1rem;
+  line-height: 1.4;
+  z-index: 2;
+}
+.draw-canvas-overlay p {
+  margin: 0;
 }
 .draw-sep { display: none; } /* legacy — hidden */
 .color-swatch {
@@ -2051,9 +2188,121 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
   transition: background 0.15s, transform 0.15s;
 }
 .draw-popup-pill:hover { background: #3A1858; transform: translateY(-2px); }
+#draw-popup {
+  position: relative;
+  bottom: auto;
+  right: auto;
+  z-index: auto;
+  width: min(100%, 760px);
+  max-width: 100%;
+  max-height: none;
+  border-radius: 24px;
+}
+#draw-popup .draw-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+}
+#draw-popup .draw-popup-header-main {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  min-width: 0;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+}
+#draw-popup .draw-popup-header-controls {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+#draw-popup .game-lobby-controls {
+  justify-content: flex-start;
+}
+#draw-popup #lobby-code-display {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#draw-popup .game-interaction-slot {
+  min-height: 36px;
+  min-width: 36px;
+}
+#draw-popup .draw-popup-body {
+  padding-bottom: 10px;
+}
+#draw-role-banner-slot {
+  width: 100%;
+}
+#draw-role-banner-slot #role-banner {
+  width: 100%;
+  max-width: none;
+  margin: 0 0 10px;
+}
+#draw-popup .draw-popup-footer {
+  padding: 14px 10px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-top: 1px solid #2E1848;
+}
+#draw-popup .draw-popup-actions,
+#draw-popup #hail-mary-block,
+#draw-popup #hail-mary-confirm,
+#draw-popup .draw-popup-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  text-align: center;
+}
+#draw-popup .draw-popup-status {
+  color: #C09AB8;
+}
+#draw-popup #draw-submit-btn {
+  align-self: center;
+  min-width: 180px;
+}
+#draw-popup #draw-turn-indicator {
+  min-height: 1.2em;
+  font-size: 0.9em;
+}
+#draw-popup.is-readonly #hint-toolbar,
+#draw-popup.is-readonly .draw-canvas-wrap {
+  opacity: 0.52;
+}
+#draw-popup.is-readonly #hint-toolbar {
+  pointer-events: none;
+}
+#draw-popup.is-readonly #hint-canvas {
+  cursor: not-allowed;
+}
+#draw-popup.is-readonly #draw-submit-btn {
+  opacity: 0.6;
+}
 @media (max-width: 680px) {
   .draw-popup { bottom: 0; right: 0; width: 100%; max-width: 100%; border-radius: 12px 12px 0 0; }
   .draw-popup-pill { bottom: 16px; right: 16px; }
+  #draw-popup .draw-popup-header {
+    align-items: flex-start;
+  }
+  #draw-role-banner-slot {
+    width: 100%;
+  }
+  #draw-popup #lobby-code-display {
+    max-width: none;
+  }
 }
 
 .avatar-circle {
@@ -2092,21 +2341,49 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
 /* ── Game room responsive ── */
 @media (max-width: 430px) {
   #game-layout.stage-layout {
-    height: calc(100dvh - 48px);
-    gap: 4px;
-    padding: 4px 0 0;
+    gap: 12px;
+    padding: 0;
+  }
+  .game-top-controls-row,
+  .game-player-card,
+  body.screen-ingame #chat-wrap.chat-panel,
+  #board-area {
+    border-radius: 20px;
+    width: 100%;
+  }
+  .game-top-controls-row,
+  .game-player-card,
+  body.screen-ingame #chat-wrap.chat-panel {
+    padding-left: 14px;
+    padding-right: 14px;
   }
   #board-area {
-    padding: clamp(4px, 1.2vw, 8px);
-    border-radius: 6px;
-    width: 100%;
+    padding: 12px;
   }
   #board-grid { gap: 3px; }
-  #action-area, .action-area-card {
-    padding: 6px 10px;
-    min-height: 40px;
+  #action-area {
+    padding: 12px;
+    min-height: 56px;
     width: 100%;
-    border-radius: 6px;
+    border-radius: 20px;
+  }
+  #role-banner {
+    width: 100%;
+    font-size: 0.92em;
+  }
+  .game-top-controls-row {
+    gap: 12px;
+  }
+  .game-interaction-slot {
+    margin-left: 0;
+  }
+  #game-player-row.player-orbit {
+    height: clamp(270px, 72vw, 320px);
+    min-height: 270px;
+  }
+  body.screen-ingame #chat-wrap.chat-panel {
+    padding-top: 14px;
+    padding-bottom: 14px;
   }
   .avatar-name {
     font-size: 0.58em;
@@ -2118,20 +2395,34 @@ button.danger:hover:not(:disabled) { background: #9A0E28; }
 
 @media (max-width: 768px) and (min-width: 431px) {
   #game-layout.stage-layout {
-    height: calc(100dvh - 52px);
-    gap: 6px;
+    gap: 14px;
   }
   #board-area {
-    width: min(90%, 600px);
+    width: min(100%, 720px);
+  }
+  #action-area {
+    width: min(100%, 680px);
+  }
+  #game-player-row.player-orbit {
+    height: clamp(290px, 48vw, 360px);
   }
 }
 
 @media (min-width: 1441px) {
   #board-area {
-    width: min(100%, 660px);
+    width: min(100%, 760px);
   }
-  #action-area, .action-area-card {
-    width: min(100%, 660px);
+  #action-area {
+    width: min(100%, 700px);
+  }
+}
+
+@media (max-width: 720px) {
+  body.screen-ingame {
+    padding: 14px 14px 18px;
+  }
+  #game-screen-stack {
+    gap: 14px;
   }
 }
 
@@ -2152,6 +2443,9 @@ body.screen-pregame #landing-meta-panel {
   margin: 0;
   z-index: 16;
   pointer-events: none;
+}
+body.screen-ingame #landing-meta-panel {
+  display: none;
 }
 body.screen-pregame #log-wrap {
   border-top: none;
@@ -2233,6 +2527,29 @@ body.screen-pregame #log {
   background: transparent;
   pointer-events: none;
 }
+body.screen-ingame #game-chat-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 0 0 24px;
+}
+body.screen-ingame #chat-wrap.chat-panel {
+  position: static;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  width: min(100%, 760px);
+  max-width: 100%;
+  z-index: 10;
+  padding: 16px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(24, 11, 31, 0.94), rgba(12, 6, 18, 0.92));
+  border: 1px solid rgba(209, 145, 42, 0.22);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  pointer-events: auto;
+}
 .chat-messages {
   max-height: 118px;
   overflow-y: auto;
@@ -2248,11 +2565,23 @@ body.screen-pregame #log {
   transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
   pointer-events: none;
 }
+body.screen-ingame #chat-wrap .chat-messages {
+  max-height: 148px;
+  background: rgba(8, 5, 8, 0.52);
+  border-color: rgba(58, 40, 72, 0.62);
+  padding: 10px 12px;
+  text-shadow: none;
+  pointer-events: auto;
+}
 .chat-panel:focus-within .chat-messages {
   background: rgba(8, 5, 8, 0.62);
   border-color: rgba(20, 10, 24, 0.95);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
   pointer-events: auto;
+}
+body.screen-ingame #chat-wrap:focus-within .chat-messages {
+  background: rgba(8, 5, 8, 0.78);
+  border-color: rgba(135, 220, 171, 0.26);
 }
 .chat-messages div { margin-bottom: 4px; line-height: 1.45; transition: opacity 1s ease; }
 .chat-messages div.chat-faded { opacity: 0.25; }
@@ -2268,10 +2597,20 @@ body.screen-pregame #log {
   transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
   pointer-events: auto;
 }
+body.screen-ingame #chat-wrap .chat-input-row {
+  margin-top: 10px;
+  border-color: rgba(42, 26, 64, 0.72);
+  background: rgba(13, 8, 16, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+}
 .chat-panel:focus-within .chat-input-row {
   border-color: rgba(20, 10, 24, 0.95);
   background: rgba(13, 8, 16, 0.92);
   box-shadow: 0 10px 24px rgba(0,0,0,0.14);
+}
+body.screen-ingame #chat-wrap:focus-within .chat-input-row {
+  border-color: rgba(135, 220, 171, 0.26);
+  background: rgba(13, 8, 16, 0.94);
 }
 .chat-input {
   flex: 1;
@@ -2425,23 +2764,12 @@ body.screen-pregame #log {
 
 /* ── Interactions ── */
 #interaction-trigger {
-  position: fixed;
-  bottom: 16px;
-  left: 16px;
+  position: relative;
   z-index: 20;
   display: flex;
-  flex-direction: column-reverse;
-  align-items: flex-start;
-  gap: 8px;
-}
-@media (min-width: 521px) {
-  #interaction-trigger {
-    /* Left of the playing area — body is max 960px centered,
-       so left edge of body is (100vw - 960px) / 2.
-       We sit just inside that, still fixed. */
-    left: max(16px, calc(50vw - 500px));
-    bottom: 24px;
-  }
+  align-items: flex-end;
+  justify-content: center;
+  min-width: 44px;
 }
 
 #interaction-btn {
@@ -2465,6 +2793,9 @@ body.screen-pregame #log {
 
 /* ── Radial menu (simple grid for now) ── */
 .interaction-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -2474,6 +2805,7 @@ body.screen-pregame #log {
   padding: 10px;
   backdrop-filter: blur(12px);
   min-width: 130px;
+  box-shadow: 0 16px 30px rgba(0,0,0,0.24);
 }
 .ix-option {
   display: flex;

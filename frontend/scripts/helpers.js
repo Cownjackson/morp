@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { AVATAR_COLORS, ACTIONS } from './constants.js';
-import { showInteractionTrigger } from './interactions.js';
+import { showInteractionTrigger, mountInteractionTrigger } from './interactions.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const _colorMap = {};
@@ -19,32 +19,37 @@ export function playerName(id) {
   return state.players[id]?.name || id?.slice(0, 8) || '?';
 }
 
-export function setPhaseLabel(text) {
-  document.getElementById('phase-label').textContent = text;
-}
-
 export function setEndgamePhaseLabel(text) {
   document.getElementById('endgame-phase-label').textContent = text;
 }
 
+function getLobbyCodeCopyButtons() {
+  return ['pregame-lobby-code-copy', 'ingame-lobby-code-copy']
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
+}
+
 export function setLobbyCodeCopyButtonState(copied = false) {
-  const button = document.getElementById('pregame-lobby-code-copy');
-  if (!button) return;
   const text = copied ? 'Copied' : 'Copy';
   const label = copied ? 'Lobby code copied' : 'Copy lobby code';
-  button.textContent = text;
-  button.title = label;
-  button.setAttribute('aria-label', label);
+  getLobbyCodeCopyButtons().forEach(button => {
+    button.textContent = text;
+    button.title = label;
+    button.setAttribute('aria-label', label);
+  });
 }
 
 export function showLobbyCodeDisplays(lobbyId) {
   const lobbyCodeText = `Lobby Code: ${lobbyId}`;
-  const headerCodeEl = document.getElementById('lobby-code-display');
+  const ingameCodeEl = document.getElementById('lobby-code-display');
   const pregameCodeEl = document.getElementById('pregame-lobby-code-display');
   const pregameCopyEl = document.getElementById('pregame-lobby-code-copy');
+  const ingameCopyEl = document.getElementById('ingame-lobby-code-copy');
 
-  headerCodeEl.textContent = lobbyCodeText;
-  headerCodeEl.classList.remove('hidden');
+  if (ingameCodeEl) {
+    ingameCodeEl.textContent = lobbyCodeText;
+    ingameCodeEl.classList.remove('hidden');
+  }
 
   if (pregameCodeEl) {
     pregameCodeEl.textContent = lobbyCodeText;
@@ -55,16 +60,58 @@ export function showLobbyCodeDisplays(lobbyId) {
     setLobbyCodeCopyButtonState(false);
     pregameCopyEl.classList.remove('hidden');
   }
+
+  if (ingameCopyEl) {
+    setLobbyCodeCopyButtonState(false);
+    ingameCopyEl.classList.remove('hidden');
+  }
 }
 
 export function hideLobbyCodeDisplays() {
   document.getElementById('lobby-code-display')?.classList.add('hidden');
   document.getElementById('pregame-lobby-code-display')?.classList.add('hidden');
   document.getElementById('pregame-lobby-code-copy')?.classList.add('hidden');
+  document.getElementById('ingame-lobby-code-copy')?.classList.add('hidden');
+}
+
+export function syncRoleBannerPosition(inDrawPopup = false) {
+  const roleBanner = document.getElementById('role-banner');
+  const roleSection = document.getElementById('game-role-section');
+  const drawRoleSlot = document.getElementById('draw-role-banner-slot');
+  if (!roleBanner || !roleSection) return;
+
+  const targetParent = inDrawPopup && drawRoleSlot ? drawRoleSlot : roleSection;
+  if (roleBanner.parentElement !== targetParent) {
+    targetParent.appendChild(roleBanner);
+  }
+
+  roleSection.classList.toggle('hidden', targetParent !== roleSection);
+}
+
+export function syncHailMaryPosition(inDrawPopup = false) {
+  const hailMaryBlock = document.getElementById('hail-mary-block');
+  const actHint = document.getElementById('act-hint');
+  const drawSlot = document.getElementById('draw-hail-mary-slot');
+  if (!hailMaryBlock) return;
+
+  const targetParent = inDrawPopup && drawSlot ? drawSlot : actHint;
+  if (targetParent && hailMaryBlock.parentElement !== targetParent) {
+    targetParent.appendChild(hailMaryBlock);
+  }
 }
 
 export function showAction(name) {
+  const actionArea = document.getElementById('action-area');
+  if (actionArea) actionArea.dataset.activeAction = name;
   ACTIONS.forEach(a => document.getElementById(`act-${a}`)?.classList.toggle('hidden', a !== name));
+  const drawSection = document.getElementById('game-drawing-section');
+  const showDrawSection = name === 'hint' && !!state.drawingHints;
+  if (drawSection) drawSection.classList.toggle('hidden', !showDrawSection);
+  document.getElementById('game-action-section')?.classList.toggle('hidden', showDrawSection);
+  if (!showDrawSection) {
+    document.getElementById('draw-popup')?.classList.add('hidden');
+    syncRoleBannerPosition(false);
+  }
 }
 
 function _callBackgroundMoopApi(functionName, ...args) {
@@ -120,8 +167,11 @@ export function showScreen(name) {
   document.getElementById('pregame-layout').classList.toggle('hidden', name !== 'pregame');
   document.getElementById('game-layout').classList.toggle('hidden', name !== 'ingame');
   syncScreenClasses(name);
+  if (state.lobbyId) showLobbyCodeDisplays(state.lobbyId);
+  else hideLobbyCodeDisplays();
   refreshBackgroundLogoPaint({ delayed: true });
   if (name !== 'pregame') clearPregameLobbyMoops();
+  if (name === 'ingame') mountInteractionTrigger();
   showInteractionTrigger(name === 'ingame');
 }
 
@@ -146,7 +196,6 @@ export function showLanding(show) {
   state.screen = show ? 'landing' : state.screen;
   document.getElementById('landing-main-cluster').classList[method]('hidden');
   document.getElementById('landing-footer').classList[method]('hidden');
-  document.querySelector('header').classList[show ? 'add' : 'remove']('landing-mode');
   document.body.classList[show ? 'add' : 'remove']('is-landing');
   syncScreenClasses(show ? 'landing' : state.screen);
   refreshBackgroundLogoPaint({ delayed: true });

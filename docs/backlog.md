@@ -43,7 +43,8 @@ Items move here when planned, to `changelog.md` when shipped.
 - [x] **[feature]** Mobile optimization — responsive breakpoints for 430px mobile, 768px tablet, 1080p, 1440p+ (`game-room-layout` branch) — @cownj ✅
 - [ ] **[feature]** Configurable starting HP — host setting before game start — unowned
 - [ ] **[feature]** Configurable max hint length — currently hard-capped at 30 chars — unowned
-- [ ] **[dev]** No-cache middleware — `Cache-Control: no-cache` on `/scripts/` and `/styles/` in DEV mode; already prototyped, see `test_notes.md` — unowned
+- [x] **[dev]** No-cache middleware — `Cache-Control: no-cache` on `/scripts/` and `/styles/` in DEV mode; already prototyped, see `test_notes.md` — unowned ✅
+- [ ] **[dev]** Migrate `@app.on_event("startup")` to FastAPI lifespan handlers — `backend/main.py:104` triggers `DeprecationWarning`; will break in a future FastAPI release — unowned
 
 ---
 

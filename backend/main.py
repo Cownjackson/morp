@@ -42,6 +42,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def disable_frontend_cache(request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if request.method in {"GET", "HEAD"} and (
+        path == "/"
+        or path.startswith("/scripts/")
+        or path.startswith("/styles/")
+        or path.startswith("/assets/")
+        or path.startswith("/music/")
+        or path.startswith("/cosmetics/")
+    ):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 manager = ConnectionManager()
 _engines: dict[str, GameEngine] = {}
 _timer_tasks: dict[str, asyncio.Task] = {}  # lobby_id -> active timer task

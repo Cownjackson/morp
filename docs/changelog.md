@@ -4,6 +4,12 @@ Completed work, newest first. Add an entry when a PR merges or a standalone chan
 
 ---
 
+## 2026-04-03
+
+- **[dev]** PR #47 review fixes: cache middleware cleanup (query strings removed from JS imports, middleware already handles no-store headers); removed dead `setPhaseLabel()` code (~13 call sites); deduplicated hail-mary UI (single element moved between hint and draw sections using `syncHailMaryPosition` pattern); fixed hail-mary drawing mode bugs (canvas clear and sound replay on cancel); added 7 cache middleware backend tests; updated user testing docs with long-term error monitoring guidance
+
+---
+
 ## 2026-03-29
 
 - **[feature]** Goomba stomp damage animation — morp avatar jumps in a high arc, lands on target with progressive cartoon squish (scaleY→0.35), elastic spring recovery, then bounces back to seat; rAF-driven 4-phase animation (~970ms); render guard prevents DOM wipe mid-animation; animation lock defers round_end

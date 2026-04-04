@@ -1,6 +1,6 @@
 import { state, send } from './state.js';
-import { showScreen, setPhaseLabel, showLanding, httpBase, log, hideLobbyCodeDisplays, setLobbyCodeCopyButtonState } from './helpers.js';
-import { renderRoleBanner, renderPregameLobby, renderChat, enableBoardWordSelection, disableBoardWordSelection, hideDrawPopup, hideEndgameDrawPopup } from './rendering.js';
+import { showScreen, showLanding, httpBase, log, hideLobbyCodeDisplays, setLobbyCodeCopyButtonState } from './helpers.js';
+import { renderRoleBanner, renderPregameLobby, renderChat, enableBoardWordSelection, disableBoardWordSelection, hideDrawPopup, hideEndgameDrawPopup, checkYourTurn, syncHailMaryDrawState } from './rendering.js';
 import { _drawState, clearCanvas } from './drawing.js';
 import { _timers, clearTimer } from './timers.js';
 import { _setConnectBusy, markIntentionalClose, clearIntentionalClose, closeWS } from './websocket.js';
@@ -49,26 +49,30 @@ export function submitMorpGuess() {
 }
 
 export function enterHailMary() {
-  document.getElementById('btn-hail-mary').classList.add('hidden');
-  document.getElementById('hail-mary-confirm').classList.remove('hidden');
+  document.getElementById('btn-hail-mary')?.classList.add('hidden');
+  document.getElementById('hail-mary-confirm')?.classList.remove('hidden');
   document.getElementById('your-turn-block').classList.add('hidden');
   enableBoardWordSelection();
   state._hailMaryMode = true;
+  syncHailMaryDrawState();
 }
 
 export function cancelHailMary() {
   state._hailMaryMode = false;
   disableBoardWordSelection();
-  document.getElementById('hail-mary-confirm').classList.add('hidden');
-  document.getElementById('btn-hail-mary').classList.remove('hidden');
-  document.getElementById('btn-hail-mary-guess').disabled = true;
-  document.getElementById('hail-mary-selected-word').textContent = '—';
-  // Restore your-turn block if it's your turn
+  document.getElementById('hail-mary-confirm')?.classList.add('hidden');
+  document.getElementById('btn-hail-mary')?.classList.remove('hidden');
+  const guessBtn = document.getElementById('btn-hail-mary-guess');
+  if (guessBtn) guessBtn.disabled = true;
+  const guessLabel = document.getElementById('hail-mary-selected-word');
+  if (guessLabel) guessLabel.textContent = '—';
+  // Restore your-turn-block if it's our turn (state hasn't changed, just toggling UI)
   const rs = state.turnOrder;
   const hintCount = state.hints?.length ?? 0;
   if (rs && rs[hintCount] === state.playerId) {
     document.getElementById('your-turn-block').classList.remove('hidden');
   }
+  syncHailMaryDrawState();
 }
 
 export function submitHailMary() {
@@ -77,7 +81,8 @@ export function submitHailMary() {
   state._hailMaryMode = false;
   send({ type: 'submit_hail_mary', guess });
   disableBoardWordSelection();
-  document.getElementById('btn-hail-mary-guess').disabled = true;
+  const guessBtn = document.getElementById('btn-hail-mary-guess');
+  if (guessBtn) guessBtn.disabled = true;
 }
 
 export function submitEndgameGhostHint() {
@@ -124,7 +129,6 @@ export function _localResetToLobby() {
   showScreen('pregame');
   renderPregameLobby();
   renderChat();
-  setPhaseLabel('WAITING');
 }
 
 export function resetToLobby() {
@@ -187,7 +191,6 @@ function _localReturnToMainMenu() {
   document.getElementById('panel-connect').classList.remove('hidden');
   showLanding(true);
   renderChat();
-  setPhaseLabel('');
 }
 
 export async function copyLobbyCode() {
@@ -195,6 +198,9 @@ export async function copyLobbyCode() {
 
   const lobbyCode = state.lobbyId.trim();
   if (!lobbyCode) return;
+  const copyButtons = ['pregame-lobby-code-copy', 'ingame-lobby-code-copy']
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
 
   const fallbackCopy = () => {
     const input = document.createElement('textarea');
@@ -220,8 +226,7 @@ export async function copyLobbyCode() {
       fallbackCopy();
     }
 
-    const button = document.getElementById('pregame-lobby-code-copy');
-    if (!button) return;
+    if (!copyButtons.length) return;
     resetLobbyCodeCopyButton();
     setLobbyCodeCopyButtonState(true);
     _copyLobbyCodeResetTimeout = window.setTimeout(() => {

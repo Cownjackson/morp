@@ -88,6 +88,15 @@ let _menuOpen = false;
 let _pending = null;   // interaction waiting for a target
 let _onCooldown = false;
 
+export function mountInteractionTrigger() {
+  const triggerEl = document.getElementById('interaction-trigger');
+  if (!triggerEl) return;
+  const triggerMount = document.getElementById('ingame-interaction-slot') || document.body;
+  if (triggerEl.parentElement !== triggerMount) {
+    triggerMount.appendChild(triggerEl);
+  }
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 export function initInteractions() {
   // Trigger button
@@ -99,6 +108,7 @@ export function initInteractions() {
     <div id="interaction-menu" class="interaction-menu hidden"></div>
   `;
   document.body.appendChild(triggerEl);
+  mountInteractionTrigger();
 
   // Animation layer (fixed, full-viewport, pointer-events: none)
   const animLayer = document.createElement('div');
@@ -825,6 +835,7 @@ export function playStompAnimation(fromId, toId, onDone) {
 
 // ─── Visibility ───────────────────────────────────────────────────────────────
 export function showInteractionTrigger(visible) {
+  mountInteractionTrigger();
   document.getElementById('interaction-trigger')?.classList.toggle('hidden', !visible);
   if (!visible) closeMenu();
 }
